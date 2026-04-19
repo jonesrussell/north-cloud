@@ -52,6 +52,34 @@ func TestHNAdapter_Scan(t *testing.T) {
 	assert.Equal(t, "99001", s.ExternalID)
 	assert.Equal(t, 90, s.SignalStrength)
 	assert.Contains(t, s.Label, "Looking for CTO")
+	assert.Empty(t, s.OrgName, "HN self-posts have no raw org")
+	assert.Empty(t, s.OrgNameNormalized, "self-post with empty URL cannot resolve org")
+}
+
+func TestHNAdapter_Scan_URLApexPopulatesOrg(t *testing.T) {
+	withURL, err := os.ReadFile(filepath.Join("testdata", "item_with_url.json"))
+	require.NoError(t, err)
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/v0/newstories.json":
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`[99003]`))
+		case "/v0/item/99003.json":
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write(withURL)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer srv.Close()
+
+	a := hn.New(srv.URL, 10, infralogger.NewNop())
+	signals, err := a.Scan(context.Background())
+	require.NoError(t, err)
+	require.Len(t, signals, 1)
+	assert.Empty(t, signals[0].OrgName, "HN never has explicit org")
+	assert.Equal(t, "acme", signals[0].OrgNameNormalized, "URL-apex fallback resolves to canonical slug (corp suffix stripped)")
 }
 
 func TestHNAdapter_EmptyList(t *testing.T) {

@@ -18,25 +18,26 @@ type RFPDocument struct {
 
 // RFP holds the structured fields extracted from a procurement notice.
 type RFP struct {
-	ExtractionMethod string   `json:"extraction_method"`
-	Title            string   `json:"title,omitempty"`
-	ReferenceNumber  string   `json:"reference_number"`
-	OrganizationName string   `json:"organization_name,omitempty"`
-	Description      string   `json:"description,omitempty"`
-	PublishedDate    string   `json:"published_date,omitempty"`
-	ClosingDate      string   `json:"closing_date,omitempty"`
-	AmendmentDate    string   `json:"amendment_date,omitempty"`
-	AmendmentNumber  string   `json:"amendment_number,omitempty"`
-	BudgetCurrency   string   `json:"budget_currency,omitempty"`
-	ProcurementType  string   `json:"procurement_type,omitempty"`
-	Categories       []string `json:"categories,omitempty"`
-	Province         string   `json:"province,omitempty"`
-	City             string   `json:"city,omitempty"`
-	Country          string   `json:"country,omitempty"`
-	SourceURL        string   `json:"source_url,omitempty"`
-	ContactName      string   `json:"contact_name,omitempty"`
-	ContactEmail     string   `json:"contact_email,omitempty"`
-	GSIN             string   `json:"gsin,omitempty"`
-	UNSPSC           string   `json:"unspsc,omitempty"`
-	TenderStatus     string   `json:"tender_status,omitempty"`
+	ExtractionMethod           string   `json:"extraction_method"`
+	Title                      string   `json:"title,omitempty"`
+	ReferenceNumber            string   `json:"reference_number"`
+	OrganizationName           string   `json:"organization_name,omitempty"`
+	OrganizationNameNormalized string   `json:"organization_name_normalized,omitempty"`
+	Description                string   `json:"description,omitempty"`
+	PublishedDate              string   `json:"published_date,omitempty"`
+	ClosingDate                string   `json:"closing_date,omitempty"`
+	AmendmentDate              string   `json:"amendment_date,omitempty"`
+	AmendmentNumber            string   `json:"amendment_number,omitempty"`
+	BudgetCurrency             string   `json:"budget_currency,omitempty"`
+	ProcurementType            string   `json:"procurement_type,omitempty"`
+	Categories                 []string `json:"categories,omitempty"`
+	Province                   string   `json:"province,omitempty"`
+	City                       string   `json:"city,omitempty"`
+	Country                    string   `json:"country,omitempty"`
+	SourceURL                  string   `json:"source_url,omitempty"`
+	ContactName                string   `json:"contact_name,omitempty"`
+	ContactEmail               string   `json:"contact_email,omitempty"`
+	GSIN                       string   `json:"gsin,omitempty"`
+	UNSPSC                     string   `json:"unspsc,omitempty"`
+	TenderStatus               string   `json:"tender_status,omitempty"`
 }

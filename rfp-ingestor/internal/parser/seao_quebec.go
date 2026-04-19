@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	infrasignal "github.com/jonesrussell/north-cloud/infrastructure/signal"
 	"github.com/jonesrussell/north-cloud/rfp-ingestor/internal/domain"
 )
 
@@ -100,6 +101,10 @@ func buildSEAODocument(r *seaoRelease, crawledAt string) domain.RFPDocument {
 		topics = append(topics, "technology")
 	}
 
+	// SEAO releases have no contact email; resolve canonical slug from buyer
+	// name with seao.gouv.qc.ca as the URL fallback for unusual buyers.
+	orgNormalized, _ := infrasignal.Resolve(org, "", sourceURL)
+
 	return domain.RFPDocument{
 		Title:        title,
 		URL:          sourceURL,
@@ -111,22 +116,23 @@ func buildSEAODocument(r *seaoRelease, crawledAt string) domain.RFPDocument {
 		Topics:       topics,
 		CrawledAt:    crawledAt,
 		RFP: domain.RFP{
-			ExtractionMethod: seaoExtractionMethod,
-			Title:            title,
-			ReferenceNumber:  r.Tender.ID,
-			OrganizationName: org,
-			Description:      description,
-			PublishedDate:    r.Date,
-			ClosingDate:      closingDate,
-			BudgetCurrency:   seaoBudgetCurrency,
-			ProcurementType:  procurementType,
-			Categories:       categories,
-			Province:         province,
-			City:             city,
-			Country:          seaoCountry,
-			SourceURL:        sourceURL,
-			UNSPSC:           unspsc,
-			TenderStatus:     r.Tender.Status,
+			ExtractionMethod:           seaoExtractionMethod,
+			Title:                      title,
+			ReferenceNumber:            r.Tender.ID,
+			OrganizationName:           org,
+			OrganizationNameNormalized: orgNormalized,
+			Description:                description,
+			PublishedDate:              r.Date,
+			ClosingDate:                closingDate,
+			BudgetCurrency:             seaoBudgetCurrency,
+			ProcurementType:            procurementType,
+			Categories:                 categories,
+			Province:                   province,
+			City:                       city,
+			Country:                    seaoCountry,
+			SourceURL:                  sourceURL,
+			UNSPSC:                     unspsc,
+			TenderStatus:               r.Tender.Status,
 		},
 	}
 }

@@ -46,6 +46,8 @@ func TestFundingAdapter_Scan(t *testing.T) {
 	assert.Equal(t, "funding", first.SourceName)
 	assert.Contains(t, first.Notes, "203400")
 	assert.Contains(t, first.Notes, "Ottawa")
+	assert.Equal(t, "TechStartup Inc", first.OrgName)
+	assert.Equal(t, "techstartup", first.OrgNameNormalized, "explicit org wins over URL fallback")
 }
 
 func TestFundingAdapter_PartialURLFailure(t *testing.T) {

@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
+	infrasignal "github.com/jonesrussell/north-cloud/infrastructure/signal"
 	"github.com/jonesrussell/north-cloud/signal-crawler/internal/adapter"
 	"github.com/jonesrussell/north-cloud/signal-crawler/internal/scoring"
 )
@@ -61,33 +62,10 @@ func (a *Adapter) Scan(ctx context.Context) ([]adapter.Signal, error) {
 
 		matched := 0
 		for _, p := range postings {
-			combined := p.Title + " " + p.Body
-			score, phrase := scoring.Score(combined)
-			if score == 0 {
-				continue
+			if sig, ok := a.postingToSignal(board, p); ok {
+				allSignals = append(allSignals, sig)
+				matched++
 			}
-
-			label := p.Title
-			if p.Company != "" {
-				label = p.Company + " — " + p.Title
-			}
-
-			sector := p.Sector
-			if sector == "" {
-				sector = "tech"
-			}
-
-			allSignals = append(allSignals, adapter.Signal{
-				SignalType:     "job_posting",
-				SourceName:     board.Name(),
-				Label:          label,
-				SourceURL:      p.URL,
-				ExternalID:     board.Name() + "|" + p.ID,
-				SignalStrength: score,
-				Sector:         sector,
-				Notes:          fmt.Sprintf("Matched: %s (via %s)", phrase, board.Name()),
-			})
-			matched++
 		}
 
 		if a.log != nil {
@@ -100,4 +78,47 @@ func (a *Adapter) Scan(ctx context.Context) ([]adapter.Signal, error) {
 	}
 
 	return allSignals, errors.Join(errs...)
+}
+
+// postingToSignal scores a job posting and, if it matches, constructs an
+// adapter.Signal. Returns ok=false when the posting does not match.
+func (a *Adapter) postingToSignal(board Board, p Posting) (adapter.Signal, bool) {
+	combined := p.Title + " " + p.Body
+	score, phrase := scoring.Score(combined)
+	if score == 0 {
+		return adapter.Signal{}, false
+	}
+
+	label := p.Title
+	if p.Company != "" {
+		label = p.Company + " — " + p.Title
+	}
+
+	sector := p.Sector
+	if sector == "" {
+		sector = "tech"
+	}
+
+	// Company is the explicit organization on most job postings; fall
+	// back to the posting URL when the board omits it.
+	orgNormalized, resolveErr := infrasignal.Resolve(p.Company, "", p.URL)
+	if resolveErr != nil && a.log != nil {
+		a.log.Debug("jobs: org attribution unresolved",
+			infralogger.String("board", board.Name()),
+			infralogger.String("posting_id", p.ID),
+		)
+	}
+
+	return adapter.Signal{
+		SignalType:        "job_posting",
+		SourceName:        board.Name(),
+		Label:             label,
+		SourceURL:         p.URL,
+		ExternalID:        board.Name() + "|" + p.ID,
+		SignalStrength:    score,
+		Sector:            sector,
+		Notes:             fmt.Sprintf("Matched: %s (via %s)", phrase, board.Name()),
+		OrgName:           p.Company,
+		OrgNameNormalized: orgNormalized,
+	}, true
 }

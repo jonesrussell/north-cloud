@@ -9,6 +9,7 @@ import (
 	"time"
 
 	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
+	infrasignal "github.com/jonesrussell/north-cloud/infrastructure/signal"
 	"github.com/jonesrussell/north-cloud/signal-crawler/internal/adapter"
 	"github.com/jonesrussell/north-cloud/signal-crawler/internal/scoring"
 )
@@ -83,14 +84,25 @@ func (a *Adapter) Scan(ctx context.Context) ([]adapter.Signal, error) {
 			continue
 		}
 
+		// HN submissions have no explicit org or contact email; fall back to the
+		// submitted article URL (empty when the story is a self-post).
+		orgNormalized, resolveErr := infrasignal.Resolve("", "", it.URL)
+		if resolveErr != nil {
+			a.log.Debug("hn: org attribution unresolved",
+				infralogger.Int("item_id", it.ID),
+				infralogger.String("article_url", it.URL),
+			)
+		}
+
 		signals = append(signals, adapter.Signal{
-			SignalType:     "hn_mention",
-			SourceName:     "hn",
-			Label:          it.Title,
-			SourceURL:      fmt.Sprintf("https://news.ycombinator.com/item?id=%d", it.ID),
-			ExternalID:     strconv.Itoa(it.ID),
-			SignalStrength: score,
-			Notes:          "Matched: " + matched,
+			SignalType:        "hn_mention",
+			SourceName:        "hn",
+			Label:             it.Title,
+			SourceURL:         fmt.Sprintf("https://news.ycombinator.com/item?id=%d", it.ID),
+			ExternalID:        strconv.Itoa(it.ID),
+			SignalStrength:    score,
+			Notes:             "Matched: " + matched,
+			OrgNameNormalized: orgNormalized,
 		})
 	}
 

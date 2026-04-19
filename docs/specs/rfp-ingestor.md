@@ -92,7 +92,8 @@ The search service queries `content_type.keyword` for exact filtering. ES auto-g
 | Field | ES Type | Notes |
 |-------|---------|-------|
 | `rfp.reference_number` | keyword | Unique CanadaBuys ID |
-| `rfp.organization_name` | keyword | Procuring entity |
+| `rfp.organization_name` | keyword | Procuring entity (raw) |
+| `rfp.organization_name_normalized` | keyword | Canonical slug via `infrastructure/signal.Resolve` — dedup/enrichment key (see `docs/specs/lead-pipeline.md` §Organization attribution contract) |
 | `rfp.procurement_type` | keyword | e.g. `"Tender Notice"` |
 | `rfp.categories` | keyword | GSIN / UNSPSC commodity codes |
 | `rfp.province` | keyword | Used by publisher L4 location routing |
