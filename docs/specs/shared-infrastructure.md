@@ -1,6 +1,6 @@
 # Shared Infrastructure Specification
 
-> Last verified: 2026-03-24 (add Redis CheckConnection health-check helper)
+> Last verified: 2026-04-19 (add signal/org-normalize helpers; refreshed after main merge brought #658 Go toolchain bump)
 
 Covers the `infrastructure/` module: config loading, logging, database clients, middleware, events, and utilities used by all services.
 

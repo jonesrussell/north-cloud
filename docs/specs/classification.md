@@ -292,7 +292,7 @@ Added to the content type enumeration. When the keyword heuristic fires, the con
 
 ### Keyword Heuristic Classifier (`classifyFromNeedSignalKeywords`)
 
-Uses `allNeedSignalKeywords()` which flattens the extractor's `signalCategoryKeywords` map — both the heuristic and extractor share a single keyword source. Five keyword categories:
+Uses `allNeedSignalKeywords()` which flattens the extractor's `signalCategoryKeywords` map into a single preallocated slice — both the heuristic and extractor share a single keyword source. Five keyword categories:
 - `outdated_website` — signals an organization has an outdated or broken web presence
 - `funding_win` — grant awards, funding announcements
 - `job_posting` — hiring signals indicating growth or capacity gaps

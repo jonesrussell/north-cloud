@@ -73,6 +73,7 @@ CHANGED_FILES=$(echo "$CHANGED_FILES" | grep -v 'MIGRATION\.md$' || true)
 CHANGED_FILES=$(echo "$CHANGED_FILES" | grep -v '_test\.go$' || true)
 CHANGED_FILES=$(echo "$CHANGED_FILES" | grep -v 'go\.mod$' || true)
 CHANGED_FILES=$(echo "$CHANGED_FILES" | grep -v 'go\.sum$' || true)
+CHANGED_FILES=$(echo "$CHANGED_FILES" | grep -v '/Dockerfile$' || true)
 
 if [ -z "$CHANGED_FILES" ]; then
   echo "No changes detected in the last $COMMITS commits."

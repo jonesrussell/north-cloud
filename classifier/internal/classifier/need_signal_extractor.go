@@ -56,7 +56,12 @@ var signalCategoryKeywords = map[string][]string{
 // signal category. Used by the heuristic classifier so both components share
 // a single keyword source.
 func allNeedSignalKeywords() []string {
-	var all []string
+	total := 0
+	for _, kws := range signalCategoryKeywords {
+		total += len(kws)
+	}
+
+	all := make([]string, 0, total)
 	for _, kws := range signalCategoryKeywords {
 		all = append(all, kws...)
 	}

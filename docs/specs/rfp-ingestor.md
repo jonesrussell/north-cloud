@@ -1,6 +1,6 @@
 # RFP Ingestor Spec
 
-> Last verified: 2026-04-13 (SEAO CKAN URL resolver, parser added to .layers)
+> Last verified: 2026-04-19 (reviewed against current service code; no behavioural drift since SEAO CKAN resolver landed)
 
 ## Overview
 
