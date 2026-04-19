@@ -84,10 +84,10 @@ func (a *Adapter) Scan(ctx context.Context) ([]adapter.Signal, error) {
 // adapter.Signal. Returns ok=false when the posting does not match.
 func (a *Adapter) postingToSignal(board Board, p Posting) (adapter.Signal, bool) {
 	combined := p.Title + " " + p.Body
-	score, phrase := scoring.Score(combined)
-	if score == 0 {
+	if ok, _, _ := scoring.Passes(combined); !ok {
 		return adapter.Signal{}, false
 	}
+	score, phrase := scoring.Score(combined)
 
 	label := p.Title
 	if p.Company != "" {

@@ -1,6 +1,10 @@
 package scoring
 
-import "strings"
+import (
+	"strings"
+
+	"github.com/jonesrussell/north-cloud/infrastructure/signal"
+)
 
 const (
 	// ScoreDirectAsk is for posts explicitly looking for technical help.
@@ -72,4 +76,16 @@ func Score(text string) (score int, phrase string) {
 		}
 	}
 	return best, matched
+}
+
+// Passes reports whether text meets the unified threshold contract defined in
+// infrastructure/signal (≥MinKeywordMatches distinct keyword hits, confidence
+// ≥RequiredConfidence). The shared helper keeps this service in lock-step
+// with the classifier's need_signal heuristic — see docs/specs/lead-pipeline.md.
+func Passes(text string) (ok bool, confidence float64, matches int) {
+	phrases := make([]string, 0, len(keywords))
+	for _, kw := range keywords {
+		phrases = append(phrases, kw.phrase)
+	}
+	return signal.Evaluate(strings.ToLower(text), phrases)
 }
