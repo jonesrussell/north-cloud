@@ -1,0 +1,108 @@
+name: validate-org-attribution
+
+on:
+  schedule:
+    # Daily at 14:05 UTC (10:05 EST) — after signal-crawler's nightly window.
+    - cron: '5 14 * * *'
+  workflow_dispatch:
+    inputs:
+      threshold:
+        description: 'Minimum populated rate (0.0 – 1.0)'
+        required: false
+        # Threshold is intentionally low because the denominator includes
+        # pre-normalizer documents that cannot populate. Raise to 0.80+ once
+        # the --since timestamp filter lands (#663) and 14 consecutive days
+        # of clean validator runs on --since 24h have been recorded.
+        default: '0.25'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: validate-org-attribution
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    name: Check organization_name_normalized populated rate
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      # Dereference workflow_dispatch inputs into env once, so shell steps only
+      # ever see a plain variable and never ${{ }} expression interpolation.
+      THRESHOLD_INPUT: ${{ inputs.threshold }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.26'
+
+      - name: Build validator
+        working-directory: tools/validate-org-attribution
+        run: CGO_ENABLED=0 go build -o /tmp/validate-org-attribution .
+
+      - name: Validate and export threshold
+        id: threshold
+        run: |
+          T="${THRESHOLD_INPUT:-0.25}"
+          if ! printf '%s' "$T" | grep -Eq '^0(\.[0-9]+)?$|^1(\.0+)?$'; then
+            echo "Invalid threshold: $T (must be 0.0 – 1.0)" >&2
+            exit 1
+          fi
+          echo "value=$T" >> "$GITHUB_OUTPUT"
+
+      - name: Configure SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.DEPLOY_SSH_KEY }}
+
+      - name: Add server to known hosts
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_SSH_PORT: ${{ secrets.DEPLOY_SSH_PORT || '22' }}
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          ssh-keyscan -H -p "${DEPLOY_SSH_PORT}" "${DEPLOY_HOST}" >> ~/.ssh/known_hosts 2>/dev/null
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Run validator against production ES
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_SSH_PORT: ${{ secrets.DEPLOY_SSH_PORT || '22' }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          THRESHOLD: ${{ steps.threshold.outputs.value }}
+        run: |
+          scp -P "${DEPLOY_SSH_PORT}" /tmp/validate-org-attribution \
+            "${DEPLOY_USER}@${DEPLOY_HOST}:/tmp/validate-org-attribution"
+
+          set +e
+          OUTPUT=$(ssh -p "${DEPLOY_SSH_PORT}" "${DEPLOY_USER}@${DEPLOY_HOST}" \
+            "docker run --rm --network=north-cloud_north-cloud-network \
+              -v /tmp/validate-org-attribution:/validator:ro \
+              alpine:3 /validator -es http://elasticsearch:9200 -threshold ${THRESHOLD}" 2>&1)
+          STATUS=$?
+          set -e
+
+          echo "$OUTPUT"
+          {
+            echo "## Organization attribution populated rate"
+            echo ""
+            echo '```'
+            echo "$OUTPUT"
+            echo '```'
+            echo ""
+            if [ "$STATUS" -eq 0 ]; then
+              echo "**PASS** — populated rate ≥ ${THRESHOLD}"
+            else
+              echo "**FAIL** — populated rate below ${THRESHOLD}. See #639."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          ssh -p "${DEPLOY_SSH_PORT}" "${DEPLOY_USER}@${DEPLOY_HOST}" \
+            'rm -f /tmp/validate-org-attribution'
+
+          exit $STATUS

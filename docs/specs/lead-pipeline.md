@@ -186,7 +186,9 @@ Required behavior (post-#639):
 
 Pre-merge correctness gate (unit tests): each producer has a fixture-level assertion that `signal.Resolve` populates the normalized field correctly — explicit-org-wins for `funding` (`TechStartup Inc` → `techstartup`) and `jobs` (`Acme` → `acme`), URL-apex fallback for `hn` and for `jobs` when company is missing (`acme-corp.com` → `acme` with corporate suffix stripped), and the `need_signal` extractor asserts explicit-over-email precedence. These live in the respective `_test.go` files alongside each adapter.
 
-Dry-run validation (post-deploy): `tools/validate-org-attribution` queries ES `_count` for populated `organization_name_normalized` across `*_classified_content` (need-signal documents) and `rfp_classified_content`, and exits non-zero if the combined populated rate is below the configured threshold (default 0.80). Intended to run on a schedule for the week following deploy. #639 closes only once the aggregate rate hits the threshold and no single producer lags meaningfully below it.
+Dry-run validation (post-deploy): `tools/validate-org-attribution` queries ES `_count` for populated `organization_name_normalized` across `*_classified_content` (need-signal documents) and `rfp_classified_content`, and exits non-zero if the combined populated rate is below the configured threshold (default 0.25). The `.github/workflows/validate-org-attribution.yml` GitHub Action runs the validator daily (14:05 UTC) against production ES via the deploy host, reporting per-producer and aggregate rates to the job summary. A failure (rate below threshold) fails the workflow loudly; `workflow_dispatch` allows on-demand runs with a custom threshold.
+
+The threshold is intentionally low because the denominator includes pre-normalizer documents that cannot populate (indexed before `organization_name_normalized` shipped). Raise to 0.80+ once the `--since` timestamp filter lands (#663) and 14 consecutive days of clean validator runs on `--since 24h` have been recorded. #639 remains closed as the wiring is complete; the threshold tightening tracks under #663.
 
 ---
 
