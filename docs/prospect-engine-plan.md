@@ -1,7 +1,7 @@
 # Prospect Engine Plan
 
 **Date:** 2026-04-18
-**Status:** Draft — pending user review
+**Status:** Approved — implementation proceeds per Appendix B
 **Goal:** Evolve North Cloud from a signal engine into a prospect engine that delivers a small, high-quality daily briefing of qualified sales leads for NorthOps, with an accept/reject feedback loop that tunes the ranker over time.
 
 ---
@@ -178,7 +178,7 @@ Priority ordered. ICP fit is the sort key, not source volume.
 - **MERX / Biddingo:** commercial portals. ToS review is a hard gate. Preferred path = authenticated feed; otherwise, skip and document the decision.
 - **PSPC IBD:** open Canadian government data, CAN-permissive.
 - **CCAB:** member-data terms unknown — gate.
-- **Indigenous / community websites:** respectful-crawl policy. Honor `robots.txt`, conservative rate limits, never re-host protected community content. Applies transitively when `sector_alignment` lights up Indigenous-community sources.
+- **Indigenous / community websites:** `docs/policies/respectful-crawl.md` (proposed — written as part of wave 1). Honors `robots.txt`, conservative default rate limits, no re-hosting of community-protected content, consent-before-scrape for band-owned domains, honors an `X-Community-Protocol: no-crawl` header as a North Cloud convention. Applies transitively when `sector_alignment` lights up Indigenous-community sources. Referenced from PSPC IBD and CCAB adapter CLAUDE.md files.
 
 ---
 
@@ -194,7 +194,7 @@ Follow the Lead Intel #596 / #597 architecture. Each enricher is a handler on th
 | `tech_stack` (#597) | `{domain}` | `{cms, framework, analytics, hosting, age_of_site_days, observable_debt_score}` | Public site fingerprinting. |
 | `hiring` (#597) | `{organization_name, domain}` | `{open_roles_count, senior_roles_count, stack_hint_from_jd}` | Queries ES for matching job-type content. |
 | **`sector_alignment`** (new) | `{organization_name, domain, topics, location, indigenous_flags}` | `{segments: [{segment, score, reasoning}]}` | Reads ICP rules from source-manager. Mirrors the classifier component so recently-produced signals without classified_content still get scored. |
-| **`prospect_contact`** (new, CASL-bounded per P1) | `{organization_name, domain}` | `{published_contacts: [{name, role, source_url, public_confidence}]}` | **Only contacts publicly listed on the org's own site or a public government directory.** No LinkedIn scraping, no email-pattern synthesis, no guessing. If no public contact exists, returns empty and the briefing renders "no public contact". Queries source-manager `communities` / `people` first. |
+| **`prospect_contact`** (new, CASL-bounded per P1) | `{organization_name, domain}` | `{published_contacts: [{name, role, source_url, public_confidence}]}` | **Only contacts publicly listed on the org's own site or a public government directory.** See §5.4 for the out-of-scope list. If no public contact exists, returns empty and the briefing renders "no public contact" visibly. Queries source-manager `communities` / `people` first. |
 
 ### 5.2 I/O contract
 
@@ -213,7 +213,17 @@ The enrichment service POSTs results to `${WAASEYAA_URL}/api/signals/{signal_id}
 ### 5.3 Boundaries
 
 - Enrichment service reads ES (`${ES_URL}`) for prior matches on `organization_name` / `domain`. Does not call source-manager directly except from `sector_alignment` and `prospect_contact`.
-- `prospect_contact` queries source-manager `communities` and `people` first (already authoritative for Indigenous community leadership), falls back to a public org-site scrape gated by the respectful-crawl policy.
+- `prospect_contact` queries source-manager `communities` and `people` first (already authoritative for Indigenous community leadership), falls back to a public org-site scrape gated by `docs/policies/respectful-crawl.md`.
+
+### 5.4 `prospect_contact` — explicitly out of scope
+
+The following sources are **prohibited** by P1. They are not merely deprioritized; reintroducing any of them requires a named amendment to this spec:
+
+- **LinkedIn scraping** — ToS violation and a scaled source of misattributed contacts.
+- **Email-pattern synthesis** (e.g., `first.last@domain`) — CASL exposure on false positives.
+- **Third-party data-broker lookups** (ZoomInfo, Apollo, RocketReach, etc.) — provenance is unverifiable; contacts may not meet CASL's "public disclosure" bar even when legally purchased.
+
+If a future reviewer proposes any of these under a different name or a new enrichment type, the reviewer must cite the amendment reopening §5.4.
 
 ---
 
@@ -256,6 +266,11 @@ Subject: NorthOps briefing — 2026-04-18
 
 No contact data. No body snippets. No enrichment payloads. Org + signal type + deep link only.
 
+**Template guards (enforced in Waaseyaa CI):**
+
+- Lint rule asserts no `{{ prospect.contact* }}` or `{{ prospect.enrichment* }}` substitutions exist in the digest-email template.
+- Template test asserts the "no public contact found" case renders visibly on the briefing page (prevents a silent regression where an empty result disappears from the UI).
+
 **Waaseyaa briefing page (substance tier — auth-gated):**
 
 Per prospect:
@@ -287,7 +302,7 @@ CREATE TABLE prospect_feedback (
     id UUID PRIMARY KEY,
     prospect_id UUID NOT NULL,
     decision VARCHAR(20) NOT NULL,           -- 'accept', 'reject', 'snooze'
-    reason VARCHAR(60),                       -- 'wrong_segment' | 'stale' | 'no_budget' | 'already_client' | 'not_now'
+    reason VARCHAR(60),                       -- 'wrong_segment' | 'stale' | 'no_budget' | 'already_client' | 'not_now' | 'too_large'
     signal_type VARCHAR(40) NOT NULL,         -- denormalized for aggregation
     icp_segment VARCHAR(40) NOT NULL,         -- denormalized
     decided_at TIMESTAMPTZ NOT NULL,
@@ -327,7 +342,7 @@ CREATE TABLE ranker_weights (
 On each prospect card:
 
 - **Accept** (green)
-- **Reject** (red) + optional dropdown (wrong_segment / stale / no_budget / already_client / not_now)
+- **Reject** (red) + optional dropdown (wrong_segment / stale / no_budget / already_client / not_now / too_large)
 - **Snooze** (grey) — re-surface in 14 days
 - **Note** (free text)
 
@@ -340,7 +355,12 @@ One click. No confirmation modal. History view reverses any decision.
 
 ### 7.5 Guardrails against ranker drift
 
-- Weekly rejection-rate floor: if the weekly rejection rate drops below 15%, log a warning. Below 5%, freeze weight updates until a manual review. Prevents the ranker from converging on "accept everything".
+Two symmetric floors / ceilings catch both failure modes:
+
+- **Rejection-rate floor** (prevents "accept everything"): weekly rejection rate < 15% logs a warning; < 5% freezes weight updates until manual review.
+- **Acceptance-rate ceiling** (prevents "collapse on yes"): weekly acceptance rate > 80% logs a warning; > 90% freezes weight updates until manual review.
+
+Both guardrails evaluate on a rolling 7-day window. Freeze state is stored in `ranker_weights.model_version` (e.g., `beta_binomial_v1_frozen`); operator lifts the freeze via a Symfony console command after reviewing the weekly decision distribution.
 
 ---
 
@@ -401,15 +421,17 @@ icp:
 4. Signal-producer (Lead Intel #592) checkpoint schema: nailed down, or room to influence before #595 lands?
 5. Does a respectful-crawl policy doc already exist in this repo, or does it need writing?
 
-### 9.3 Questions for user before implementation
+### 9.3 Decisions (answered)
 
-1. **Briefing cadence and size:** proposed = daily 06:00 America/Toronto, top-5 prospects. Confirm.
-2. **Snooze window:** proposed = 14 days. Confirm.
-3. **Reject reasons:** accept `wrong_segment` / `stale` / `no_budget` / `already_client` / `not_now`, or modify.
-4. **Phase-2 ranker trigger:** ≥50 decisions. Confirm.
-5. **Historical backfill of `icp` tags:** yes / no / decide-later?
-6. **MIGRATION.md in signal-crawler:** link #638/#639/#640 as open cleanup, or stay focused on successor direction?
-7. **Respectful-crawl policy:** reference an existing doc (which?) or propose one in this plan's implementation?
+Decisions made at plan approval (2026-04-18). Recorded here so the spec is self-contained.
+
+1. **Briefing cadence and size** — daily 06:00 America/Toronto, top-5. Tunable downward via config without re-spec if attention dilution appears.
+2. **Snooze window** — 14 days.
+3. **Reject reasons** — `wrong_segment` / `stale` / `no_budget` / `already_client` / `not_now` / **`too_large`** (engagements materially beyond single-operator ship scope, e.g., Big Four-scale multi-year programs).
+4. **Phase-2 ranker trigger** — ≥50 decisions.
+5. **Historical backfill of `icp` tags** — **no**. New docs populate forward. The `classifier reclassify --component=sector_alignment` subcommand in §8.2 is documented but not built in wave 1.
+6. **`signal-crawler/MIGRATION.md` scope** — successor-direction only. Does not enumerate cleanup issues. Cleanup lives in `docs/specs/lead-pipeline.md` and the issue tracker.
+7. **Respectful-crawl policy** — **propose new** `docs/policies/respectful-crawl.md` as part of wave 1. Referenced from §4.5 and §5.3.
 
 ---
 
@@ -419,6 +441,7 @@ icp:
 docs/
   prospect-engine-plan.md                            # this file
   specs/lead-pipeline.md                             # cleanup #1 (issue #640)
+  policies/respectful-crawl.md                       # §4.5 / §5.3 — proposed new policy
 
 signal-crawler/
   MIGRATION.md                                       # cleanup #2
