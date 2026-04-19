@@ -60,9 +60,10 @@ rfp-ingestor/                         # Procurement signals
   internal/parser/*.go                # PortalParser implementations (CanadaBuys, SEAO, …)
   # Bulk-indexes to ES rfp_classified_content; see docs/specs/rfp-ingestor.md
 
-infrastructure/signal/                # (forthcoming, #638/#639) shared helpers
-  threshold.go                        # Unified accept/reject gate used by both producers
-  org_normalize.go                    # Organization attribution helpers
+infrastructure/signal/                # Shared helpers used by both producers
+  threshold.go                        # Unified accept/reject gate (#638 — landed)
+  org_normalize.go                    # Normalize / FromEmail / FromURL / Resolve
+                                      #   (#639 helper landed; producer wiring pending)
 ```
 
 ---

@@ -1,6 +1,6 @@
 # Shared Infrastructure Specification
 
-> Last verified: 2026-03-24 (add Redis CheckConnection health-check helper)
+> Last verified: 2026-04-19 (add signal/org-normalize helpers; refreshed after main merge brought #658 Go toolchain bump)
 
 Covers the `infrastructure/` module: config loading, logging, database clients, middleware, events, and utilities used by all services.
 
@@ -31,6 +31,8 @@ Covers the `infrastructure/` module: config loading, logging, database clients, 
 | `infrastructure/clickurl/signer.go` | Click tracking URL signing |
 | `infrastructure/gin/builder.go` | Gin server builder with `WithMetrics()` option |
 | `infrastructure/gin/metrics.go` | Prometheus metrics route and handler (`/metrics`) |
+| `infrastructure/signal/threshold.go` | Unified need-signal accept/reject gate (shared by signal-crawler + classifier) |
+| `infrastructure/signal/org_normalize.go` | Organization name canonicalization + attribution fallback (explicit → email → URL) |
 
 ## Interface Signatures
 
