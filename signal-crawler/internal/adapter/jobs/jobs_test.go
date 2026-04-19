@@ -50,10 +50,35 @@ func TestAdapter_Scan_ScoresAndFilters(t *testing.T) {
 	assert.Equal(t, "Acme — Hiring platform engineer", signals[0].Label)
 	assert.Equal(t, "test-board|1", signals[0].ExternalID)
 	assert.Equal(t, 90, signals[0].SignalStrength)
+	assert.Equal(t, "Acme", signals[0].OrgName)
+	assert.Equal(t, "acme", signals[0].OrgNameNormalized)
 
 	assert.Equal(t, "CloudCo — Cloud migration lead needed", signals[1].Label)
 	assert.Equal(t, "test-board|3", signals[1].ExternalID)
 	assert.Equal(t, 70, signals[1].SignalStrength)
+	assert.Equal(t, "CloudCo", signals[1].OrgName)
+	assert.Equal(t, "cloudco", signals[1].OrgNameNormalized)
+}
+
+func TestAdapter_Scan_URLFallback_WhenCompanyMissing(t *testing.T) {
+	log := infralogger.NewNop()
+
+	boards := []jobs.Board{
+		&stubBoard{
+			name: "anon-board",
+			postings: []jobs.Posting{
+				{Title: "Hiring platform engineer", URL: "https://acme-corp.com/jobs/42", ID: "42"},
+			},
+		},
+	}
+
+	a := jobs.New(boards, log)
+	signals, err := a.Scan(context.Background())
+
+	require.NoError(t, err)
+	require.Len(t, signals, 1)
+	assert.Empty(t, signals[0].OrgName, "raw OrgName stays empty when board omits company")
+	assert.Equal(t, "acme", signals[0].OrgNameNormalized, "URL-apex fallback populates normalized (corp suffix stripped)")
 }
 
 func TestAdapter_Scan_BoardError_ContinuesOthers(t *testing.T) {
