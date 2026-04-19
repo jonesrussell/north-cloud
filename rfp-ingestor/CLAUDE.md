@@ -2,6 +2,8 @@
 
 RFP (Request for Proposals) ingestor that polls CanadaBuys CSV feeds and indexes directly to Elasticsearch, **bypassing the classifier entirely**.
 
+> **Procurement is the canonical landing zone.** New procurement sources extend the `PortalParser` interface here rather than a parallel crawler (per [`docs/specs/lead-pipeline.md`](../docs/specs/lead-pipeline.md) and `docs/prospect-engine-plan.md` §P3).
+
 ---
 
 ## Layer Rules
