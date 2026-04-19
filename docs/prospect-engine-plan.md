@@ -519,3 +519,113 @@ source-manager/data/
 9. **Ranker phase 2 (logistic regression)** once the 50-decision threshold is reached (§7.2).
 
 ---
+
+## Appendix C — Open: corpus coverage for segments with low news density
+
+**Scope of this note.** Forward-looking research question for Wave 3+. Not a
+Wave 2 blocker; Wave 2 ships as scoped. Captured here so the question has a
+known starting point instead of being rediscovered.
+
+### Wave 2 pilot sample composition (2026-04-19)
+
+The observation below was surfaced during the #667 pilot labelling-stratum draw against production `classified_content`. The full sample design is captured here so the finding is reproducible and the appendix is self-contained.
+
+**Total: ~53 docs across five strata.** Size falls within the 50–100 target set by #667.
+
+| Stratum | Count | Composition |
+|---|---|---|
+| `indigenous_channel = strong` | 15 | 6 static org/band pages (`amebc_ca`, `itk_ca`, `metisnation_org`, `afn_ca`, `gct3_ca`, band sites) + 6 news articles (`anishinabeknews_ca`, `aptnnews_ca`, `wawataynews_ca`, `mkonation_com`, NE/NW-ON outlets) + 3 press releases (`newswire_ca`, band announcements) |
+| `northern_ontario_industry = strong` | 15 | 9 mining (Vale Sudbury, Glencore, Newmont Porcupine, IAMGOLD Côté Gold, Wyloo/Eagle Mine) + 3 forestry (Resolute, GreenFirst, EACOM — NW Ontario) + 3 energy/industry (OPG corridor hydro, Ontario Northland, Hydro One northern transmission, lithium/battery-metals) |
+| `private_sector_smb = strong` | 10 | ~7 `obj_ca` + ~3 `financialpost_com`. Trade-press only — see §Defensible responses below and §Stratum caveats for rationale |
+| Adjacency-none | 8 | 2 AU/NZ Indigenous + 2 southern-Ontario industry + 2 large-cap Canadian business (non-trade-press SMB false-positives, mandatory) + 1 early-stage tech + 1 multinational Canadian subsidiary outside target industry AND geography (e.g. Nestlé Canada, Siemens Canada — never another mining major) |
+| True none/none/none | 5 | 2 weather + 1 lifestyle + 1 sports + 1 international. International doc must be structurally unrelated to all three segments (European politics, Asian consumer, celebrity obituary) |
+
+**Stratum caveats.**
+
+The `indigenous_channel` stratum is pan-Canadian by definition. AMEBC (BC),
+ITK (pan-Arctic), and Métis Nation of Ontario all qualify for the positive
+stratum even though they sit outside the northern-Ontario outreach corridor.
+Segment scope ≠ target-list scope; this distinction is load-bearing because a
+future reader might otherwise conflate the two.
+
+The `northern_ontario_industry` energy/industry sub-bucket is the thinnest and
+the most at risk of filler. Concrete candidate sources must be named at draw
+time — OPG hydro stations on the Abitibi River or Mattagami, Ontario Northland
+rail/transit work, Hydro One northern transmission build-outs. If three clean
+docs don't surface in the corpus, the stratum shifts to 10 mining / 3 forestry
+/ 2 energy and the corpus constraint is logged. The stratum is not padded to
+hit the sub-bucket count.
+
+The `private_sector_smb` stratum is trade-press-sourced as a deliberate
+narrowing, not a convenience — the broader rationale is in §The observation
+and §Why it matters to the prospect engine below. Within the seven `obj_ca`
+positives, firm-type diversity is mandatory (2 professional services +
+2 manufacturing/industrial + 2 tech/software mid-market + 1 family-owned/services)
+so that content style does not leak through as a proxy feature for source.
+
+**Adjacency-none discipline.** These eight documents are the highest-information
+stratum — they teach the classifier where the hard boundaries of each segment
+are. Each adjacency-none document must be plausibly-segment-adjacent on some
+signal (topic, geography, entity type) but fail the segment definition on
+another. Two specific constraints:
+
+1. The two "general Canadian business news about large caps" documents are
+   mandatory SMB adjacency-none entries, not discretionary. Without them, the
+   classifier can learn "trade press = SMB" as a shortcut rather than the
+   actual segment definition.
+2. The one multinational-subsidiary adjacency-none document must be outside
+   target industry AND outside target geography. Another mining major
+   (Rio Tinto Canadian operations, BHP Canada) would overlap
+   `northern_ontario_industry = strong` and muddy the teaching signal; the
+   point of this adjacency is "multinational presence in Canada ≠ SMB segment,"
+   not "non-target mining major."
+
+**No-silent-segment-creep (true none/none/none).** International content can
+accidentally carry segment-adjacent signal. The one international true-none
+document must be structurally unrelated to all three segments. International
+Indigenous topics belong in adjacency-none (AU/NZ), international mining
+belongs in adjacency-none (non-corridor), and international B2B/SMB profiles
+belong in adjacency-none (wrong geography). If a candidate true-none document
+feels thematically close to any of the three segments during labelling, it is
+reclassified as adjacency-none and a different true-none document is drawn.
+
+**Labeller confidence discipline.** Any document where the ternary call takes
+more than two minutes of thinking is labelled `confidence: low`. Those are the
+drift candidates for future labeller review. The `notes` field on each
+document captures the specific reason the call was hard.
+
+### The observation
+
+During the draw described above, the `private_sector_smb` stratum proved harder to populate than the other two positive strata. A named-entity query across canonical mid-size Canadian B2B targets (Miller Thomson, MNP, BDO, Grant Thornton, Hatch) against prod `classified_content` returned 2,432 hits but was dominated by irrelevant content — the segment's target firms don't generate news headlines; they buy services and operate quietly. The in-corpus functional equivalents (`obj_ca`, `financialpost_com`) carry real signal but are structurally narrow: the corpus underserves mid-size Canadian B2B firms as news subjects.
+
+### Why it matters to the prospect engine
+
+The daily briefing (§6) routes NorthOps-relevant signals to actionable prospects. Segment 3 on NorthOps's target list is exactly this private-sector mid-market. If the news-sourced signal pipeline structurally underserves that segment, the prospect engine as designed will have a consistent blindspot for a segment that is a real outreach target. This is a pipeline coverage gap, not a classifier tuning problem — the classifier can only rank content that the corpus contains.
+
+### Defensible responses (post-Wave 2)
+
+Two non-exclusive paths. Decision deferred until Wave 2 validator numbers are in and the blindspot's actual operational cost can be measured.
+
+1. **Source SMB prospects from a different channel.** The briefing service reads from a small set of signal tables; add a non-news signal-producing channel specifically for segments where news density is structurally low.
+   - LinkedIn company pages (ToS-gated — research before committing).
+   - CCAB directory (already in §4.1 #5 as a signal-crawler adapter; could be positioned as primary SMB channel rather than one-of-many).
+   - MERX / Biddingo RFP issuance (adapter landing in §4.1 — RFP issuers as the prospect; ToS review required).
+   - Trade-press-specific ingestion expansion — **these are net-new ingestion, not routing**: Canadian Lawyer (`canadianlawyermag.com`), Canadian Accountant (`canadian-accountant.com`), and IT World Canada (`itworldcanada.com`) are **not currently in the North Cloud corpus** (confirmed empirically during the 2026-04-19 pilot draw — zero hits on named-entity queries for Miller Thomson / MNP / BDO / Grant Thornton / Hatch against these domains). The in-corpus functional equivalents right now are `obj_ca` (Ottawa Business Journal) and `financialpost_com` — useful but narrow. Adding the three trade-press sources above is a source-manager onboarding decision, not a classifier change.
+
+2. **Accept the blindspot for SMB prospects.** Scope the briefing to segments the news corpus covers well (`indigenous_channel`, `northern_ontario_industry`). Surface SMB prospects through a separate non-automated channel (CCAB directory browsing, Russell's network, etc.) and treat the prospect engine as specifically a *news-density-dependent* tool.
+
+### Decision inputs
+
+Wait for:
+- Wave 2 validator nightly numbers (#669) — specifically, the `private_sector_smb` coverage metric trend. If segment-hits trend toward zero in production, that confirms the structural gap; if they stabilize at a reasonable rate, the gap may be smaller than the pilot labelling suggested.
+- Trade-press ingestion decisions — the three candidate trade-press domains (Canadian Lawyer, Canadian Accountant, IT World Canada) would need to be onboarded via source-manager. Decide whether to commit that ingestion work before re-measuring the gap; the current corpus measurement assumes they're absent.
+- CCAB adapter output volume (#4.1 #5) once it lands. A high-volume Indigenous-business directory signal may address part of the same gap (Indigenous-owned SMB).
+
+### Related artifacts
+
+- §Wave 2 pilot sample composition above — the 53-doc draw that surfaced this observation.
+- `classifier/testdata/icp_labels.yml` (#667) — the ground-truth labels produced by the draw. Labelling methodology is expected to be distilled into a top-of-file `## Methodology` block after the first 20 labels, replacing the workspace-scratch notes that drove the pilot.
+- #669 — validator design note: SMB accuracy is corpus-bounded.
+- #668 — geographic anchoring (Canadian-only) requirement for `indigenous_channel`.
+
+---
