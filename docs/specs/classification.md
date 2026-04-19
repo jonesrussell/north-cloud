@@ -220,16 +220,17 @@ type DrillResult struct {
 ### NeedSignalResult
 ```go
 type NeedSignalResult struct {
-    SignalType       string   `json:"signal_type"`        // "outdated_website", "funding_win", "job_posting", "new_program", "tech_migration"
-    OrganizationName string   `json:"organization_name"`
-    Sector           string   `json:"sector"`
-    Province         string   `json:"province"`
-    City             string   `json:"city"`
-    ContactEmail     string   `json:"contact_email,omitempty"`
-    ContactName      string   `json:"contact_name,omitempty"`
-    SourceURL        string   `json:"source_url"`
-    Keywords         []string `json:"keywords"`
-    Confidence       float64  `json:"confidence"`
+    SignalType                 string   `json:"signal_type"`        // "outdated_website", "funding_win", "job_posting", "new_program", "tech_migration"
+    OrganizationName           string   `json:"organization_name"`
+    OrganizationNameNormalized string   `json:"organization_name_normalized"` // Canonical slug via infrastructure/signal.Resolve (toward #639)
+    Sector                     string   `json:"sector"`
+    Province                   string   `json:"province"`
+    City                       string   `json:"city"`
+    ContactEmail               string   `json:"contact_email,omitempty"`
+    ContactName                string   `json:"contact_name,omitempty"`
+    SourceURL                  string   `json:"source_url"`
+    Keywords                   []string `json:"keywords"`
+    Confidence                 float64  `json:"confidence"`
 }
 ```
 
@@ -302,7 +303,7 @@ Uses `allNeedSignalKeywords()` which flattens the extractor's `signalCategoryKey
 
 ### Need Signal Extractor (`NeedSignalExtractor`)
 
-Runs when content type is `need_signal`. Extracts structured data into `NeedSignalResult`: organization name, sector, province, city, contact info, source URL, and matched keywords.
+Runs when content type is `need_signal`. Extracts structured data into `NeedSignalResult`: organization name (and canonical normalized form via `infrastructure/signal.Resolve` — see `docs/specs/lead-pipeline.md` §Organization attribution contract), sector, province, city, contact info, source URL, and matched keywords.
 
 ### ES Mapping
 
