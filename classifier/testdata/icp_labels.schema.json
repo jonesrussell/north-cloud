@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ICP labels — sector_alignment ground truth",
+  "type": "object",
+  "required": ["segment_schema_version", "segments", "labels"],
+  "additionalProperties": false,
+  "properties": {
+    "segment_schema_version": {
+      "type": "integer",
+      "const": 1,
+      "description": "Matches the version of source-manager/data/icp-segments.yml. Bump triggers re-confirmation of label semantics."
+    },
+    "segments": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "uniqueItems": true,
+      "items": { "enum": ["indigenous_channel", "northern_ontario_industry", "private_sector_smb"] }
+    },
+    "labels": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/label" }
+    }
+  },
+  "$defs": {
+    "label": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "doc_id", "es_index", "ingest_timestamp",
+        "title", "excerpt",
+        "segments", "labeller_confidence",
+        "labeller", "labelled_at"
+      ],
+      "properties": {
+        "doc_id":           { "type": "string", "minLength": 1 },
+        "es_index":         { "type": "string", "minLength": 1 },
+        "ingest_timestamp": { "type": "string", "format": "date-time" },
+        "title":            { "type": "string", "minLength": 1 },
+        "excerpt":          { "type": "string", "minLength": 1 },
+        "segments": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["indigenous_channel", "northern_ontario_industry", "private_sector_smb"],
+          "properties": {
+            "indigenous_channel":        { "enum": ["strong", "partial", "none"] },
+            "northern_ontario_industry": { "enum": ["strong", "partial", "none"] },
+            "private_sector_smb":        { "enum": ["strong", "partial", "none"] }
+          }
+        },
+        "labeller_confidence": { "enum": ["high", "medium", "low"] },
+        "labeller":            { "type": "string", "minLength": 1 },
+        "labelled_at":         { "type": "string", "format": "date-time" },
+        "notes":               { "type": "string" }
+      }
+    }
+  }
+}
