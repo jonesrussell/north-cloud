@@ -142,7 +142,16 @@ for spec in $(printf '%s\n' "${!AFFECTED_SPECS[@]}" | sort); do
     service_last_commit=0
     for pattern in "${!PATTERN_TO_SPEC[@]}"; do
       if [ "${PATTERN_TO_SPEC[$pattern]}" = "$spec" ]; then
-        pattern_commit=$(git log -1 --format=%ct -- "$pattern" ':!*/vendor/*' 2>/dev/null)
+        pattern_commit=$(git log -1 --format=%ct -- "$pattern" \
+          ':!*/vendor/*' \
+          ':!*/Dockerfile' \
+          ':!*/go.mod' \
+          ':!*/go.sum' \
+          ':!*/CLAUDE.md' \
+          ':!*/MIGRATION.md' \
+          ':!*/.layers' \
+          ':!*_test.go' \
+          2>/dev/null)
         pattern_commit=${pattern_commit:-0}
         if [ "$pattern_commit" -gt "$service_last_commit" ]; then
           service_last_commit=$pattern_commit
