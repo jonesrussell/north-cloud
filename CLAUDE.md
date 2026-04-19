@@ -28,7 +28,8 @@ When modifying files, read the relevant service CLAUDE.md first. Deep specs in `
 | `nc-http-proxy/**` | `nc-http-proxy/CLAUDE.md` | `docs/specs/nc-http-proxy.md` |
 | `search-frontend/**` | `search-frontend/CLAUDE.md` | `docs/specs/search-frontend.md` |
 | `render-worker/**` | `render-worker/CLAUDE.md` | `docs/specs/content-acquisition.md` |
-| `signal-crawler/**` | `signal-crawler/CLAUDE.md` | `docs/superpowers/specs/2026-04-05-signal-crawler-sprint-design.md` |
+| `signal-crawler/**` | `signal-crawler/CLAUDE.md` | `docs/specs/lead-pipeline.md` (sprint design: `docs/superpowers/specs/2026-04-05-signal-crawler-sprint-design.md`) |
+| `classifier/**/need_signal*`, `publisher/**/claudriel_lead*`, `publisher/**/leads_export*`, `infrastructure/signal/**` | — | `docs/specs/lead-pipeline.md` |
 | `docs/specs/**`, `.claude/**`, `**/CLAUDE.md` | updating-codified-context | — |
 | `docker-compose*.yml`, `Taskfile.yml` | `DOCKER.md` | — |
 

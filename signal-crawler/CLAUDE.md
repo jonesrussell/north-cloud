@@ -1,5 +1,7 @@
 # CLAUDE.md
 
+> **Read first:** [`docs/specs/lead-pipeline.md`](../docs/specs/lead-pipeline.md) defines the shared signal schema, threshold contract, and dedup strategy across all producers. This service is in maintenance mode; new adapters land in `signal-producer` (#592). See `MIGRATION.md` (#641 pending).
+
 ## Overview
 
 Standalone signal crawler service that scans public sources (Hacker News, government funding portals) for lead signals and POSTs them to NorthOps ingest endpoints.

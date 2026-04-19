@@ -26,6 +26,7 @@ declare -A PATTERN_TO_SPEC=(
   ["index-manager/"]="docs/specs/discovery-querying.md"
   ["infrastructure/"]="docs/specs/shared-infrastructure.md"
   ["rfp-ingestor/"]="docs/specs/rfp-ingestor.md"
+  ["signal-crawler/"]="docs/specs/lead-pipeline.md"
   ["social-publisher/"]="docs/specs/social-publisher.md"
   ["source-manager/"]="docs/specs/source-manager.md"
   ["pipeline/"]="docs/specs/pipeline.md"
@@ -68,6 +69,7 @@ CHANGED_FILES=$(echo "$CHANGED_FILES" | grep -v '/vendor/' || true)
 # Exclude files that don't affect spec accuracy (#516)
 CHANGED_FILES=$(echo "$CHANGED_FILES" | grep -v '\.layers$' || true)
 CHANGED_FILES=$(echo "$CHANGED_FILES" | grep -v 'CLAUDE\.md$' || true)
+CHANGED_FILES=$(echo "$CHANGED_FILES" | grep -v 'MIGRATION\.md$' || true)
 CHANGED_FILES=$(echo "$CHANGED_FILES" | grep -v '_test\.go$' || true)
 CHANGED_FILES=$(echo "$CHANGED_FILES" | grep -v 'go\.mod$' || true)
 CHANGED_FILES=$(echo "$CHANGED_FILES" | grep -v 'go\.sum$' || true)
@@ -109,6 +111,12 @@ while IFS= read -r file; do
       record_spec "docs/specs/shared-infrastructure.md" "$file" ;;
     publisher/internal/router/*|publisher/internal/routing/*)
       record_spec "docs/specs/content-routing.md" "$file" ;;
+    classifier/internal/classifier/need_signal*|classifier/internal/classifier/content_type_need_signal_heuristic*)
+      record_spec "docs/specs/lead-pipeline.md" "$file" ;;
+    publisher/internal/api/leads_export_handler*|publisher/internal/models/claudriel_lead*|publisher/internal/database/claudriel_lead*)
+      record_spec "docs/specs/lead-pipeline.md" "$file" ;;
+    infrastructure/signal/*)
+      record_spec "docs/specs/lead-pipeline.md" "$file" ;;
     */migrations/*)
       ;; # migrations are already covered by primary patterns
   esac

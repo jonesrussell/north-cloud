@@ -2,6 +2,8 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with the publisher service.
 
+> **`/api/leads` and `claudriel_lead`:** [`docs/specs/lead-pipeline.md`](../docs/specs/lead-pipeline.md) documents this endpoint as an RFP-shaped bridge to Claudriel, not a general lead API. Do not repurpose — version the endpoint instead.
+
 ## Quick Reference
 
 ```bash

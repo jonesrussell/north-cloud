@@ -1,5 +1,7 @@
 # Classifier — Developer Guide
 
+> **`need_signal` work:** [`docs/specs/lead-pipeline.md`](../docs/specs/lead-pipeline.md) is the umbrella spec for the lead/signal data plane. Changes to `need_signal_extractor.go` or `content_type_need_signal_heuristic.go` must stay consistent with the shared threshold contract documented there.
+
 ## Quick Reference
 
 ```bash
