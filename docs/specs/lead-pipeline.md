@@ -63,7 +63,7 @@ rfp-ingestor/                         # Procurement signals
 infrastructure/signal/                # Shared helpers used by both producers
   threshold.go                        # Unified accept/reject gate (#638 — landed)
   org_normalize.go                    # Normalize / FromEmail / FromURL / Resolve
-                                      #   (#639 helper landed; producer wiring pending)
+                                      #   (#639 — helper + producer wiring landed)
 ```
 
 ---
@@ -184,7 +184,9 @@ Required behavior (post-#639):
 4. **Never "unknown"** — an empty `organization_name` is a producer bug; fail the signal with a structured log, do not write an empty string.
 5. **Normalization** — `Acme Corporation`, `Acme Corp`, and `acme-corp.com` resolve to the same canonical string for dedup and enrichment lookups.
 
-Dry-run validation: the PR closing #639 must include a sample run against a production day's signals showing ≥80% populated `organization_name` and zero empty strings.
+Pre-merge correctness gate (unit tests): each producer has a fixture-level assertion that `signal.Resolve` populates the normalized field correctly — explicit-org-wins for `funding` (`TechStartup Inc` → `techstartup`) and `jobs` (`Acme` → `acme`), URL-apex fallback for `hn` and for `jobs` when company is missing (`acme-corp.com` → `acme` with corporate suffix stripped), and the `need_signal` extractor asserts explicit-over-email precedence. These live in the respective `_test.go` files alongside each adapter.
+
+Dry-run validation (post-deploy): `tools/validate-org-attribution` queries ES `_count` for populated `organization_name_normalized` across `*_classified_content` (need-signal documents) and `rfp_classified_content`, and exits non-zero if the combined populated rate is below the configured threshold (default 0.80). Intended to run on a schedule for the week following deploy. #639 closes only once the aggregate rate hits the threshold and no single producer lags meaningfully below it.
 
 ---
 

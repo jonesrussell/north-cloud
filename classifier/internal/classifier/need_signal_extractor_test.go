@@ -28,6 +28,9 @@ func TestNeedSignalExtractor_Extract_OutdatedWebsite(t *testing.T) {
 	require.NotNil(t, result)
 	assert.Equal(t, SignalTypeOutdatedWebsite, result.SignalType)
 	assert.Contains(t, result.OrganizationName, "Thunder Bay")
+	// extractOrgName splits on " - " → "City of Thunder Bay"; Resolve prefers
+	// the explicit hint over the email-domain fallback.
+	assert.Equal(t, "city-of-thunder-bay", result.OrganizationNameNormalized)
 	assert.Equal(t, "jsmith@thunderbay.ca", result.ContactEmail)
 	assert.NotEmpty(t, result.Keywords)
 	assert.InDelta(t, needSignalConfidence, result.Confidence, 0.01)
@@ -64,6 +67,9 @@ func TestNeedSignalExtractor_Extract_FundingWin(t *testing.T) {
 	require.NotNil(t, result)
 	assert.Equal(t, SignalTypeFundingWin, result.SignalType)
 	assert.Contains(t, result.OrganizationName, "Sagamok Anishnawbek")
+	// No contact email; the title-extracted org ("Sagamok Anishnawbek" —
+	// extractOrgName splits on " receives ") normalizes cleanly via Resolve.
+	assert.Equal(t, "sagamok-anishnawbek", result.OrganizationNameNormalized)
 	assert.NotEmpty(t, result.Keywords)
 }
 

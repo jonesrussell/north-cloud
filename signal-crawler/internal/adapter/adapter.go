@@ -20,6 +20,13 @@ type Signal struct {
 	// Funding-specific fields (zero values for non-funding signals)
 	FundingStatus    string `json:"funding_status,omitempty"`
 	OrganizationType string `json:"organization_type,omitempty"`
+
+	// Organization attribution (lead-pipeline spec §Organization attribution).
+	// OrgName is the best-available human-readable display string (empty when
+	// the producer can only attribute by URL). OrgNameNormalized is the
+	// cross-producer dedup key from signal.Resolve — preferred by consumers.
+	OrgName           string `json:"organization_name,omitempty"`
+	OrgNameNormalized string `json:"organization_name_normalized,omitempty"`
 }
 
 // Source is the interface that all signal adapters implement.
