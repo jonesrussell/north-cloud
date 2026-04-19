@@ -220,16 +220,17 @@ type NeedSignalProperties struct {
 
 // NeedSignalFieldProperties defines individual fields within need signal extraction.
 type NeedSignalFieldProperties struct {
-	SignalType       Field `json:"signal_type"`
-	OrganizationName Field `json:"organization_name"`
-	Sector           Field `json:"sector"`
-	Province         Field `json:"province"`
-	City             Field `json:"city"`
-	ContactEmail     Field `json:"contact_email"`
-	ContactName      Field `json:"contact_name"`
-	SourceURL        Field `json:"source_url"`
-	Keywords         Field `json:"keywords"`
-	Confidence       Field `json:"confidence"`
+	SignalType                 Field `json:"signal_type"`
+	OrganizationName           Field `json:"organization_name"`
+	OrganizationNameNormalized Field `json:"organization_name_normalized"`
+	Sector                     Field `json:"sector"`
+	Province                   Field `json:"province"`
+	City                       Field `json:"city"`
+	ContactEmail               Field `json:"contact_email"`
+	ContactName                Field `json:"contact_name"`
+	SourceURL                  Field `json:"source_url"`
+	Keywords                   Field `json:"keywords"`
+	Confidence                 Field `json:"confidence"`
 }
 
 // createRawContentProperties creates properties for raw content fields
@@ -365,16 +366,17 @@ func createNeedSignalProperties() NeedSignalProperties {
 	return NeedSignalProperties{
 		Type: "object",
 		Properties: NeedSignalFieldProperties{
-			SignalType:       Field{Type: "keyword"},
-			OrganizationName: Field{Type: "text", Analyzer: "standard", Fields: map[string]Field{"keyword": {Type: "keyword"}}},
-			Sector:           Field{Type: "keyword"},
-			Province:         Field{Type: "keyword"},
-			City:             Field{Type: "text", Analyzer: "standard", Fields: map[string]Field{"keyword": {Type: "keyword"}}},
-			ContactEmail:     Field{Type: "keyword"},
-			ContactName:      Field{Type: "text", Analyzer: "standard"},
-			SourceURL:        Field{Type: "keyword"},
-			Keywords:         Field{Type: "keyword"},
-			Confidence:       Field{Type: "float"},
+			SignalType:                 Field{Type: "keyword"},
+			OrganizationName:           Field{Type: "text", Analyzer: "standard", Fields: map[string]Field{"keyword": {Type: "keyword"}}},
+			OrganizationNameNormalized: Field{Type: "keyword"},
+			Sector:                     Field{Type: "keyword"},
+			Province:                   Field{Type: "keyword"},
+			City:                       Field{Type: "text", Analyzer: "standard", Fields: map[string]Field{"keyword": {Type: "keyword"}}},
+			ContactEmail:               Field{Type: "keyword"},
+			ContactName:                Field{Type: "text", Analyzer: "standard"},
+			SourceURL:                  Field{Type: "keyword"},
+			Keywords:                   Field{Type: "keyword"},
+			Confidence:                 Field{Type: "float"},
 		},
 	}
 }

@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	infrasignal "github.com/jonesrussell/north-cloud/infrastructure/signal"
 	"github.com/jonesrussell/north-cloud/signal-crawler/internal/adapter"
 	"github.com/jonesrussell/north-cloud/signal-crawler/internal/scoring"
 )
@@ -87,11 +88,13 @@ func (a *Adapter) fetchAndParse(ctx context.Context, rawURL string) ([]adapter.S
 		return nil, fmt.Errorf("funding adapter: HTTP %d fetching %s", resp.StatusCode, rawURL)
 	}
 
-	return parseCSV(io.LimitReader(resp.Body, maxResponseBytes))
+	return parseCSV(io.LimitReader(resp.Body, maxResponseBytes), rawURL)
 }
 
 // parseCSV reads OTF open-data CSV and returns signals for recent active grants.
-func parseCSV(r io.Reader) ([]adapter.Signal, error) {
+// sourceURL is the feed URL the CSV was fetched from, used as the URL fallback
+// for organization attribution.
+func parseCSV(r io.Reader, sourceURL string) ([]adapter.Signal, error) {
 	reader := csv.NewReader(r)
 	reader.LazyQuotes = true
 	reader.FieldsPerRecord = -1 // OTF CSV has inconsistent field counts in some rows
@@ -145,15 +148,21 @@ func parseCSV(r io.Reader) ([]adapter.Signal, error) {
 		label := fmt.Sprintf("%s — %s", org, programme)
 		notes := fmt.Sprintf("Received $%s in %s. Likely needs tech implementation.", amount, city)
 
+		// Organization is explicit in the CSV; fall back to the feed URL only if Normalize
+		// rejects it (rare — corporate-suffix-only strings).
+		orgNormalized, _ := infrasignal.Resolve(org, "", sourceURL)
+
 		signals = append(signals, adapter.Signal{
-			SignalType:     "funding_win",
-			SourceName:     "funding",
-			Label:          label,
-			ExternalID:     url.QueryEscape(identifier),
-			SourceURL:      "https://otf.ca/our-grants/grants-awarded",
-			SignalStrength: scoring.ScoreStrongSignal,
-			FundingStatus:  "awarded",
-			Notes:          notes,
+			SignalType:        "funding_win",
+			SourceName:        "funding",
+			Label:             label,
+			ExternalID:        url.QueryEscape(identifier),
+			SourceURL:         "https://otf.ca/our-grants/grants-awarded",
+			SignalStrength:    scoring.ScoreStrongSignal,
+			FundingStatus:     "awarded",
+			Notes:             notes,
+			OrgName:           org,
+			OrgNameNormalized: orgNormalized,
 		})
 	}
 

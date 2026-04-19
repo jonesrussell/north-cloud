@@ -7,6 +7,7 @@ import (
 
 	"github.com/jonesrussell/north-cloud/classifier/internal/domain"
 	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
+	infrasignal "github.com/jonesrussell/north-cloud/infrastructure/signal"
 )
 
 // Signal type constants for need signal classification.
@@ -98,19 +99,33 @@ func (e *NeedSignalExtractor) Extract(
 	contactEmail := extractContactEmail(raw.RawText)
 	keywords := collectMatchedKeywords(combinedText, signalType)
 
+	// Resolve the canonical organization slug via the shared attribution fallback
+	// (explicit → email → URL). An error here means nothing was attributable; keep
+	// the signal and leave the normalized field empty — the validation sweep will
+	// surface persistent gaps.
+	orgNormalized, resolveErr := infrasignal.Resolve(orgName, contactEmail, raw.URL)
+	if resolveErr != nil {
+		e.logger.Debug("Need signal org attribution unresolved",
+			infralogger.String("content_id", raw.ID),
+			infralogger.String("source_url", raw.URL),
+		)
+	}
+
 	result := &domain.NeedSignalResult{
-		SignalType:       signalType,
-		OrganizationName: orgName,
-		ContactEmail:     contactEmail,
-		Keywords:         keywords,
-		Confidence:       needSignalConfidence,
-		SourceURL:        raw.URL,
+		SignalType:                 signalType,
+		OrganizationName:           orgName,
+		OrganizationNameNormalized: orgNormalized,
+		ContactEmail:               contactEmail,
+		Keywords:                   keywords,
+		Confidence:                 needSignalConfidence,
+		SourceURL:                  raw.URL,
 	}
 
 	e.logger.Debug("Need signal extracted",
 		infralogger.String("content_id", raw.ID),
 		infralogger.String("signal_type", signalType),
 		infralogger.String("organization", orgName),
+		infralogger.String("organization_normalized", orgNormalized),
 	)
 
 	return result, nil

@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	infrasignal "github.com/jonesrussell/north-cloud/infrastructure/signal"
 	"github.com/jonesrussell/north-cloud/rfp-ingestor/internal/domain"
 )
 
@@ -208,6 +209,13 @@ func buildDocument(record []string, colIndex map[string]int, crawledAt string) (
 		noticeURL = canadaBuysTenderBaseURL + refNumber
 	}
 
+	orgName := getField(record, colIndex, colOrgName)
+	contactEmail := getField(record, colIndex, colContactEmail)
+	// Resolve canonical slug via shared attribution fallback. Ignore the error:
+	// CanadaBuys always supplies an organization_name, so a miss means the row
+	// was truncated and the validation sweep will flag it.
+	orgNormalized, _ := infrasignal.Resolve(orgName, contactEmail, noticeURL)
+
 	return domain.RFPDocument{
 		Title:        title,
 		URL:          noticeURL,
@@ -219,27 +227,28 @@ func buildDocument(record []string, colIndex map[string]int, crawledAt string) (
 		Topics:       deriveTopics(gsin, unspsc),
 		CrawledAt:    crawledAt,
 		RFP: domain.RFP{
-			ExtractionMethod: cbExtractionMethod,
-			Title:            title,
-			ReferenceNumber:  refNumber,
-			OrganizationName: getField(record, colIndex, colOrgName),
-			Description:      description,
-			PublishedDate:    getField(record, colIndex, colPublicationDate),
-			ClosingDate:      getField(record, colIndex, colClosingDate),
-			AmendmentDate:    getField(record, colIndex, colAmendmentDate),
-			AmendmentNumber:  getField(record, colIndex, colAmendmentNumber),
-			BudgetCurrency:   cbBudgetCurrency,
-			ProcurementType:  normalizeProcurementType(procurementCat),
-			Categories:       deriveCategories(gsin, unspsc),
-			Province:         NormalizeProvince(region),
-			City:             getField(record, colIndex, colCity),
-			Country:          cbCountry,
-			SourceURL:        noticeURL,
-			ContactName:      getField(record, colIndex, colContactName),
-			ContactEmail:     getField(record, colIndex, colContactEmail),
-			GSIN:             gsin,
-			UNSPSC:           unspsc,
-			TenderStatus:     getField(record, colIndex, colTenderStatus),
+			ExtractionMethod:           cbExtractionMethod,
+			Title:                      title,
+			ReferenceNumber:            refNumber,
+			OrganizationName:           orgName,
+			OrganizationNameNormalized: orgNormalized,
+			Description:                description,
+			PublishedDate:              getField(record, colIndex, colPublicationDate),
+			ClosingDate:                getField(record, colIndex, colClosingDate),
+			AmendmentDate:              getField(record, colIndex, colAmendmentDate),
+			AmendmentNumber:            getField(record, colIndex, colAmendmentNumber),
+			BudgetCurrency:             cbBudgetCurrency,
+			ProcurementType:            normalizeProcurementType(procurementCat),
+			Categories:                 deriveCategories(gsin, unspsc),
+			Province:                   NormalizeProvince(region),
+			City:                       getField(record, colIndex, colCity),
+			Country:                    cbCountry,
+			SourceURL:                  noticeURL,
+			ContactName:                getField(record, colIndex, colContactName),
+			ContactEmail:               contactEmail,
+			GSIN:                       gsin,
+			UNSPSC:                     unspsc,
+			TenderStatus:               getField(record, colIndex, colTenderStatus),
 		},
 	}, nil
 }

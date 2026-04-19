@@ -369,14 +369,15 @@ type RFPResult struct {
 // NeedSignalResult holds detection results for proactive outreach signals.
 // Non-nil values indicate the content suggests an organization may need web services.
 type NeedSignalResult struct {
-	SignalType       string   `json:"signal_type"`
-	OrganizationName string   `json:"organization_name,omitempty"`
-	Sector           string   `json:"sector,omitempty"`
-	Province         string   `json:"province,omitempty"`
-	City             string   `json:"city,omitempty"`
-	ContactEmail     string   `json:"contact_email,omitempty"`
-	ContactName      string   `json:"contact_name,omitempty"`
-	SourceURL        string   `json:"source_url,omitempty"`
-	Keywords         []string `json:"keywords,omitempty"`
-	Confidence       float64  `json:"confidence"`
+	SignalType                 string   `json:"signal_type"`
+	OrganizationName           string   `json:"organization_name,omitempty"`
+	OrganizationNameNormalized string   `json:"organization_name_normalized,omitempty"`
+	Sector                     string   `json:"sector,omitempty"`
+	Province                   string   `json:"province,omitempty"`
+	City                       string   `json:"city,omitempty"`
+	ContactEmail               string   `json:"contact_email,omitempty"`
+	ContactName                string   `json:"contact_name,omitempty"`
+	SourceURL                  string   `json:"source_url,omitempty"`
+	Keywords                   []string `json:"keywords,omitempty"`
+	Confidence                 float64  `json:"confidence"`
 }

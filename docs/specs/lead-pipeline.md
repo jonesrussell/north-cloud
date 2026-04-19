@@ -63,7 +63,7 @@ rfp-ingestor/                         # Procurement signals
 infrastructure/signal/                # Shared helpers used by both producers
   threshold.go                        # Unified accept/reject gate (#638 — landed)
   org_normalize.go                    # Normalize / FromEmail / FromURL / Resolve
-                                      #   (#639 helper landed; producer wiring pending)
+                                      #   (#639 — helper + producer wiring landed)
 ```
 
 ---
@@ -184,7 +184,7 @@ Required behavior (post-#639):
 4. **Never "unknown"** — an empty `organization_name` is a producer bug; fail the signal with a structured log, do not write an empty string.
 5. **Normalization** — `Acme Corporation`, `Acme Corp`, and `acme-corp.com` resolve to the same canonical string for dedup and enrichment lookups.
 
-Dry-run validation: the PR closing #639 must include a sample run against a production day's signals showing ≥80% populated `organization_name` and zero empty strings.
+Dry-run validation: `tools/validate-org-attribution` queries ES `_count` for populated `organization_name_normalized` across `*_classified_content` (need-signal documents) and `rfp_classified_content`, and exits non-zero if the combined populated rate is below the configured threshold (default 0.80). The PR closing #639 must include a sample run showing ≥80% populated and zero empty strings.
 
 ---
 
