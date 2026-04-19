@@ -1,6 +1,6 @@
 # Lead / Signal Pipeline Spec
 
-> Last verified: 2026-04-18 (initial draft — umbrella for signal-crawler, classifier `need_signal`, publisher `/api/leads`, rfp-ingestor, and the Lead Intelligence successor architecture)
+> Last verified: 2026-04-19 (umbrella for signal-crawler, classifier `need_signal`, publisher `/api/leads`, rfp-ingestor, and the Lead Intelligence successor architecture; MIGRATION.md in signal-crawler is already linked from §6)
 
 ## Overview
 

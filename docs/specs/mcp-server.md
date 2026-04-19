@@ -1,6 +1,6 @@
 # MCP Server Spec
 
-> Last verified: 2026-03-22 (audit: remove tracked binary from git)
+> Last verified: 2026-04-19 (reviewed against current handlers and tools; no drift since enable_feed/update_source additions)
 
 Covers `mcp-north-cloud/`: the Claude Code / Cursor MCP server that exposes north-cloud pipeline operations as tools.
 
