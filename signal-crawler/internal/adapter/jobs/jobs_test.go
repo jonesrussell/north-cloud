@@ -71,7 +71,7 @@ func TestAdapter_Scan_URLFallback_WhenCompanyMissing(t *testing.T) {
 		&stubBoard{
 			name: "anon-board",
 			postings: []jobs.Posting{
-				{Title: "Hiring platform engineer", URL: "https://acme-corp.com/jobs/42", ID: "42"},
+				{Title: "Hiring platform engineer", Body: "Lead our cloud migration effort", URL: "https://acme-corp.com/jobs/42", ID: "42"},
 			},
 		},
 	}
