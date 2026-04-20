@@ -82,3 +82,223 @@ labels:
       mid-size criteria. Adjacent to segment via SaaS/tech framing but outside the
       current definition. Candidate for segment expansion discussion, not for partial
       credit against v1 definition.
+
+  # ---------------------------------------------------------------------------
+  # Batch 1 (2026-04-19 pilot, first-10 draw — issue #667).
+  # Methodology, stratum sourcing, and drift notes live in
+  # `classifier/testdata/icp_labelling_log.md` (gitignored scratch).
+  #
+  # `ingest_timestamp` is the ES `crawled_at` value from classified_content
+  # (point at which the classifier ingested the source doc). Refreshed inline
+  # from the production index at labelling time — not a validator-gated deferral.
+  # ---------------------------------------------------------------------------
+
+  - doc_id: "b56d3baa9d337e0215d3ad29e61d0512c2e21d361aa03d0c0390444414bb9c55"
+    es_index: classified_content
+    ingest_timestamp: 2026-02-24T04:39:06.047028148Z
+    title: "Congratulations to newly elected AFN National Chief RoseAnne Archibald * Manitoba Keewatinowi Okimakanak"
+    excerpt: >-
+      Manitoba Keewatinowi Okimakanak (MKO) governance correspondence published on
+      mkonation_com — an organizational letter from MKO to newly elected AFN
+      National Chief RoseAnne Archibald. Channel content on an Indigenous
+      Political Territorial Organization's own domain.
+    segments:
+      indigenous_channel: strong
+      northern_ontario_industry: none
+      private_sector_smb: none
+    labeller_confidence: high
+    labeller: jonesrussell
+    labelled_at: 2026-04-19T15:00:00Z
+    notes: >-
+      Pan-Canadian confirmation case: MKO is Manitoba, not Ontario. `indigenous_channel`
+      scope is pan-Canadian per segment definition — segment 1 scope ≠ NE/NW Ontario
+      outreach corridor scope (that is segment 2's anchor). See labelling log
+      §"Geographic scope — pan-Canadian confirmation cases".
+
+  - doc_id: "69323ad854f95b32cc13702614183523a818c408fd6ea52e5fc099436ff0b834"
+    es_index: classified_content
+    ingest_timestamp: 2026-04-16T17:38:12.20582777Z
+    title: "Anishinabek Nation warns mining industry: certainty requires partnership with First Nations - The Turtle Island News"
+    excerpt: >-
+      Anishinabek Nation (Ontario First Nations political union) statement calling on
+      the mining sector to partner with First Nations for regulatory certainty.
+      Published by Turtle Island News. Canadian-anchored, NE/NW Ontario corridor-adjacent.
+    segments:
+      indigenous_channel: strong
+      northern_ontario_industry: none
+      private_sector_smb: none
+    labeller_confidence: medium
+    labeller: jonesrussell
+    labelled_at: 2026-04-19T15:00:00Z
+    notes: >-
+      Multi-label candidate examined and rejected on close read. The piece is
+      Indigenous-governance policy commentary *about* the mining sector — not an
+      operator-centric mining story. Per labelling log §"Multi-label discipline",
+      don't force multi-label when the multi-segment surface dissolves on inspection.
+      NOI is `none` with the adjacency documented here, not rewarded with `partial`.
+      Confidence `medium` because the mining framing is prominent enough that a
+      future labeller might reasonably reach a different call.
+
+  - doc_id: "8628d92396bdb32a92c02d92f69f66a761e1dd810f21517030d0637a5b516fee"
+    es_index: classified_content
+    ingest_timestamp: 2026-02-08T00:36:30.983481702Z
+    title: "'Rights must be respected': Grand Council Treaty #3 warns about travel to the United States"
+    excerpt: >-
+      Treaty #3 (NW Ontario / Manitoba border) governance advisory, press-release-shaped.
+      Published via kenoraminerandnews_com (non-Indigenous outlet carrying the Indigenous
+      governing body's notice verbatim).
+    segments:
+      indigenous_channel: strong
+      northern_ontario_industry: none
+      private_sector_smb: none
+    labeller_confidence: high
+    labeller: jonesrussell
+    labelled_at: 2026-04-19T15:00:00Z
+    notes: >-
+      Channel signal is the issuing entity (Treaty #3), not the outlet. Non-Indigenous
+      outlet carrying Indigenous governance content still counts as `indigenous_channel=strong`.
+
+  - doc_id: "3189253d0f8427d08ae3e133a3dab6241f2c4ba15d9e9e882f52a6dfa825bcb1"
+    es_index: classified_content
+    ingest_timestamp: 2026-02-23T16:16:23.094029796Z
+    title: "Vale to yield control of nickel assets in Canada"
+    excerpt: >-
+      Vale Sudbury (Copper Cliff) nickel asset divestiture — NE Ontario mining major
+      restructuring covered by Financial Post.
+    segments:
+      indigenous_channel: none
+      northern_ontario_industry: strong
+      private_sector_smb: none
+    labeller_confidence: high
+    labeller: jonesrussell
+    labelled_at: 2026-04-19T15:00:00Z
+    notes: >-
+      Canonical NE Ontario mining-major operator story. SMB is `none` (not partial)
+      per existing precedent (cc_20260315_vale_thunderbay_smelter) — multinational
+      subsidiary ≠ SMB-sized.
+
+  - doc_id: "30f502e02de69f631eadd2f192e42d872cc8edae81fb405e56f52d1e569b50af"
+    es_index: classified_content
+    ingest_timestamp: 2026-02-18T16:24:05.163448466Z
+    title: "Ontario designates Kinross Gold's Great Bear project for speedy permit approval"
+    excerpt: >-
+      Kinross Great Bear gold project (NW Ontario, near Red Lake) permit acceleration —
+      corridor-anchored mining project, Financial Post coverage.
+    segments:
+      indigenous_channel: none
+      northern_ontario_industry: strong
+      private_sector_smb: none
+    labeller_confidence: high
+    labeller: jonesrussell
+    labelled_at: 2026-04-19T15:00:00Z
+    notes: >-
+      Canonical NW Ontario mining project. Red Lake geographic anchor is the corridor;
+      Kinross is the operator. Straightforward NOI=strong.
+
+  - doc_id: "e5e5f253bde673ff7574544fd8e19c9093d03b174ab957b04d649bb351c7f740"
+    es_index: classified_content
+    ingest_timestamp: 2026-01-01T21:47:05Z
+    title: "Twenty-five years in the Sault, Tenaris eyes growth as Canada boosts energy ambitions"
+    excerpt: >-
+      Tenaris Canadian Industrial Centre in Sault Ste. Marie — seamless steel pipe and
+      ERW manufacturing, 25-year corridor operation. Published by Elliot Lake Today
+      (NE Ontario outlet).
+    segments:
+      indigenous_channel: none
+      northern_ontario_industry: strong
+      private_sector_smb: none
+    labeller_confidence: high
+    labeller: jonesrussell
+    labelled_at: 2026-04-19T15:00:00Z
+    notes: >-
+      Energy/industry sub-bucket anchor for NE Ontario. SSM industrial manufacturer
+      with 25-year corridor tenure. Clean NOI=strong; source is an NE Ontario outlet
+      so no outlet-framing risk. (Swapped in from earlier Ford-rail/Western-Standard
+      candidate — see labelling log and candidates file for rationale.)
+
+  - doc_id: "f99ed78fbea26f560ce16a53edfa82b09d480b47d3d3292888b2e7983bd096be"
+    es_index: classified_content
+    ingest_timestamp: 2026-02-21T12:22:59.387058054Z
+    title: "Michael Marcogliese"
+    excerpt: >-
+      Ottawa mid-market law firm (Brazeau Seller Law) announces partner promotion.
+      Published by Ottawa Business Journal (obj_ca). Canonical obj_ca professional-services
+      SMB content shape.
+    segments:
+      indigenous_channel: none
+      northern_ontario_industry: none
+      private_sector_smb: strong
+    labeller_confidence: high
+    labeller: jonesrussell
+    labelled_at: 2026-04-19T15:00:00Z
+    notes: >-
+      First-10 SMB slot (downsized from 2 to 1 — firm-type diversity is a batch-level
+      rule across the 7 obj_ca in the full 53-doc batch, not a first-10 constraint).
+      Remaining 6 SMB slots in batch 2 will add manufacturing, tech mid-market, and
+      family-owned shapes per labelling log §"private_sector_smb firm-type diversity".
+
+  - doc_id: "871a9bddc59ee662ab98ddcafe65a7005577ad3fc67e9c6e9b4d1f0251b8d050"
+    es_index: classified_content
+    ingest_timestamp: 2026-02-22T16:50:19Z
+    title: "Province issues accelerated permit to expand Similkameen Valley's Copper Mountain Mine"
+    excerpt: >-
+      Hudbay-owned Copper Mountain copper mine in BC's Similkameen Valley — accelerated
+      provincial permit for expansion. Canadian mining operator, BC not NE/NW Ontario.
+    segments:
+      indigenous_channel: none
+      northern_ontario_industry: none
+      private_sector_smb: none
+    labeller_confidence: high
+    labeller: jonesrussell
+    labelled_at: 2026-04-19T15:00:00Z
+    notes: >-
+      Partial-vs-none forcing function for NOI. Confidence is `high` because the
+      label application is firm under the current schema: the header comment
+      explicitly states "adjacency is documented in notes, not rewarded with
+      partial credit," so Canadian-mining-but-wrong-geography earns `none`, not
+      `partial`. The *rule* is under review (see labelling log §"Open questions"),
+      not this specific label. Pending rule review ≠ pending label uncertainty.
+      If the rule is revised in batch 2 to admit industry-only partials, this
+      label is a first candidate for re-examination; until then, the rule-as-
+      written produces `none` with confidence.
+
+  - doc_id: "2cea69bdb407039f0d0e1a65f1ed2d6d9cf855d723877196c4d4532229b18ae3"
+    es_index: classified_content
+    ingest_timestamp: 2026-02-20T17:37:22Z
+    title: "Brampton Coca-Cola bottling plant announces $141M expansion"
+    excerpt: >-
+      Coca-Cola (US multinational) CPG bottling expansion in Brampton (GTA, southern
+      Ontario). Published by Brampton Guardian. Teaches three adjacency-none boundaries
+      at once.
+    segments:
+      indigenous_channel: none
+      northern_ontario_industry: none
+      private_sector_smb: none
+    labeller_confidence: high
+    labeller: jonesrussell
+    labelled_at: 2026-04-19T15:00:00Z
+    notes: >-
+      Triple adjacency-none — multinational-in-Canada ≠ SMB, southern Ontario ≠ NOI
+      corridor, CPG ≠ target NOI industry (mining/forestry/energy/municipalities).
+      Canonical multinational-outside-industry-AND-geography teaching signal per
+      labelling log §"Adjacency-none discipline".
+
+  - doc_id: "8591cd2d95743355817e47fb7882b0b9721af6129e38044af44e0fef0bce9125"
+    es_index: classified_content
+    ingest_timestamp: 2026-03-20T20:04:58Z
+    title: "Spring is here, but forecasts say the temperature change will be 'slow'"
+    excerpt: >-
+      Generic Canadian weather feature from Global News — seasonal forecast explainer.
+      Classified topics confirmed strictly environment/weather, no mining/forestry/
+      Indigenous/SMB tangent.
+    segments:
+      indigenous_channel: none
+      northern_ontario_industry: none
+      private_sector_smb: none
+    labeller_confidence: high
+    labeller: jonesrussell
+    labelled_at: 2026-04-19T15:00:00Z
+    notes: >-
+      True none/none/none anchor for batch 1. Topic classification verified clean
+      (no segment-adjacent signal leakage). Canonical example of "structurally
+      unrelated to all three segments".
