@@ -75,6 +75,10 @@ CHANGED_FILES=$(echo "$CHANGED_FILES" | grep -v 'go\.mod$' || true)
 CHANGED_FILES=$(echo "$CHANGED_FILES" | grep -v 'go\.sum$' || true)
 CHANGED_FILES=$(echo "$CHANGED_FILES" | grep -v '/Dockerfile$' || true)
 CHANGED_FILES=$(echo "$CHANGED_FILES" | grep -v '/testdata/' || true)
+CHANGED_FILES=$(echo "$CHANGED_FILES" | grep -v '/package-lock\.json$' || true)
+CHANGED_FILES=$(echo "$CHANGED_FILES" | grep -v '/yarn\.lock$' || true)
+CHANGED_FILES=$(echo "$CHANGED_FILES" | grep -v '/pnpm-lock\.yaml$' || true)
+CHANGED_FILES=$(echo "$CHANGED_FILES" | grep -v '/composer\.lock$' || true)
 
 if [ -z "$CHANGED_FILES" ]; then
   echo "No changes detected in the last $COMMITS commits."
@@ -153,6 +157,10 @@ for spec in $(printf '%s\n' "${!AFFECTED_SPECS[@]}" | sort); do
           ':!*/.layers' \
           ':!*_test.go' \
           ':!*/testdata/*' \
+          ':!*/package-lock.json' \
+          ':!*/yarn.lock' \
+          ':!*/pnpm-lock.yaml' \
+          ':!*/composer.lock' \
           2>/dev/null)
         pattern_commit=${pattern_commit:-0}
         if [ "$pattern_commit" -gt "$service_last_commit" ]; then
