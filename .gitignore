@@ -206,3 +206,7 @@ minoo-snapshot.md
 .firecrawl/
 
 .worktrees/
+
+# Pilot-labelling scratch — methodology distills to `icp_labels.yml` §Methodology
+# after first 20 labels; do not commit. See `docs/prospect-engine-plan.md` Appendix C.
+classifier/testdata/icp_labelling_log.md
