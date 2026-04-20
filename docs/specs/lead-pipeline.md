@@ -1,6 +1,6 @@
 # Lead / Signal Pipeline Spec
 
-> Last verified: 2026-04-19 (umbrella for signal-crawler, classifier `need_signal`, publisher `/api/leads`, rfp-ingestor, and the Lead Intelligence successor architecture; MIGRATION.md in signal-crawler is already linked from §6)
+> Last verified: 2026-04-20 (signal-crawler `hn`/`jobs` gates now delegate to `infrastructure/signal.Evaluate`; classifier uses the returned confidence — threshold unification per #638 complete)
 
 ## Overview
 
