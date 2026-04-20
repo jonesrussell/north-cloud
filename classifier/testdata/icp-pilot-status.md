@@ -141,8 +141,9 @@ full 43 candidates for sign-off before labels are applied." The redraw is cheap
 ### Gap #SMB-obj-ca-scarcity — BLOCKING composition
 
 **Problem.** `source_name:obj_ca` facet count in the whole ES `classified_content`
-index = 6 docs. Batch 1 used 1 (Brazeau Seller). Only 5 obj_ca docs remain vs. the
-6-slot target. Cannot satisfy the composition from corpus.
+index = 6 docs. Batch 1 used 1 (Brazeau Seller / `f99ed78f` / `obj_ca` /
+`smb=strong`). Only 5 obj_ca docs remain vs. the 6-slot target. Cannot satisfy
+the composition from corpus.
 
 **Options:**
 - (a) Accept 5 obj_ca, backfill the 6th SMB slot with a second FP mid-market pick
