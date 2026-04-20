@@ -94,67 +94,28 @@ Doc 8 explicitly `low` confidence (partial-vs-none forcing function).
 
 ### 4a. Stratum composition + draw queries
 
-Per-stratum draw queries are pre-specified so the exact doc_ids can be regenerated
-deterministically via `mcp__North_Cloud__Production___search_content`. This is the
-unblocking path if the doc_id list below drifts.
+**Sourcing mechanism (amended 2026-04-19).** Batch sourcing runs against the MCP
+`search_content` tool from within a labelling session. The tool does full-text
+search with topic and content-type filters. It does not honour lucene
+`source_name:` filters or boolean NOT. Queries are therefore specified as
+single-topic or single-term bodies with a small `page_size` (start at 25), and
+source filtering happens client-side against the returned facets.
 
-#### indigenous_channel=strong (12 docs — adds to 3 already labelled = 15)
+Working pool size per query is capped so a response fits under ~20KB. A query
+that returns a 50KB+ pool is re-scoped, not truncated.
 
-Target mix: 5 static org pages + 5 news articles + 2 press releases.
+Source allow-lists by stratum:
 
-Draw queries (pan-Canadian, segment entity as subject):
-- `source_name:apnonline_ca OR source_name:nctr_ca OR source_name:itk_ca OR source_name:indiginews_com` (homepages + articles)
-- `source_name:mkonation_com OR source_name:anishinabek_ca OR source_name:sco_ca` (org pages not yet used)
-- Articles: `topics:indigenous AND (title:"First Nation" OR title:"Métis" OR title:"Inuit") AND geography:Canada`
-- Press releases: Treaty orgs, NAN, Grand Council govt advisories
+- Corridor mining: `www_timminspress_com`, `www_thesudburystar_com`,
+  `financialpost_com`, `www_elliotlaketoday_com`.
+- Corridor forestry, NE Ontario: `www_myespanolanow_com`, `www_sudbury_com`.
+- AU/NZ Indigenous adjacency: ABC Indigenous, Asia Pacific Report.
 
-Explicit exclusions: AU/NZ content (→ adjacency stratum), NCTR noisy-topic-tags
-(#668 dependency).
+Excluded for corridor-intent queries: `www_argusmedia_com` (global trade-press),
+Ahead of the Herd (BC adjacency).
 
-#### northern_ontario_industry=strong (12 docs — adds to 3 already labelled = 15)
-
-Target mix: 7 mining + 3 forestry + 2 energy/industry. See gap #NOI-breakdown for
-7-mining slot allocation.
-
-Draw queries:
-- Mining: `content_type:article AND (title:"Kinross" OR title:"Glencore" OR title:"Vale" OR title:"Newmont Porcupine" OR title:"IAMGOLD Côté" OR title:"Alamos Young-Davidson" OR title:"New Gold Rainy River") AND geography:"Northern Ontario"`
-- Forestry: `title:("Resolute" OR "Domtar" OR "GreenFirst" OR "Kapuskasing" OR "Hearst sawmill") AND geography:"Northern Ontario"`
-- Energy/industry: `(title:"OPG" AND title:"hydro") OR title:"Ontario Northland" OR title:"Hydro One transmission"` (corridor)
-
-Explicit exclusions: southern-Ontario operators (→ adjacency), policy commentary
-about mining (→ indigenous_channel or none per subject-vs-object rule).
-
-#### private_sector_smb=strong (9 docs — adds to 1 already labelled = 10)
-
-Target mix: 6 `obj_ca` diversified firm-types (→ see gap #SMB-obj-ca-scarcity) + 3
-`financialpost_com` mid-market M&A.
-
-Draw queries:
-- obj_ca: `source_name:obj_ca` paginated walk (total corpus = 6 docs; 1 used; only
-  5 remain — scarcity gap, see §5)
-- FP mid-market M&A: `source_name:financialpost_com AND (title:"acquired" OR title:"acquires" OR title:"acquisition") AND NOT (title:"Vale" OR title:"Kinross" OR title:"Glencore")` (exclude already-labelled mining)
-
-Diversity target across the 9: at least one each of (law, manufacturing, tech
-services, family-owned, professional services, mid-market M&A).
-
-#### adjacency-none (6 docs — adds to 2 already labelled = 8)
-
-Target mix: 2 AU/NZ Indigenous + 2 southern-Ontario industry + 2 large-cap Canadian.
-
-Draw queries:
-- AU/NZ: `(source_name:*australia* OR source_name:*.nz OR source_name:waateanews*) AND topics:indigenous` (Mount Todd, Cadia, Waatea picks)
-- Southern Ontario industry: `geography:"Southern Ontario" AND topics:(manufacturing OR mining OR industry)` (Nestle London, auto parts, GTA food/bev)
-- Large-cap Canadian: `source_name:financialpost_com AND (title:"RBC" OR title:"Bank of Montreal" OR title:"CN Rail" OR title:"Enbridge") AND topics:(finance OR energy)` — tests "Canadian large-cap ≠ SMB"
-
-#### true none/none/none (4 docs — adds to 1 already labelled = 5)
-
-Target mix: 1 sports + 1 international politics + 1 lifestyle/recipe + 1 entertainment.
-
-Draw queries:
-- Sports: `topics:sports AND NOT topics:(indigenous OR mining)` (Crosby/hockey clean)
-- International: `geography:(Europe OR Asia) AND topics:politics` (Orban, Barcelona protests, EU)
-- Lifestyle: `topics:recipe OR topics:food_lifestyle`
-- Entertainment: `topics:entertainment AND NOT topics:indigenous`
+Lucene examples in other sections remain valid for direct-ES sessions. They are
+not the labelling-session spec.
 
 ### 4b. Candidates draft state
 
