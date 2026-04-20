@@ -1,6 +1,6 @@
 # Shared Infrastructure Specification
 
-> Last verified: 2026-04-19 (add signal/org-normalize helpers; refreshed after main merge brought #658 Go toolchain bump)
+> Last verified: 2026-04-20 (`infrastructure/signal.Evaluate` is now the canonical need-signal gate — classifier + signal-crawler delegate here; see #638)
 
 Covers the `infrastructure/` module: config loading, logging, database clients, middleware, events, and utilities used by all services.
 

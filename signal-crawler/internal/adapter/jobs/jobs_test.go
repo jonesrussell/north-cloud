@@ -30,13 +30,17 @@ func TestAdapter_Name(t *testing.T) {
 func TestAdapter_Scan_ScoresAndFilters(t *testing.T) {
 	log := infralogger.NewNop()
 
+	// Unified threshold requires >=2 distinct keyword matches across title+body
+	// (see infrastructure/signal and docs/specs/lead-pipeline.md). Single-hit
+	// postings are rejected — a change from the prior behavior.
 	boards := []jobs.Board{
 		&stubBoard{
 			name: "test-board",
 			postings: []jobs.Posting{
-				{Title: "Hiring platform engineer", Company: "Acme", URL: "https://example.com/1", ID: "1"},
-				{Title: "Office Manager", Company: "Boring Co", URL: "https://example.com/2", ID: "2"},
-				{Title: "Cloud migration lead needed", Company: "CloudCo", URL: "https://example.com/3", ID: "3"},
+				{Title: "Hiring platform engineer", Body: "Leading our cloud migration effort", Company: "Acme", URL: "https://example.com/1", ID: "1"},
+				{Title: "Office Manager", Body: "General admin role", Company: "Boring Co", URL: "https://example.com/2", ID: "2"},
+				{Title: "Cloud migration lead needed", Body: "to tackle our technical debt", Company: "CloudCo", URL: "https://example.com/3", ID: "3"},
+				{Title: "Hiring platform engineer", Body: "See JD", Company: "SingleHit", URL: "https://example.com/4", ID: "4"},
 			},
 		},
 	}
@@ -67,7 +71,7 @@ func TestAdapter_Scan_URLFallback_WhenCompanyMissing(t *testing.T) {
 		&stubBoard{
 			name: "anon-board",
 			postings: []jobs.Posting{
-				{Title: "Hiring platform engineer", URL: "https://acme-corp.com/jobs/42", ID: "42"},
+				{Title: "Hiring platform engineer", Body: "Lead our cloud migration effort", URL: "https://acme-corp.com/jobs/42", ID: "42"},
 			},
 		},
 	}
@@ -89,7 +93,7 @@ func TestAdapter_Scan_BoardError_ContinuesOthers(t *testing.T) {
 		&stubBoard{
 			name: "working",
 			postings: []jobs.Posting{
-				{Title: "Hiring platform engineer", Company: "Good Corp", URL: "https://example.com/4", ID: "4"},
+				{Title: "Hiring platform engineer", Body: "cloud migration project", Company: "Good Corp", URL: "https://example.com/4", ID: "4"},
 			},
 		},
 	}
@@ -110,8 +114,8 @@ func TestAdapter_Scan_DefaultSector(t *testing.T) {
 		&stubBoard{
 			name: "test",
 			postings: []jobs.Posting{
-				{Title: "Hiring platform engineer", Company: "X", URL: "https://x.com/1", ID: "1"},
-				{Title: "Hiring platform engineer", Company: "Y", URL: "https://y.com/2", ID: "2", Sector: "government"},
+				{Title: "Hiring platform engineer", Body: "cloud migration project", Company: "X", URL: "https://x.com/1", ID: "1"},
+				{Title: "Hiring platform engineer", Body: "cloud migration project", Company: "Y", URL: "https://y.com/2", ID: "2", Sector: "government"},
 			},
 		},
 	}

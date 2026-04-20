@@ -79,10 +79,10 @@ func (a *Adapter) Scan(ctx context.Context) ([]adapter.Signal, error) {
 		}
 
 		combined := it.Title + " " + it.Text
-		score, matched := scoring.Score(combined)
-		if score == 0 {
+		if ok, _, _ := scoring.Passes(combined); !ok {
 			continue
 		}
+		score, matched := scoring.Score(combined)
 
 		// HN submissions have no explicit org or contact email; fall back to the
 		// submitted article URL (empty when the story is a self-post).

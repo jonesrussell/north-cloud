@@ -299,7 +299,7 @@ Uses `allNeedSignalKeywords()` which flattens the extractor's `signalCategoryKey
 - `new_program` — new initiatives that may need tech support
 - `tech_migration` — signals of platform/system transitions
 
-**Threshold**: 2 keyword matches required across any categories. **Confidence**: 0.80 when triggered.
+**Threshold**: 2 keyword matches required across any categories. **Confidence**: 0.80 when triggered. The gate itself delegates to `infrastructure/signal.Evaluate` (`MinKeywordMatches`, `RequiredConfidence`) so the classifier and `signal-crawler` cannot drift — see `docs/specs/lead-pipeline.md` §Threshold contract.
 
 ### Need Signal Extractor (`NeedSignalExtractor`)
 
