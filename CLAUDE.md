@@ -217,6 +217,7 @@ See `ARCHITECTURE.md` for the full bootstrap pattern reference.
 3. **Milestones have due dates** — stale milestones flagged by SessionStart hook
 4. **Conventional commits** — `type(scope): description` (feat/fix/chore/docs/refactor/test/ci/perf)
 5. **PR template enforces checklist** — issue ref, milestone, lint, tests, spec updates
+6. **Stacked PR merge sequence** — retarget dependents to `main` before merging the parent; see `docs/specs/workflow.md` Rule 6
 
 See `docs/specs/workflow.md` for full details. Governance hook: `bin/check-milestones`.
 
