@@ -94,6 +94,16 @@ tasks:
     cmds:
       - tools/drift-detector.sh {{.CLI_ARGS | default "5"}}
 
+  ports:generate:
+    desc: "Regenerate docs/generated/ports-and-env.{md,json} from compose files"
+    cmds:
+      - scripts/generate-ports-env-table.sh
+
+  ports:check:
+    desc: "Fail if docs/generated/ports-and-env.* are stale vs compose"
+    cmds:
+      - scripts/ports-env-check.sh
+
   layers:check:
     desc: "Check internal package imports respect layer boundaries"
     cmds:
@@ -103,6 +113,7 @@ tasks:
     desc: "Run lint, test, and vuln (CI pipeline)"
     cmds:
       - task: drift:check
+      - task: ports:check
       - task: layers:check
       - task: lint
       - task: test
@@ -112,6 +123,7 @@ tasks:
     desc: "Run lint, test, and vuln only for changed services (vs HEAD~1)"
     cmds:
       - task: drift:check
+      - task: ports:check
       - task: layers:check
       - task: lint:changed
       - task: test:changed
@@ -121,6 +133,7 @@ tasks:
     desc: "Run full CI pipeline (lint, test, vuln) ignoring cache. Use before pushing to match CI."
     cmds:
       - task: drift:check
+      - task: ports:check
       - task: layers:check
       - task: lint:force
       - task auth:test -f

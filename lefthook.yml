@@ -56,5 +56,8 @@ pre-push:
     spec-drift:
       run: tools/drift-detector.sh 5
 
+    ports-ssot:
+      run: task ports:check
+
     layer-check:
       run: bash tools/layer-checker.sh

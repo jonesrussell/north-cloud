@@ -194,6 +194,7 @@ __pycache__/
 .pytest_cache/
 .venv/
 venv/
+scripts/.venv-ports-gen/
 docs/mining_websites_index.xlsx
 
 /*.png

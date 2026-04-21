@@ -1,0 +1,9 @@
+# Generated documentation
+
+Files in this directory are **machine-generated**. Do not edit them by hand; changes will be overwritten and CI will fail on drift.
+
+Refresh commands:
+
+| Output | Generator |
+| --- | --- |
+| `ports-and-env.md`, `ports-and-env.json` | `task ports:generate` (`scripts/generate-ports-env-table.sh`) |
