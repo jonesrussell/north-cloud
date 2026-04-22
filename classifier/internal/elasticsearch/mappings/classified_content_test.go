@@ -1,18 +1,16 @@
 package mappings //nolint:testpackage // tests need internal access
 
 import (
-	"encoding/json"
 	"strings"
 	"testing"
 )
 
 func TestClassifiedContentMapping_HasDrillResults(t *testing.T) {
 	m := NewClassifiedContentMapping()
-	data, err := json.Marshal(m)
+	s, err := m.GetJSON()
 	if err != nil {
-		t.Fatalf("marshal: %v", err)
+		t.Fatalf("GetJSON: %v", err)
 	}
-	s := string(data)
 
 	if !strings.Contains(s, `"drill_results"`) {
 		t.Error("mapping missing drill_results field in mining properties")

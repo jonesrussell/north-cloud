@@ -1,177 +1,23 @@
 package mappings
 
-// RawContentMapping represents the Elasticsearch mapping for raw content
+import "github.com/jonesrussell/north-cloud/infrastructure/esmapping"
+
+// RawContentMapping wraps the shared SSoT mapping for tooling and tests.
 type RawContentMapping struct {
-	Settings RawContentSettings `json:"settings"`
-	Mappings RawContentMappings `json:"mappings"`
+	doc map[string]any
 }
 
-// RawContentSettings defines index-level settings
-type RawContentSettings struct {
-	BaseSettings
-}
-
-// RawContentMappings defines the field mappings for raw content
-type RawContentMappings struct {
-	Properties RawContentProperties `json:"properties"`
-}
-
-// RawContentProperties defines the properties for each field in the raw content mapping
-type RawContentProperties struct {
-	// Core identifiers
-	ID         Field `json:"id"`
-	URL        Field `json:"url"`
-	SourceName Field `json:"source_name"`
-
-	// Raw content
-	Title   Field `json:"title"`
-	RawHTML Field `json:"raw_html"`
-	RawText Field `json:"raw_text"`
-
-	// Open Graph metadata
-	OGType        Field `json:"og_type"`
-	OGTitle       Field `json:"og_title"`
-	OGDescription Field `json:"og_description"`
-	OGImage       Field `json:"og_image"`
-	OGURL         Field `json:"og_url"`
-
-	// Basic metadata
-	MetaDescription Field `json:"meta_description"`
-	MetaKeywords    Field `json:"meta_keywords"`
-	CanonicalURL    Field `json:"canonical_url"`
-
-	// Timestamps
-	CrawledAt     Field `json:"crawled_at"`
-	PublishedDate Field `json:"published_date"`
-
-	// Processing status
-	ClassificationStatus Field `json:"classification_status"`
-	ClassifiedAt         Field `json:"classified_at"`
-
-	// Quick metrics
-	WordCount Field `json:"word_count"`
-
-	// Meta object written by the crawler
-	Meta ObjectField `json:"meta"`
-}
-
-// newMetaObjectField returns the ObjectField definition for the crawler-written meta object.
-func newMetaObjectField() ObjectField {
-	textWithKeyword := func(typ string) Field {
-		return Field{
-			Type:   typ,
-			Fields: map[string]Field{"keyword": {Type: "keyword"}},
-		}
-	}
-	dateField := Field{Type: "date", Format: "strict_date_optional_time||epoch_millis"}
-
-	return ObjectField{
-		Properties: map[string]Field{
-			"page_type":             textWithKeyword("text"),
-			"detected_content_type": textWithKeyword("text"),
-			"indigenous_region":     textWithKeyword("text"),
-			"article_opinion":       {Type: "keyword"},
-			"article_content_tier":  {Type: "keyword"},
-			"twitter_card":          {Type: "keyword"},
-			"twitter_site":          {Type: "keyword"},
-			"og_image_width":        {Type: "keyword"},
-			"og_image_height":       {Type: "keyword"},
-			"og_site_name":          {Type: "keyword"},
-			"created_at":            dateField,
-			"updated_at":            dateField,
-		},
-	}
-}
-
-// NewRawContentMapping creates a new raw content mapping with default settings
+// NewRawContentMapping builds a raw_content index mapping with default shard/replica counts.
 func NewRawContentMapping() *RawContentMapping {
-	// For raw_html, we want to store but not index it (too large, not searchable)
-	indexFalse := false
-
-	return &RawContentMapping{
-		Settings: RawContentSettings{
-			BaseSettings: DefaultSettings(),
-		},
-		Mappings: RawContentMappings{
-			Properties: RawContentProperties{
-				ID: Field{
-					Type: "keyword",
-				},
-				URL: Field{
-					Type: "keyword",
-				},
-				SourceName: Field{
-					Type: "keyword",
-				},
-				Title: Field{
-					Type:     "text",
-					Analyzer: "standard",
-				},
-				RawHTML: Field{
-					Type:  "text",
-					Index: &indexFalse, // Store but don't index (large field)
-				},
-				RawText: Field{
-					Type:     "text",
-					Analyzer: "standard",
-				},
-				OGType: Field{
-					Type: "keyword",
-				},
-				OGTitle: Field{
-					Type:     "text",
-					Analyzer: "standard",
-				},
-				OGDescription: Field{
-					Type:     "text",
-					Analyzer: "standard",
-				},
-				OGImage: Field{
-					Type: "keyword",
-				},
-				OGURL: Field{
-					Type: "keyword",
-				},
-				MetaDescription: Field{
-					Type:     "text",
-					Analyzer: "standard",
-				},
-				MetaKeywords: Field{
-					Type: "keyword",
-				},
-				CanonicalURL: Field{
-					Type: "keyword",
-				},
-				CrawledAt: Field{
-					Type:   "date",
-					Format: "strict_date_optional_time||epoch_millis",
-				},
-				PublishedDate: Field{
-					Type:   "date",
-					Format: "strict_date_optional_time||epoch_millis",
-				},
-				ClassificationStatus: Field{
-					Type: "keyword",
-				},
-				ClassifiedAt: Field{
-					Type:   "date",
-					Format: "strict_date_optional_time||epoch_millis",
-				},
-				WordCount: Field{
-					Type: "integer",
-				},
-				Meta: newMetaObjectField(),
-			},
-		},
-	}
+	return &RawContentMapping{doc: esmapping.RawContentIndex(1, 1)}
 }
 
-// GetJSON returns the raw content mapping as a JSON string
+// GetJSON returns the raw content mapping as a JSON string.
 func (m *RawContentMapping) GetJSON() (string, error) {
-	return ToJSON(m)
+	return esmapping.ToIndentedJSON(m.doc)
 }
 
-// Validate validates the raw content mapping configuration
+// Validate validates the raw content mapping configuration.
 func (m *RawContentMapping) Validate() error {
-	return ValidateSettings(m.Settings.BaseSettings)
+	return ValidateSettings(DefaultSettings())
 }

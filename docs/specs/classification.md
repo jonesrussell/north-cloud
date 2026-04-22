@@ -1,6 +1,6 @@
 # Classification Specification
 
-> Last verified: 2026-04-13 (unified need signal keyword lists)
+> Last verified: 2026-04-22 (Phase 1B: ES `raw_content` / `classified_content` field maps live in `infrastructure/esmapping`; classifier mapping package is a thin wrapper)
 
 Covers the classifier service, hybrid rule+ML classification pipeline, ML sidecar integration, and content enrichment.
 
@@ -37,7 +37,9 @@ Covers the classifier service, hybrid rule+ML classification pipeline, ML sideca
 | `classifier/internal/processor/batch.go` | Worker pool batch processor |
 | `classifier/internal/domain/classification.go` | ClassificationResult, ClassifiedContent |
 | `classifier/internal/domain/raw_content.go` | RawContent input model |
-| `classifier/internal/elasticsearch/mappings/classified_content.go` | ES mapping builders |
+| `infrastructure/esmapping/` | SSoT Elasticsearch `raw_content` / `classified_content` property maps (shared with index-manager) |
+| `classifier/internal/elasticsearch/mappings/classified_content.go` | Thin wrapper: delegates to `esmapping` for classified index mapping JSON |
+| `classifier/internal/elasticsearch/mappings/raw_content.go` | Thin wrapper: delegates to `esmapping` for raw index mapping JSON |
 | `classifier/internal/bootstrap/classifier.go` | Service initialization |
 | `classifier/internal/classifier/content_type_need_signal_heuristic.go` | Need signal heuristic (uses shared keywords from extractor) |
 | `classifier/internal/classifier/need_signal_extractor.go` | Need signal structured extraction + keyword definitions |
