@@ -104,6 +104,11 @@ tasks:
     cmds:
       - scripts/ports-env-check.sh
 
+  esmapping:check:
+    desc: "Fail if raw_content/classified_content field maps are defined outside infrastructure/esmapping"
+    cmds:
+      - tools/esmapping-ssot-check.sh
+
   layers:check:
     desc: "Check internal package imports respect layer boundaries"
     cmds:
@@ -114,6 +119,7 @@ tasks:
     cmds:
       - task: drift:check
       - task: ports:check
+      - task: esmapping:check
       - task: layers:check
       - task: lint
       - task: test
@@ -124,6 +130,7 @@ tasks:
     cmds:
       - task: drift:check
       - task: ports:check
+      - task: esmapping:check
       - task: layers:check
       - task: lint:changed
       - task: test:changed
@@ -134,6 +141,7 @@ tasks:
     cmds:
       - task: drift:check
       - task: ports:check
+      - task: esmapping:check
       - task: layers:check
       - task: lint:force
       - task auth:test -f

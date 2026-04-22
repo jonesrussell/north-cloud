@@ -89,6 +89,12 @@ echo "=== Drift Detector ==="
 echo "Checking last $COMMITS commits for spec drift..."
 echo ""
 
+echo "=== ES mapping SSoT ==="
+if ! "$REPO_ROOT/tools/esmapping-ssot-check.sh"; then
+	exit 1
+fi
+echo ""
+
 declare -A AFFECTED_SPECS=()
 declare -A SPEC_CHANGES=()
 
