@@ -40,4 +40,5 @@ jobs:
   wwr_url: ""            # Leave empty for default (env: JOBS_WWR_URL)
   hn_max_comments: 200   # Max HN hiring thread comments to scan (env: JOBS_HN_MAX_COMMENTS)
   gcjobs_url: ""         # Leave empty for default (env: JOBS_GCJOBS_URL)
+  gcjobs_disabled: false # Set true on hosts blocked by GC Jobs, e.g. DO VPS (env: JOBS_GCJOBS_DISABLED)
   workbc_url: ""         # Leave empty for default (env: JOBS_WORKBC_URL)

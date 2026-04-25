@@ -50,11 +50,12 @@ type RendererConfig struct {
 
 // JobsConfig holds job board adapter configuration.
 type JobsConfig struct {
-	RemoteOKURL   string `env:"JOBS_REMOTEOK_URL"    yaml:"remoteok_url"`
-	WWRURL        string `env:"JOBS_WWR_URL"         yaml:"wwr_url"`
-	HNMaxComments int    `env:"JOBS_HN_MAX_COMMENTS" yaml:"hn_max_comments"`
-	GCJobsURL     string `env:"JOBS_GCJOBS_URL"      yaml:"gcjobs_url"`
-	WorkBCURL     string `env:"JOBS_WORKBC_URL"      yaml:"workbc_url"`
+	RemoteOKURL    string `env:"JOBS_REMOTEOK_URL"    yaml:"remoteok_url"`
+	WWRURL         string `env:"JOBS_WWR_URL"         yaml:"wwr_url"`
+	HNMaxComments  int    `env:"JOBS_HN_MAX_COMMENTS" yaml:"hn_max_comments"`
+	GCJobsURL      string `env:"JOBS_GCJOBS_URL"      yaml:"gcjobs_url"`
+	GCJobsDisabled bool   `env:"JOBS_GCJOBS_DISABLED" yaml:"gcjobs_disabled"`
+	WorkBCURL      string `env:"JOBS_WORKBC_URL"      yaml:"workbc_url"`
 }
 
 // Config is the top-level configuration for signal-crawler.

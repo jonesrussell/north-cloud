@@ -1,6 +1,6 @@
 # Lead / Signal Pipeline Spec
 
-> Last verified: 2026-04-20 (signal-crawler `hn`/`jobs` gates now delegate to `infrastructure/signal.Evaluate`; classifier uses the returned confidence — threshold unification per #638 complete)
+> Last verified: 2026-04-25 (signal-crawler `gcjobs` is disabled in prod on the DigitalOcean VPS via `JOBS_GCJOBS_DISABLED=true`; local/residential runs keep it enabled by default — #617)
 
 ## Overview
 
@@ -129,6 +129,10 @@ infrastructure/signal/                # Shared helpers used by both producers
 | 5 | **publisher `GET /api/leads`** | N/A — **consumer, not producer** | Postgres `claudriel_leads` (RFP-shaped) | Claudriel `NorthCloudLeadFetcher` via Bearer auth | N/A — read-only bridge | Kept. Not a general lead API. Repurposing would break Claudriel. |
 
 The phrase "a new lead source" should map to exactly one row above. If it does not, the decision is explicitly in scope for an amendment to this spec.
+
+### signal-crawler production source toggles
+
+`signal-crawler` keeps GC Jobs support in the binary for local and residential-network validation, but production disables that board with `JOBS_GCJOBS_DISABLED=true` in `docker-compose.prod.yml`. GC Jobs times out from the DigitalOcean VPS because the source appears to block DigitalOcean/cloud ASN egress. Until a residential proxy is configured, production runs skip the GC Jobs board and continue with RemoteOK, WeWorkRemotely, HN Hiring, WorkBC, HN, and funding sources.
 
 ---
 

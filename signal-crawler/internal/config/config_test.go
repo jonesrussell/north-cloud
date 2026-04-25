@@ -1,6 +1,8 @@
 package config_test
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/jonesrussell/north-cloud/signal-crawler/internal/config"
@@ -50,6 +52,7 @@ func TestDefaults(t *testing.T) {
 
 	assert.Equal(t, "data/seen.db", cfg.Dedup.DBPath)
 	assert.Equal(t, "info", cfg.Logging.Level)
+	assert.False(t, cfg.Jobs.GCJobsDisabled)
 }
 
 func TestConfig_Validate_EmptyDBPath(t *testing.T) {
@@ -65,4 +68,23 @@ func TestConfig_Validate_EmptyDBPath(t *testing.T) {
 	err = cfg.Validate()
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "db_path")
+}
+
+func TestLoad_JobsGCJobsDisabledEnvOverride(t *testing.T) {
+	t.Setenv("JOBS_GCJOBS_DISABLED", "true")
+
+	path := filepath.Join(t.TempDir(), "config.yml")
+	err := os.WriteFile(path, []byte(`northops:
+  url: ""
+  api_key: ""
+dedup:
+  db_path: ""
+jobs:
+  gcjobs_disabled: false
+`), 0o644)
+	require.NoError(t, err)
+
+	cfg, err := config.Load(path)
+	require.NoError(t, err)
+	assert.True(t, cfg.Jobs.GCJobsDisabled)
 }

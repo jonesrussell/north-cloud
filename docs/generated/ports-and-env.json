@@ -1533,6 +1533,7 @@
       "compose_overlay": "prod",
       "container_port": null,
       "env_vars": [
+        "JOBS_GCJOBS_DISABLED",
         "LOG_FORMAT",
         "LOG_LEVEL",
         "NORTHOPS_URL",
