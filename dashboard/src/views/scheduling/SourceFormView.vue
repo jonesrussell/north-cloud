@@ -21,6 +21,7 @@ const form = ref({
   name: '',
   url: '',
   enabled: true,
+  disable_reason: '',
 })
 
 const loadSource = async () => {
@@ -33,6 +34,7 @@ const loadSource = async () => {
       name: source.name || '',
       url: source.url || '',
       enabled: source.enabled ?? true,
+      disable_reason: source.disable_reason || '',
     }
   } catch {
     error.value = 'Unable to load source.'
@@ -47,13 +49,21 @@ const saveSource = async () => {
     error.value = 'Name and URL are required.'
     return
   }
+  if (!form.value.enabled && !form.value.disable_reason.trim()) {
+    error.value = 'A disable reason is required when disabling a source.'
+    return
+  }
 
   try {
     saving.value = true
+    const payload = {
+      ...form.value,
+      disable_reason: form.value.enabled ? undefined : form.value.disable_reason.trim(),
+    }
     if (isEdit.value && sourceId.value) {
-      await sourcesApi.update(sourceId.value, form.value)
+      await sourcesApi.update(sourceId.value, payload)
     } else {
-      await sourcesApi.create(form.value)
+      await sourcesApi.create(payload)
     }
     router.push('/scheduling/sources')
   } catch (err: unknown) {
@@ -148,6 +158,14 @@ onMounted(() => {
               for="enabled"
               class="text-sm"
             >Enabled</label>
+          </div>
+
+          <div v-if="!form.enabled">
+            <label class="block text-sm font-medium mb-2">Disable Reason</label>
+            <Input
+              v-model="form.disable_reason"
+              placeholder="maintenance"
+            />
           </div>
 
           <div

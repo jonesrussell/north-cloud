@@ -277,6 +277,87 @@ func TestSourceRepository_Update(t *testing.T) {
 	assert.True(t, updated.UpdatedAt.After(originalUpdatedAt), "UpdatedAt should be updated")
 }
 
+func TestSourceRepository_Update_DisableRequiresReason(t *testing.T) {
+	db, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	logger := testhelpers.NewTestLogger()
+	repo := repository.NewSourceRepository(db, logger)
+	ctx := context.Background()
+
+	testSource := &models.Source{
+		Name:      "Disable Reason Required Source",
+		URL:       "https://disable-reason-required.com",
+		RateLimit: "1s",
+		MaxDepth:  2,
+		Time:      models.StringArray{"09:00"},
+		Selectors: models.SelectorConfig{
+			Article: models.ArticleSelectors{Title: "h1"},
+		},
+		Enabled: true,
+	}
+
+	err := repo.Create(ctx, testSource)
+	require.NoError(t, err)
+
+	testSource.Enabled = false
+	err = repo.Update(ctx, testSource)
+	require.ErrorIs(t, err, repository.ErrDisableReasonRequired)
+
+	updated, err := repo.GetByID(ctx, testSource.ID)
+	require.NoError(t, err)
+	assert.True(t, updated.Enabled)
+	assert.Nil(t, updated.DisabledAt)
+	assert.Nil(t, updated.DisableReason)
+}
+
+func TestSourceRepository_Update_DisableWithReasonSetsAuditFields(t *testing.T) {
+	db, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	logger := testhelpers.NewTestLogger()
+	repo := repository.NewSourceRepository(db, logger)
+	ctx := context.Background()
+
+	reason := "maintenance"
+	testSource := &models.Source{
+		Name:      "Disable With Reason Source",
+		URL:       "https://disable-with-reason.com",
+		RateLimit: "1s",
+		MaxDepth:  2,
+		Time:      models.StringArray{"09:00"},
+		Selectors: models.SelectorConfig{
+			Article: models.ArticleSelectors{Title: "h1"},
+		},
+		Enabled:       true,
+		DisableReason: &reason,
+	}
+
+	err := repo.Create(ctx, testSource)
+	require.NoError(t, err)
+
+	testSource.Enabled = false
+	err = repo.Update(ctx, testSource)
+	require.NoError(t, err)
+
+	disabled, err := repo.GetByID(ctx, testSource.ID)
+	require.NoError(t, err)
+	require.False(t, disabled.Enabled)
+	require.NotNil(t, disabled.DisabledAt)
+	require.NotNil(t, disabled.DisableReason)
+	assert.Equal(t, "maintenance", *disabled.DisableReason)
+
+	disabled.Enabled = true
+	err = repo.Update(ctx, disabled)
+	require.NoError(t, err)
+
+	enabled, err := repo.GetByID(ctx, testSource.ID)
+	require.NoError(t, err)
+	assert.True(t, enabled.Enabled)
+	assert.Nil(t, enabled.DisabledAt)
+	assert.Nil(t, enabled.DisableReason)
+}
+
 func TestSourceRepository_Delete(t *testing.T) {
 	db, cleanup := setupTestDB(t)
 	defer cleanup()

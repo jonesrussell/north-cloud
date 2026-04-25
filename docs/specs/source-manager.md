@@ -104,6 +104,8 @@ Key fields: `id` (UUID PK), `name` (UNIQUE), `url`, `rate_limit` (default '1s'),
 - `license_type`: open, cc-by, cc-by-sa, restricted, unknown
 - `attribution_text`: required attribution for hosted content
 
+When an update sets `enabled=false`, the API requires a non-empty `disable_reason` unless the row already has one. That transition sets `disabled_at` automatically. Updating back to `enabled=true` clears `disabled_at` and `disable_reason`.
+
 ### communities (30 columns)
 
 Key fields: `id`, `name`, `slug` (UNIQUE), `community_type`, `province`, `region`, `inac_id` (UNIQUE), `statcan_csd` (UNIQUE), `osm_relation_id`, `wikidata_qid`, `latitude`, `longitude`, `nation`, `treaty`, `language_group`, `population`, `website`, `feed_url`, `source_id` (FK → sources), `enabled`, `last_scraped_at`.

@@ -19,6 +19,9 @@ import (
 // ErrSourceNotFound is returned when a source operation targets a non-existent ID.
 var ErrSourceNotFound = errors.New("source not found")
 
+// ErrDisableReasonRequired is returned when disabling a source without an audit reason.
+var ErrDisableReasonRequired = errors.New("disable reason required")
+
 type SourceRepository struct {
 	db     *sql.DB
 	logger infralogger.Logger
@@ -434,6 +437,7 @@ func (r *SourceRepository) Update(ctx context.Context, source *models.Source) er
 	}
 
 	extractionProfileJSON := marshalExtractionProfile(source.ExtractionProfile)
+	disableReason := trimmedStringPtr(source.DisableReason)
 
 	query := `
 		UPDATE sources
@@ -441,8 +445,18 @@ func (r *SourceRepository) Update(ctx context.Context, source *models.Source) er
 		    enabled = $8,
 		    feed_url = $9, sitemap_url = $10, ingestion_mode = $11, feed_poll_interval_minutes = $12,
 		    allow_source_discovery = $13, identity_key = $14, extraction_profile = $15, template_hint = $16,
-		    render_mode = $17, type = $18, indigenous_region = $19, updated_at = $20
+		    render_mode = $17, type = $18, indigenous_region = $19,
+		    disabled_at = CASE
+		        WHEN $8 THEN NULL
+		        ELSE COALESCE(disabled_at, NOW())
+		    END,
+		    disable_reason = CASE
+		        WHEN $8 THEN NULL
+		        ELSE COALESCE($20, disable_reason)
+		    END,
+		    updated_at = $21
 		WHERE id = $1
+		  AND ($8 OR COALESCE($20, disable_reason) IS NOT NULL)
 	`
 
 	result, err := r.db.ExecContext(ctx,
@@ -466,6 +480,7 @@ func (r *SourceRepository) Update(ctx context.Context, source *models.Source) er
 		source.RenderMode,
 		source.Type,
 		source.IndigenousRegion,
+		disableReason,
 		source.UpdatedAt,
 	)
 
@@ -479,10 +494,36 @@ func (r *SourceRepository) Update(ctx context.Context, source *models.Source) er
 	}
 
 	if rowsAffected == 0 {
+		exists, existsErr := r.sourceExists(ctx, source.ID)
+		if existsErr != nil {
+			return existsErr
+		}
+		if exists && !source.Enabled {
+			return ErrDisableReasonRequired
+		}
 		return ErrSourceNotFound
 	}
 
 	return nil
+}
+
+func trimmedStringPtr(value *string) *string {
+	if value == nil {
+		return nil
+	}
+	trimmed := strings.TrimSpace(*value)
+	if trimmed == "" {
+		return nil
+	}
+	return &trimmed
+}
+
+func (r *SourceRepository) sourceExists(ctx context.Context, id string) (bool, error) {
+	var exists bool
+	if err := r.db.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM sources WHERE id = $1)`, id).Scan(&exists); err != nil {
+		return false, fmt.Errorf("check source exists: %w", err)
+	}
+	return exists, nil
 }
 
 func (r *SourceRepository) Delete(ctx context.Context, id string) error {

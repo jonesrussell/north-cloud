@@ -302,6 +302,14 @@ func (h *SourceHandler) Update(c *gin.Context) {
 	}
 
 	if err := h.repo.Update(c.Request.Context(), &source); err != nil {
+		if errors.Is(err, repository.ErrDisableReasonRequired) {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "disable_reason is required when disabling a source"})
+			return
+		}
+		if errors.Is(err, repository.ErrSourceNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Source not found"})
+			return
+		}
 		h.logger.Error("Failed to update source",
 			infralogger.String("source_id", id),
 			infralogger.Error(err),

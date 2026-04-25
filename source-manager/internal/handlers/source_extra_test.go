@@ -202,6 +202,7 @@ func TestSourceHandler_Update_Success(t *testing.T) {
 			sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(),
 			sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(),
 			sqlmock.AnyArg(),
+			sqlmock.AnyArg(),
 		).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
@@ -231,6 +232,42 @@ func TestSourceHandler_Update_Success(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusOK, w.Code)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestSourceHandler_Update_DisableWithoutReasonReturnsBadRequest(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	router := gin.New()
+	handler, mock, cleanup := newMockSourceHandlerExtra(t)
+	defer cleanup()
+
+	router.PUT("/api/v1/sources/:id", handler.Update)
+
+	mock.ExpectExec(regexp.QuoteMeta("UPDATE sources")).
+		WithArgs(
+			"upd-id",
+			"Updated Source", "https://updated.com", "5s", 3,
+			sqlmock.AnyArg(), sqlmock.AnyArg(),
+			false,
+			sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(),
+			sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(),
+			sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(),
+			sqlmock.AnyArg(),
+			sqlmock.AnyArg(),
+		).
+		WillReturnResult(sqlmock.NewResult(0, 0))
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT EXISTS(SELECT 1 FROM sources WHERE id = $1)")).
+		WithArgs("upd-id").
+		WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(true))
+
+	body := `{"name":"Updated Source","url":"https://updated.com","rate_limit":"5","max_depth":3,"enabled":false}`
+	req := httptest.NewRequest(http.MethodPut, "/api/v1/sources/upd-id", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+	assert.Contains(t, w.Body.String(), "disable_reason")
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 

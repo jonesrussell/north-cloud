@@ -189,6 +189,7 @@ func TestSourceRepository_Update_NotFound_Mock(t *testing.T) {
 		RateLimit: "1s",
 		Selectors: models.SelectorConfig{},
 		Time:      models.StringArray{"09:00"},
+		Enabled:   true,
 	}
 
 	mock.ExpectExec(regexp.QuoteMeta("UPDATE sources")).
@@ -208,9 +209,13 @@ func TestSourceRepository_Update_NotFound_Mock(t *testing.T) {
 			sqlmock.AnyArg(), // render_mode
 			sqlmock.AnyArg(), // type
 			sqlmock.AnyArg(), // indigenous_region
+			sqlmock.AnyArg(), // disable_reason
 			sqlmock.AnyArg(), // updated_at
 		).
 		WillReturnResult(sqlmock.NewResult(0, 0))
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT EXISTS(SELECT 1 FROM sources WHERE id = $1)")).
+		WithArgs("missing-id").
+		WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(false))
 
 	err := repo.Update(ctx, source)
 	require.ErrorIs(t, err, ErrSourceNotFound)
