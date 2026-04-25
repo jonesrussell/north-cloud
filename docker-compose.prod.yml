@@ -822,6 +822,8 @@ services:
       - PIPELINE_API_KEY=${PIPELINE_API_KEY}
       - RENDERER_URL=http://playwright-renderer:8095
       - RENDERER_ENABLED=true
+      # GC Jobs blocks DigitalOcean/ASN cloud egress; skip until a residential proxy is configured.
+      - JOBS_GCJOBS_DISABLED=true
       - LOG_LEVEL=info
       - LOG_FORMAT=json
     deploy:
