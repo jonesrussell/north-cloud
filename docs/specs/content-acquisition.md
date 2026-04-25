@@ -1,6 +1,6 @@
 # Content Acquisition Specification
 
-> Last verified: 2026-03-22 (fix test lint: testpackage, nilnil)
+> Last verified: 2026-04-22 (Phase 1B: ES mapping SSoT in infrastructure/esmapping)
 
 Covers the crawler subsystem: web content fetching, job scheduling, frontier URL management, and raw content indexing.
 
@@ -13,6 +13,8 @@ Covers the crawler subsystem: web content fetching, job scheduling, frontier URL
 | `crawler/internal/crawler/crawler.go` | Core Crawler struct and CrawlerInterface |
 | `crawler/internal/crawler/factory.go` | Factory pattern for per-job isolation |
 | `crawler/internal/scheduler/interval_scheduler.go` | Interval-based job scheduler with CAS locking |
+| `crawler/internal/scheduler/scheduler_execution.go` | Per-job `runJob` goroutine; execution timeout context and cleanup |
+| `infrastructure/esmapping/` | SSoT Elasticsearch `raw_content` / `classified_content` field maps (shared by classifier + index-manager) |
 | `crawler/internal/scheduler/state_machine.go` | Job state transitions (pending→scheduled→running→completed/failed) |
 | `crawler/internal/fetcher/worker.go` | Frontier fetcher worker pool (lightweight URL fetching) |
 | `crawler/internal/storage/types/interface.go` | Storage + IndexManager interfaces |

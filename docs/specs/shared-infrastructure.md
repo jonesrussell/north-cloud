@@ -1,6 +1,6 @@
 # Shared Infrastructure Specification
 
-> Last verified: 2026-04-20 (`infrastructure/signal.Evaluate` is now the canonical need-signal gate — classifier + signal-crawler delegate here; see #638)
+> Last verified: 2026-04-22 (Phase 1B: `infrastructure/esmapping` — SSoT ES `raw_content` / `classified_content` field maps; 2026-04-20: `infrastructure/signal.Evaluate` need-signal gate — see #638)
 
 Covers the `infrastructure/` module: config loading, logging, database clients, middleware, events, and utilities used by all services.
 
@@ -15,6 +15,7 @@ Covers the `infrastructure/` module: config loading, logging, database clients, 
 | `infrastructure/logger/nop.go` | No-op logger for tests |
 | `infrastructure/logger/context.go` | Context-based logger propagation |
 | `infrastructure/elasticsearch/client.go` | ES client with TLS, auth, retry |
+| `infrastructure/esmapping/` | SSoT Elasticsearch `raw_content` / `classified_content` index property maps (consumed by classifier + index-manager) |
 | `infrastructure/redis/client.go` | Redis client wrapper with ping verification |
 | `infrastructure/http/client.go` | HTTP client with configurable timeouts |
 | `infrastructure/jwt/middleware.go` | JWT auth middleware for Gin |
