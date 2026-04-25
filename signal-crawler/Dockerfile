@@ -1,5 +1,5 @@
 # Build stage
-FROM golang:1.26.2-alpine AS builder
+FROM public.ecr.aws/docker/library/golang:1.26.2-alpine AS builder
 
 RUN apk add --no-cache ca-certificates gcc musl-dev
 
@@ -25,7 +25,7 @@ RUN CGO_ENABLED=1 go build \
     main.go
 
 # Runtime stage
-FROM alpine:3.21
+FROM public.ecr.aws/docker/library/alpine:3.21
 
 RUN apk --no-cache add ca-certificates sqlite-libs
 
