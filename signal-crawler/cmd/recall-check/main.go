@@ -23,6 +23,10 @@ const (
 	defaultHTTPTimeout = 30 * time.Second
 	defaultRunTimeout  = 5 * time.Minute
 	maxBodyBytes       = 10 * 1024 * 1024
+	thresholdOne       = 1
+	thresholdTwo       = 2
+	percentMultiplier  = 100
+	reviewDropPercent  = 40
 )
 
 var htmlTagRegexp = regexp.MustCompile(`<[^>]*>`)
@@ -64,8 +68,10 @@ func main() {
 	defer cancel()
 
 	client := &http.Client{Timeout: defaultHTTPTimeout}
-	results := []result{scanHN(ctx, client, cfg)}
-	results = append(results, scanJobBoards(ctx, cfg)...)
+	jobResults := scanJobBoards(ctx, cfg)
+	results := make([]result, 0, thresholdOne+len(jobResults))
+	results = append(results, scanHN(ctx, client, cfg))
+	results = append(results, jobResults...)
 	sort.SliceStable(results, func(i, j int) bool {
 		return results[i].Source < results[j].Source
 	})
@@ -73,8 +79,8 @@ func main() {
 	if *jsonOut {
 		enc := json.NewEncoder(os.Stdout)
 		enc.SetIndent("", "  ")
-		if err := enc.Encode(results); err != nil {
-			fmt.Fprintf(os.Stderr, "recall-check: encode json: %v\n", err)
+		if encodeErr := enc.Encode(results); encodeErr != nil {
+			fmt.Fprintf(os.Stderr, "recall-check: encode json: %v\n", encodeErr)
 			os.Exit(1)
 		}
 		return
@@ -97,9 +103,9 @@ func scanHN(ctx context.Context, client *http.Client, cfg *config.Config) result
 	res.Scanned = len(ids)
 
 	for _, id := range ids {
-		item, err := fetchHNItem(ctx, client, cfg.HN.BaseURL, id)
-		if err != nil {
-			res.Errors = append(res.Errors, err.Error())
+		item, itemErr := fetchHNItem(ctx, client, cfg.HN.BaseURL, id)
+		if itemErr != nil {
+			res.Errors = append(res.Errors, itemErr.Error())
 			continue
 		}
 		countThresholds(cleanText(item.Title+" "+item.Text), &res)
@@ -109,7 +115,8 @@ func scanHN(ctx context.Context, client *http.Client, cfg *config.Config) result
 }
 
 func fetchHNIDs(ctx context.Context, client *http.Client, baseURL string) ([]int, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, strings.TrimRight(baseURL, "/")+"/v0/newstories.json", http.NoBody)
+	storiesURL := strings.TrimRight(baseURL, "/") + "/v0/newstories.json"
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, storiesURL, http.NoBody)
 	if err != nil {
 		return nil, fmt.Errorf("hn: create newstories request: %w", err)
 	}
@@ -123,14 +130,15 @@ func fetchHNIDs(ctx context.Context, client *http.Client, baseURL string) ([]int
 	}
 
 	var ids []int
-	if err := json.NewDecoder(io.LimitReader(resp.Body, maxBodyBytes)).Decode(&ids); err != nil {
-		return nil, fmt.Errorf("hn: decode newstories: %w", err)
+	if decodeErr := json.NewDecoder(io.LimitReader(resp.Body, maxBodyBytes)).Decode(&ids); decodeErr != nil {
+		return nil, fmt.Errorf("hn: decode newstories: %w", decodeErr)
 	}
 	return ids, nil
 }
 
 func fetchHNItem(ctx context.Context, client *http.Client, baseURL string, id int) (hnItem, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, strings.TrimRight(baseURL, "/")+"/v0/item/"+strconv.Itoa(id)+".json", http.NoBody)
+	itemURL := strings.TrimRight(baseURL, "/") + "/v0/item/" + strconv.Itoa(id) + ".json"
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, itemURL, http.NoBody)
 	if err != nil {
 		return hnItem{}, fmt.Errorf("hn: create item request %d: %w", id, err)
 	}
@@ -144,8 +152,8 @@ func fetchHNItem(ctx context.Context, client *http.Client, baseURL string, id in
 	}
 
 	var item hnItem
-	if err := json.NewDecoder(io.LimitReader(resp.Body, maxBodyBytes)).Decode(&item); err != nil {
-		return hnItem{}, fmt.Errorf("hn: decode item %d: %w", id, err)
+	if decodeErr := json.NewDecoder(io.LimitReader(resp.Body, maxBodyBytes)).Decode(&item); decodeErr != nil {
+		return hnItem{}, fmt.Errorf("hn: decode item %d: %w", id, decodeErr)
 	}
 	return item, nil
 }
@@ -180,13 +188,13 @@ func scanJobBoards(ctx context.Context, cfg *config.Config) []result {
 
 func countThresholds(text string, res *result) {
 	phrases := scoring.MatchedPhrases(text)
-	if len(phrases) >= 1 {
+	if len(phrases) >= thresholdOne {
 		res.AcceptedThreshold1++
 	}
-	if len(phrases) >= 2 {
+	if len(phrases) >= thresholdTwo {
 		res.AcceptedThreshold2++
 	}
-	if len(phrases) == 1 {
+	if len(phrases) == thresholdOne {
 		addPhrase(res, phrases[0])
 	}
 }
@@ -206,7 +214,7 @@ func finish(res *result) {
 		return
 	}
 	dropped := res.AcceptedThreshold1 - res.AcceptedThreshold2
-	res.DropPercent = float64(dropped) / float64(res.AcceptedThreshold1) * 100
+	res.DropPercent = float64(dropped) / float64(res.AcceptedThreshold1) * percentMultiplier
 }
 
 func addPhrase(res *result, matched string) {
@@ -237,7 +245,7 @@ func printTable(results []result) {
 func printRecommendation(results []result) {
 	var highDrop []string
 	for _, r := range results {
-		if r.AcceptedThreshold1 > 0 && r.DropPercent > 40 {
+		if r.AcceptedThreshold1 > 0 && r.DropPercent > reviewDropPercent {
 			detail := ""
 			if len(r.SingleHitPhrases) > 0 {
 				detail = "; top one-hit phrase: " + r.SingleHitPhrases[0].Phrase
@@ -253,5 +261,10 @@ func printRecommendation(results []result) {
 	}
 
 	fmt.Println()
-	fmt.Printf("Recommendation: review %s before accepting the 2-keyword gate unchanged. Options: broaden the keyword list for missed canonical phrases, relax signal-crawler per adapter, or document the accepted drop in docs/specs/lead-pipeline.md.\n", strings.Join(highDrop, ", "))
+	fmt.Printf(
+		"Recommendation: review %s before accepting the 2-keyword gate unchanged. "+
+			"Options: broaden the keyword list for missed canonical phrases, relax signal-crawler per adapter, "+
+			"or document the accepted drop in docs/specs/lead-pipeline.md.\n",
+		strings.Join(highDrop, ", "),
+	)
 }

@@ -78,12 +78,12 @@ func TestPassesAt(t *testing.T) {
 
 	ok, confidence, matches := scoring.PassesAt(text, 1)
 	assert.True(t, ok)
-	assert.Equal(t, 0.80, confidence)
+	assert.InEpsilon(t, 0.80, confidence, 0.0001)
 	assert.Equal(t, 2, matches)
 
 	ok, confidence, matches = scoring.PassesAt("Hiring platform engineer", 2)
 	assert.False(t, ok)
-	assert.Equal(t, 0.0, confidence)
+	assert.InDelta(t, 0.0, confidence, 0.0001)
 	assert.Equal(t, 1, matches)
 }
 
