@@ -31,6 +31,11 @@ tasks:
     cmds:
       - ./bin/signal-crawler --dry-run {{.CLI_ARGS}}
 
+  recall:check:
+    desc: "Compare 1-keyword vs 2-keyword recall across HN and jobs adapters"
+    cmds:
+      - go run ./cmd/recall-check {{.CLI_ARGS}}
+
   test:
     desc: "Run all tests"
     sources:

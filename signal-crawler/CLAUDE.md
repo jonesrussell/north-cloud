@@ -28,6 +28,7 @@ internal/
 task build          # Build binary
 task run            # Run all adapters
 task run:dry        # Dry run (no POSTing)
+task recall:check   # Compare 1-keyword vs 2-keyword recall
 task test           # Run tests
 task lint           # golangci-lint
 ```

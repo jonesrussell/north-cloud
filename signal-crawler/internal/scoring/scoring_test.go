@@ -56,3 +56,42 @@ func TestScore_HighestWins(t *testing.T) {
 	score, _ := scoring.Score(text)
 	assert.Equal(t, scoring.ScoreDirectAsk, score)
 }
+
+func TestMatchCount(t *testing.T) {
+	text := "Hiring platform engineer for a cloud migration from a legacy system"
+
+	assert.Equal(t, 3, scoring.MatchCount(text))
+}
+
+func TestMatchedPhrases(t *testing.T) {
+	text := "Hiring platform engineer for a cloud migration from a legacy system"
+
+	assert.ElementsMatch(t, []string{
+		"hiring platform engineer",
+		"cloud migration",
+		"legacy system",
+	}, scoring.MatchedPhrases(text))
+}
+
+func TestPassesAt(t *testing.T) {
+	text := "Hiring platform engineer for a cloud migration project"
+
+	ok, confidence, matches := scoring.PassesAt(text, 1)
+	assert.True(t, ok)
+	assert.Equal(t, 0.80, confidence)
+	assert.Equal(t, 2, matches)
+
+	ok, confidence, matches = scoring.PassesAt("Hiring platform engineer", 2)
+	assert.False(t, ok)
+	assert.Equal(t, 0.0, confidence)
+	assert.Equal(t, 1, matches)
+}
+
+func TestPhrases_ReturnsCopy(t *testing.T) {
+	phrases := scoring.Phrases()
+	assert.Contains(t, phrases, "hiring platform engineer")
+
+	phrases[0] = "mutated"
+	fresh := scoring.Phrases()
+	assert.NotEqual(t, "mutated", fresh[0])
+}

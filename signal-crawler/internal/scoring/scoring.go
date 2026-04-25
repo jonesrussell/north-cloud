@@ -78,14 +78,51 @@ func Score(text string) (score int, phrase string) {
 	return best, matched
 }
 
+// Phrases returns a copy of the keyword phrase list used by Score and Passes.
+func Phrases() []string {
+	phrases := make([]string, 0, len(keywords))
+	for _, kw := range keywords {
+		phrases = append(phrases, kw.phrase)
+	}
+	return phrases
+}
+
+// MatchCount returns the number of distinct configured keyword phrases found
+// in text. It is intended for diagnostics where exact recall counts matter.
+func MatchCount(text string) int {
+	return len(MatchedPhrases(text))
+}
+
+// MatchedPhrases returns the configured keyword phrases found in text.
+func MatchedPhrases(text string) []string {
+	lower := strings.ToLower(text)
+	matches := make([]string, 0)
+	for _, kw := range keywords {
+		if strings.Contains(lower, kw.phrase) {
+			matches = append(matches, kw.phrase)
+		}
+	}
+	return matches
+}
+
+// PassesAt reports whether text meets a diagnostic keyword threshold. Runtime
+// adapter gating should continue to call Passes so it stays tied to the shared
+// infrastructure/signal contract.
+func PassesAt(text string, minKeywordMatches int) (ok bool, confidence float64, matches int) {
+	if minKeywordMatches <= 0 {
+		minKeywordMatches = 1
+	}
+	matches = MatchCount(text)
+	if matches >= minKeywordMatches {
+		return true, signal.RequiredConfidence, matches
+	}
+	return false, 0, matches
+}
+
 // Passes reports whether text meets the unified threshold contract defined in
 // infrastructure/signal (≥MinKeywordMatches distinct keyword hits, confidence
 // ≥RequiredConfidence). The shared helper keeps this service in lock-step
 // with the classifier's need_signal heuristic — see docs/specs/lead-pipeline.md.
 func Passes(text string) (ok bool, confidence float64, matches int) {
-	phrases := make([]string, 0, len(keywords))
-	for _, kw := range keywords {
-		phrases = append(phrases, kw.phrase)
-	}
-	return signal.Evaluate(strings.ToLower(text), phrases)
+	return signal.Evaluate(strings.ToLower(text), Phrases())
 }
