@@ -28,7 +28,27 @@ pre-commit:
         done
         for svc in $changed_services; do
           echo "Linting $svc..."
-          (cd "$svc" && GOWORK=off golangci-lint run --config ../.golangci.yml ./...)
+          if [ "$svc" = "infrastructure" ]; then
+            pkgs=""
+            for f in {staged_files}; do
+              case "$f" in
+                infrastructure/*)
+                  rel="${f#infrastructure/}"
+                  [ -z "$rel" ] && continue
+                  dir=$(echo "$rel" | cut -d/ -f1)
+                  [ ! -d "infrastructure/$dir" ] && continue
+                  case " $pkgs " in
+                    *" ./$dir/..."*) ;;
+                    *) pkgs="$pkgs ./$dir/..." ;;
+                  esac
+                  ;;
+              esac
+            done
+            if [ -z "$pkgs" ]; then pkgs="./..."; fi
+            (cd "$svc" && GOWORK=off golangci-lint run --config ../.golangci.yml $pkgs)
+          else
+            (cd "$svc" && GOWORK=off golangci-lint run --config ../.golangci.yml ./...)
+          fi
         done
 
     dashboard-lint:
@@ -55,6 +75,12 @@ pre-push:
 
     spec-drift:
       run: tools/drift-detector.sh 5
+
+    ports-ssot:
+      run: task ports:check
+
+    esmapping-ssot:
+      run: task esmapping:check
 
     layer-check:
       run: bash tools/layer-checker.sh

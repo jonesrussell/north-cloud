@@ -75,6 +75,7 @@ CHANGED_FILES=$(echo "$CHANGED_FILES" | grep -v 'go\.mod$' || true)
 CHANGED_FILES=$(echo "$CHANGED_FILES" | grep -v 'go\.sum$' || true)
 CHANGED_FILES=$(echo "$CHANGED_FILES" | grep -v '/Dockerfile$' || true)
 CHANGED_FILES=$(echo "$CHANGED_FILES" | grep -v '/testdata/' || true)
+CHANGED_FILES=$(echo "$CHANGED_FILES" | grep -v '/package\.json$' || true)
 CHANGED_FILES=$(echo "$CHANGED_FILES" | grep -v '/package-lock\.json$' || true)
 CHANGED_FILES=$(echo "$CHANGED_FILES" | grep -v '/yarn\.lock$' || true)
 CHANGED_FILES=$(echo "$CHANGED_FILES" | grep -v '/pnpm-lock\.yaml$' || true)
@@ -87,6 +88,12 @@ fi
 
 echo "=== Drift Detector ==="
 echo "Checking last $COMMITS commits for spec drift..."
+echo ""
+
+echo "=== ES mapping SSoT ==="
+if ! "$REPO_ROOT/tools/esmapping-ssot-check.sh"; then
+	exit 1
+fi
 echo ""
 
 declare -A AFFECTED_SPECS=()
@@ -157,6 +164,7 @@ for spec in $(printf '%s\n' "${!AFFECTED_SPECS[@]}" | sort); do
           ':!*/.layers' \
           ':!*_test.go' \
           ':!*/testdata/*' \
+          ':!*/package.json' \
           ':!*/package-lock.json' \
           ':!*/yarn.lock' \
           ':!*/pnpm-lock.yaml' \
@@ -177,7 +185,7 @@ for spec in $(printf '%s\n' "${!AFFECTED_SPECS[@]}" | sort); do
       if [ -n "$spec_commit_hash" ]; then
         for pattern in "${!PATTERN_TO_SPEC[@]}"; do
           if [ "${PATTERN_TO_SPEC[$pattern]}" = "$spec" ]; then
-            git diff --name-only "$spec_commit_hash"..HEAD -- "$pattern" 2>/dev/null | grep -v '/vendor/' | while read -r changed; do
+            git diff --name-only "$spec_commit_hash"..HEAD -- "$pattern" 2>/dev/null | (grep -v '/vendor/' || true) | while read -r changed; do
               echo "      - $changed"
             done
           fi
@@ -194,7 +202,7 @@ for spec in $(printf '%s\n' "${!AFFECTED_SPECS[@]}" | sort); do
   fi
 
   echo "    Changed files:"
-  echo -e "${SPEC_CHANGES[$spec]}" | sort -u | grep -v '^[[:space:]]*$' | head -10 | sed 's/^/      /'
+  echo -e "${SPEC_CHANGES[$spec]}" | sort -u | (grep -v '^[[:space:]]*$' || true) | head -10 | sed 's/^/      /'
 done
 
 echo ""

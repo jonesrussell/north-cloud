@@ -1,5 +1,7 @@
 package mappings
 
+import "github.com/jonesrussell/north-cloud/infrastructure/esmapping"
+
 // getCommunityExternalIDsMapping returns the external_ids nested object mapping.
 func getCommunityExternalIDsMapping() map[string]any {
 	return map[string]any{
@@ -66,11 +68,11 @@ func getCommunityProperties() map[string]any {
 		},
 		"created_at": map[string]any{
 			"type":   "date",
-			"format": esDateFormat,
+			"format": esmapping.ESDateFormat,
 		},
 		"updated_at": map[string]any{
 			"type":   "date",
-			"format": esDateFormat,
+			"format": esmapping.ESDateFormat,
 		},
 	}
 }

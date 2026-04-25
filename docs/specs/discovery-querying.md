@@ -1,6 +1,6 @@
 # Discovery & Querying Specification
 
-> Last verified: 2026-03-24 (add index-manager and search test coverage)
+> Last verified: 2026-04-22 (Phase 1B: index-manager ES mappings defer to `infrastructure/esmapping`)
 
 Covers the search service (full-text queries) and index-manager (ES lifecycle, mappings, aggregations).
 
@@ -16,8 +16,9 @@ Covers the search service (full-text queries) and index-manager (ES lifecycle, m
 | `index-manager/internal/service/index_service.go` | Index CRUD, naming, metadata |
 | `index-manager/internal/service/aggregation_service.go` | Crime, mining, location, overview aggregations |
 | `index-manager/internal/elasticsearch/index_manager.go` | ES index operations |
-| `index-manager/internal/elasticsearch/mappings/classified_content.go` | Classified content mapping definition |
-| `index-manager/internal/elasticsearch/mappings/raw_content.go` | Raw content mapping definition |
+| `infrastructure/esmapping/` | SSoT Elasticsearch `raw_content` / `classified_content` property maps (shared with classifier) |
+| `index-manager/internal/elasticsearch/mappings/classified_content.go` | Thin wrapper: delegates to `esmapping` for classified index mapping JSON |
+| `index-manager/internal/elasticsearch/mappings/raw_content.go` | Thin wrapper: delegates to `esmapping` for raw index mapping JSON |
 | `index-manager/internal/elasticsearch/mappings/versions.go` | RawContentMappingVersion, ClassifiedContentMappingVersion |
 | `index-manager/migrations/001_create_index_metadata.up.sql` | index_metadata + migration_history tables |
 | `search/internal/telemetry/telemetry.go` | Search-specific Prometheus metrics |
