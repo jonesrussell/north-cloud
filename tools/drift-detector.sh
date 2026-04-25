@@ -75,6 +75,7 @@ CHANGED_FILES=$(echo "$CHANGED_FILES" | grep -v 'go\.mod$' || true)
 CHANGED_FILES=$(echo "$CHANGED_FILES" | grep -v 'go\.sum$' || true)
 CHANGED_FILES=$(echo "$CHANGED_FILES" | grep -v '/Dockerfile$' || true)
 CHANGED_FILES=$(echo "$CHANGED_FILES" | grep -v '/testdata/' || true)
+CHANGED_FILES=$(echo "$CHANGED_FILES" | grep -v '/package\.json$' || true)
 CHANGED_FILES=$(echo "$CHANGED_FILES" | grep -v '/package-lock\.json$' || true)
 CHANGED_FILES=$(echo "$CHANGED_FILES" | grep -v '/yarn\.lock$' || true)
 CHANGED_FILES=$(echo "$CHANGED_FILES" | grep -v '/pnpm-lock\.yaml$' || true)
@@ -163,6 +164,7 @@ for spec in $(printf '%s\n' "${!AFFECTED_SPECS[@]}" | sort); do
           ':!*/.layers' \
           ':!*_test.go' \
           ':!*/testdata/*' \
+          ':!*/package.json' \
           ':!*/package-lock.json' \
           ':!*/yarn.lock' \
           ':!*/pnpm-lock.yaml' \
