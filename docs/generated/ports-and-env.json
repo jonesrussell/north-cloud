@@ -1539,7 +1539,8 @@
         "NORTHOPS_URL",
         "PIPELINE_API_KEY",
         "RENDERER_ENABLED",
-        "RENDERER_URL"
+        "RENDERER_URL",
+        "SIGNAL_DB_PATH"
       ],
       "host_port": null,
       "service": "signal-crawler"

@@ -7,6 +7,9 @@ Requires=docker.service
 [Service]
 Type=oneshot
 WorkingDirectory=/home/deployer/north-cloud
+EnvironmentFile=-/home/deployer/north-cloud/.env
+EnvironmentFile=-/home/deployer/north-cloud/image-tags.env
+ExecStartPre=-/usr/bin/docker compose -f docker-compose.base.yml -f docker-compose.prod.yml pull signal-crawler
 ExecStart=/usr/bin/docker compose -f docker-compose.base.yml -f docker-compose.prod.yml run --rm signal-crawler
 StandardOutput=journal
 StandardError=journal

@@ -820,6 +820,7 @@ services:
     environment:
       - NORTHOPS_URL=${NORTHOPS_URL}
       - PIPELINE_API_KEY=${PIPELINE_API_KEY}
+      - SIGNAL_DB_PATH=${SIGNAL_DB_PATH:-data/seen.db}
       - RENDERER_URL=http://playwright-renderer:8095
       - RENDERER_ENABLED=true
       # GC Jobs blocks DigitalOcean/ASN cloud egress; skip until a residential proxy is configured.

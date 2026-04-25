@@ -32,6 +32,28 @@ gh run list --workflow=deploy.yml
 gh run view <run-id> --log
 ```
 
+### Signal crawler timer
+
+The production `signal-crawler` job is a Docker Compose oneshot managed by
+`~/dev/northcloud-ansible`, not a hand-maintained cron entry. The timer runs
+daily at 06:00 UTC and uses `image-tags.env` so it follows the same
+`SIGNAL_CRAWLER_TAG` that CI wrote during deploy.
+
+```bash
+# Apply or refresh the systemd unit, timer, data directory, and .env values
+cd ~/dev/northcloud-ansible
+ansible-playbook playbooks/site.yml --tags north-cloud
+
+# Inspect schedule and recent runs on the VPS
+ssh deployer@northcloud.one
+systemctl list-timers signal-crawler.timer
+journalctl -u signal-crawler.service -n 100 --no-pager
+
+# Run once without waiting for the next scheduled scan
+sudo systemctl start signal-crawler.service
+journalctl -u signal-crawler.service -f
+```
+
 ---
 
 ## Rollback Procedures
