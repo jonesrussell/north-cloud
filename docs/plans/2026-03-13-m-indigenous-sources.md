@@ -124,9 +124,14 @@ global-indigenous-sources.json
 ## Testing Strategy
 
 - **Source-manager**: Unit tests for JSON parsing, validation, and source conversion
+- **Seed data**: `TestGlobalIndigenousSourcesSeedFile` validates `scripts/global-indigenous-sources.json` parses, each source passes importer validation, and source names remain unique
 - **Crawler**: Existing render_mode tests confirm static/dynamic routing (no new code needed)
 - **Publisher**: Existing region routing tests cover all 7 regions (verified by `TestAllowedRegionsCount`)
 - **Integration**: Manual verification via MCP tools after deployment
+
+## 2026-04-25 Feed Coverage Update (#631)
+
+Issue #631 identified several indigenous sources that relied on crawl-only ingestion because they had no configured feed URL. CBC Indigenous, Windspeaker, and First Nations Drum remain blocked on proxy routing because production fetches were network-blocked or forbidden. A focused feed discovery pass found a live Cronkite News Indigenous category RSS endpoint, so `scripts/global-indigenous-sources.json` now includes `Cronkite News Indigenous` with `rss` set to `https://cronkitenews.azpbs.org/category/indigenous/feed/`. Importing the seed file will onboard it as a feed-polled indigenous source with the standard 60-minute poll interval.
 
 ## Future Extensions
 

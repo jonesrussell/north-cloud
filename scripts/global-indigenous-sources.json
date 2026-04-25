@@ -27,6 +27,7 @@
   {"name": "Navajo Times", "homepage": "https://navajotimes.com", "rss": "", "region": "us", "country": "US", "language": "en", "render_mode": "static"},
   {"name": "Lakota Times", "homepage": "https://www.lakotatimes.com", "rss": "", "region": "us", "country": "US", "language": "en", "render_mode": "static"},
   {"name": "Native News Online", "homepage": "https://nativenewsonline.net", "rss": "https://nativenewsonline.net/feed", "region": "us", "country": "US", "language": "en", "render_mode": "static"},
+  {"name": "Cronkite News Indigenous", "homepage": "https://cronkitenews.azpbs.org/category/indigenous/", "rss": "https://cronkitenews.azpbs.org/category/indigenous/feed/", "region": "us", "country": "US", "language": "en", "render_mode": "static"},
   {"name": "High Country News Indigenous Affairs", "homepage": "https://www.hcn.org/topics/indigenous-affairs", "rss": "", "region": "us", "country": "US", "language": "en", "render_mode": "static"},
   {"name": "Tribal Business News", "homepage": "https://tribalbusinessnews.com", "rss": "https://tribalbusinessnews.com/feed/", "region": "us", "country": "US", "language": "en", "render_mode": "static"},
   {"name": "The Cherokee Phoenix", "homepage": "https://www.cherokeephoenix.org", "rss": "", "region": "us", "country": "US", "language": "en", "render_mode": "static"},
