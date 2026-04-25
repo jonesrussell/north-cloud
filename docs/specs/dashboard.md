@@ -50,7 +50,7 @@ The dashboard does not call backend services directly. In development, Vite prox
 
 Core TypeScript interfaces defined in `src/types/`:
 
-- **Source**: id, name, url, selectors, enabled
+- **Source**: id, name, url, selectors, enabled, disable_reason
 - **Channel**: id, name, description, enabled
 - **Route**: id, source_id, channel_id, min_quality_score, topics, enabled
 
@@ -63,6 +63,8 @@ Verification routes:
 - `/operations/verification`
 - `/operations/verification/stats`
 - `/operations/verification/:type/:id`
+
+Source edit forms require a disable reason before submitting a source with `enabled=false`; the value is sent as `disable_reason` so Source Manager can preserve the disable audit trail.
 
 ---
 
