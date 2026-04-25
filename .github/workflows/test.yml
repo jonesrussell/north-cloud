@@ -131,7 +131,12 @@ jobs:
       - name: Install golangci-lint
         if: needs.detect-changes.outputs.has_go == 'true' || needs.detect-changes.outputs.run_all == 'true'
         run: |
-          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b /usr/local/bin v2.10.1
+          GOLANGCI_LINT_VERSION="$(awk '$1 == "golangci-lint" { print $2; exit }' .tool-versions)"
+          if [ -z "$GOLANGCI_LINT_VERSION" ]; then
+            echo "golangci-lint version missing from .tool-versions" >&2
+            exit 1
+          fi
+          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b /usr/local/bin "v${GOLANGCI_LINT_VERSION#v}"
 
       - name: Install frontend dependencies
         if: needs.detect-changes.outputs.has_frontend == 'true' || needs.detect-changes.outputs.run_all == 'true'

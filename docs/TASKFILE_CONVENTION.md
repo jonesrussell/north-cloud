@@ -44,6 +44,8 @@ Each service has its own `Taskfile.yml`. The root `Taskfile.yml` only delegates 
 
 The root `install:tools` task is the canonical way to install dev tools (golangci-lint/v2, goimports, migrate, govulncheck). Service-level `install:tools` may additionally install Air for local hot reload.
 
+`golangci-lint` is pinned in `.tool-versions`; CI reads that pin before installing the linter. Keep the root `install:tools` golangci-lint version aligned with `.tool-versions` so `task lint:force` and CI use the same analyzer version.
+
 ## Root Taskfile
 
 - Root tasks are named by operation and service: `lint:SERVICE`, `test:SERVICE`, `test:cover:SERVICE`, `test:race:SERVICE`, `vuln:SERVICE`, `migrate:SERVICE` (for services with DB).

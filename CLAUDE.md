@@ -78,7 +78,7 @@ Sources → [Crawler] → ES raw_content → [Classifier + ML Sidecars] → ES c
 
 **Dev Postgres**: Single shared instance (7 DBs). Auto-creates via `infrastructure/postgres/init-dev.sql` on first startup. Re-init: `... down -v`.
 
-**Taskfile (Preferred)**: `task lint`, `task test`, `task test:cover` (all services). Per-service: `task lint:SERVICE`, `task test:SERVICE`. Migrations: `task migrate:up`, `task migrate:SERVICE`. Tools: `task install:tools`. Use `task lint:force` before pushing (cache-clean, matches CI). Changed-only: `task lint:changed`, `task ci:changed`. Spec drift: `task drift:check` checks for stale specs vs recent service changes. Ports/env SSOT: `task ports:check` (after compose changes, run `task ports:generate`).
+**Taskfile (Preferred)**: `task lint`, `task test`, `task test:cover` (all services). Per-service: `task lint:SERVICE`, `task test:SERVICE`. Migrations: `task migrate:up`, `task migrate:SERVICE`. Tools: `task install:tools` (golangci-lint version pinned in `.tool-versions`). Use `task lint:force` before pushing (cache-clean, matches CI). Changed-only: `task lint:changed`, `task ci:changed`. Spec drift: `task drift:check` checks for stale specs vs recent service changes. Ports/env SSOT: `task ports:check` (after compose changes, run `task ports:generate`).
 
 **Spec Drift**: `task drift:check` (checks last 5 commits). Runs automatically as first step of `task ci`, `task ci:changed`, `task ci:force`. Also runs in lefthook pre-push and CI. Fails if any spec is stale or missing.
 
