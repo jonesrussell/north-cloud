@@ -1,6 +1,6 @@
 # Lead / Signal Pipeline Spec
 
-> Last verified: 2026-04-25 (signal-crawler `gcjobs` is disabled in prod on the DigitalOcean VPS via `JOBS_GCJOBS_DISABLED=true`; local/residential runs keep it enabled by default — #617)
+> Last verified: 2026-04-25 (signal-crawler runs in prod as a Docker Compose oneshot via an Ansible-managed systemd timer; `gcjobs` is disabled on the DigitalOcean VPS via `JOBS_GCJOBS_DISABLED=true`; local/residential runs keep it enabled by default — #617, #588)
 
 ## Overview
 
@@ -133,6 +133,14 @@ The phrase "a new lead source" should map to exactly one row above. If it does n
 ### signal-crawler production source toggles
 
 `signal-crawler` keeps GC Jobs support in the binary for local and residential-network validation, but production disables that board with `JOBS_GCJOBS_DISABLED=true` in `docker-compose.prod.yml`. GC Jobs times out from the DigitalOcean VPS because the source appears to block DigitalOcean/cloud ASN egress. Until a residential proxy is configured, production runs skip the GC Jobs board and continue with RemoteOK, WeWorkRemotely, HN Hiring, WorkBC, HN, and funding sources.
+
+### signal-crawler production schedule
+
+Production does not build or run `signal-crawler` directly on the VPS. CI builds and pushes `docker.io/jonesrussell/signal-crawler:${SIGNAL_CRAWLER_TAG:-latest}`, then the deploy flow records changed image tags in `/home/deployer/north-cloud/image-tags.env`.
+
+The daily production scan is owned by `~/dev/northcloud-ansible` through `roles/north-cloud/templates/signal-crawler.service.j2` and `signal-crawler.timer.j2`. The timer runs at 06:00 UTC, starts the Compose oneshot service, sources both `/home/deployer/north-cloud/.env` and `image-tags.env`, and uses `docker compose -f docker-compose.base.yml -f docker-compose.prod.yml run --rm signal-crawler`. The service also best-effort pulls the tagged `signal-crawler` image before running so scheduled scans follow the image tag manifest while still using a locally cached image if Docker Hub is temporarily unavailable.
+
+Required production environment for this oneshot is `NORTHOPS_URL`, `PIPELINE_API_KEY`, and `SIGNAL_DB_PATH`; the default dedup path is `data/seen.db`, mounted from `/home/deployer/north-cloud/signal-crawler/data` into `/app/data`.
 
 ---
 
