@@ -60,20 +60,7 @@ flowchart TD
 
 ## Services Reference
 
-| Service | Port | Database | Description |
-|---------|------|----------|-------------|
-| source-manager | 8050 | postgres-source-manager | Manage content sources and CSS selector configs |
-| crawler | 8060 | postgres-crawler | Interval-based web crawler with job scheduler |
-| auth | 8040 | none | Username/password to JWT token issuer (24h tokens) |
-| classifier | 8071 | postgres-classifier | Classifies raw content: type, quality, topics, ML sub-classifiers |
-| publisher | 8070 | postgres-publisher | Polls classified content, routes to Redis via 8 layered domains |
-| index-manager | 8090 | postgres-index-manager | Elasticsearch index lifecycle and document management |
-| search | 8092 (dev) / 8090 (prod via nginx) | none | Full-text search across all `*_classified_content` indexes |
-| dashboard | 3002 | none | Vue.js 3 management UI with JWT auth |
-| click-tracker | 8093 | postgres-click-tracker | Tracks content click events for engagement analytics |
-| pipeline | 8075 | postgres-pipeline | Orchestrates multi-stage content processing pipelines |
-| mcp-north-cloud | stdio | none | MCP server exposing 27 tools for AI integration |
-| nc-http-proxy | 8055 | none | HTTP replay proxy for deterministic crawler testing |
+See [`docs/generated/ports-and-env.md`](docs/generated/ports-and-env.md) — generated from compose files (host vs container port axes, per overlay).
 
 **Infrastructure services**:
 

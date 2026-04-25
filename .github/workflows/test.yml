@@ -24,6 +24,21 @@ jobs:
       - name: Check spec drift
         run: tools/drift-detector.sh 20
 
+  ports-ssot:
+    name: Ports / env SSOT
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Task runner
+        run: |
+          sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b ~/.local/bin v3.48.0
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: Verify compose-derived ports docs
+        run: task ports:check
+
   detect-changes:
     name: Detect Changed Services
     runs-on: ubuntu-latest

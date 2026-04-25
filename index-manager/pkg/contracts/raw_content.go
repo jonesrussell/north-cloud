@@ -1,14 +1,12 @@
 package contracts
 
-import (
-	"github.com/jonesrussell/north-cloud/index-manager/internal/elasticsearch/mappings"
-)
+import "github.com/jonesrussell/north-cloud/infrastructure/esmapping"
 
 // RawContentMapping returns the canonical raw_content index mapping as a
 // contract Mapping. Services that write to or read from *_raw_content indexes
 // should test against this mapping to ensure field compatibility.
 func RawContentMapping() Mapping {
-	full := mappings.GetRawContentMapping(1, 0)
+	full := esmapping.RawContentIndex(1, 0)
 	return extractProperties(full)
 }
 
@@ -17,5 +15,5 @@ func RawContentMapping() Mapping {
 // so that jsonld_raw and other fields use the canonical mapping (e.g. enabled:
 // false for jsonld_raw to avoid dynamic mapping conflicts).
 func RawContentIndexMapping() map[string]any {
-	return mappings.GetRawContentMapping(1, 0)
+	return esmapping.RawContentIndex(1, 0)
 }

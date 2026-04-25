@@ -224,7 +224,7 @@ func TestGetRawContentMapping_MetaSubFields(t *testing.T) {
 	expectedMetaFields := []string{
 		"twitter_card", "twitter_site", "og_image_width", "og_image_height",
 		"og_site_name", "created_at", "updated_at", "article_opinion", "article_content_tier",
-		"detected_content_type",
+		"detected_content_type", "page_type", "indigenous_region",
 	}
 	for _, field := range expectedMetaFields {
 		if _, exists := metaProps[field]; !exists {
@@ -287,11 +287,14 @@ func TestGetClassifiedContentMapping_ClassificationFields(t *testing.T) {
 	properties := mapping["mappings"].(map[string]any)["properties"].(map[string]any)
 
 	classificationFields := []string{
-		"content_type", "content_subtype", "quality_score", "quality_factors",
+		"content_type", "content_subtype", "type_confidence", "type_method",
+		"quality_score", "quality_factors",
 		"topics", "topic_scores", "crime", "location", "mining", "coforge",
-		"indigenous", "recipe", "job",
+		"indigenous", "recipe", "job", "entertainment", "rfp", "need_signal",
+		"low_quality", "body", "source",
 		"source_reputation", "source_category",
 		"classifier_version", "classification_method", "model_version", "confidence",
+		"processing_time_ms",
 	}
 
 	for _, field := range classificationFields {
@@ -317,8 +320,10 @@ func TestGetClassifiedContentMapping_NestedCrimeFields(t *testing.T) {
 	}
 
 	expectedCrimeFields := []string{
-		"sub_label", "primary_crime_type", "relevance", "crime_types",
+		"sub_label", "primary_crime_type", "relevance", "street_crime_relevance", "crime_types",
+		"location_specificity", "category_pages",
 		"final_confidence", "homepage_eligible", "review_required", "model_version",
+		"decision_path", "ml_confidence_raw", "rule_triggered", "processing_time_ms",
 	}
 	for _, field := range expectedCrimeFields {
 		if _, exists := crimeProps[field]; !exists {
@@ -368,6 +373,8 @@ func TestGetClassifiedContentMapping_NestedMiningFields(t *testing.T) {
 	expectedMiningFields := []string{
 		"relevance", "mining_stage", "commodities", "location",
 		"final_confidence", "review_required", "model_version",
+		"extraction_method", "drill_results",
+		"decision_path", "ml_confidence_raw", "rule_triggered", "processing_time_ms",
 	}
 	for _, field := range expectedMiningFields {
 		if _, exists := miningProps[field]; !exists {
@@ -394,6 +401,7 @@ func TestGetClassifiedContentMapping_NestedCoforgeFields(t *testing.T) {
 	expectedCoforgeFields := []string{
 		"relevance", "relevance_confidence", "audience", "audience_confidence",
 		"topics", "industries", "final_confidence", "review_required", "model_version",
+		"decision_path", "ml_confidence_raw", "rule_triggered", "processing_time_ms",
 	}
 	for _, field := range expectedCoforgeFields {
 		if _, exists := coforgeProps[field]; !exists {
@@ -422,6 +430,7 @@ func TestGetClassifiedContentMapping_NestedRecipeFields(t *testing.T) {
 		"prep_time_minutes", "cook_time_minutes", "total_time_minutes",
 		"servings", "category", "cuisine", "calories", "image_url",
 		"rating", "rating_count",
+		"decision_path", "ml_confidence_raw", "rule_triggered", "processing_time_ms",
 	}
 	for _, field := range expectedRecipeFields {
 		if _, exists := recipeProps[field]; !exists {
@@ -450,6 +459,7 @@ func TestGetClassifiedContentMapping_NestedJobFields(t *testing.T) {
 		"salary_min", "salary_max", "salary_currency", "employment_type",
 		"posted_date", "expires_date", "description", "industry",
 		"qualifications", "benefits",
+		"decision_path", "ml_confidence_raw", "rule_triggered", "processing_time_ms",
 	}
 	for _, field := range expectedJobFields {
 		if _, exists := jobProps[field]; !exists {
@@ -488,6 +498,8 @@ func TestGetClassifiedContentMapping_TextFieldsUseEnglishAnalyzer(t *testing.T) 
 	properties := mapping["mappings"].(map[string]any)["properties"].(map[string]any)
 	assertFieldHasAnalyzer(t, properties, "title", "english_content")
 	assertFieldHasAnalyzer(t, properties, "raw_text", "english_content")
+	assertFieldHasAnalyzer(t, properties, "body", "english_content")
+	assertFieldHasAnalyzer(t, properties, "content_type", "english_content")
 }
 
 // --- Version Constants ---

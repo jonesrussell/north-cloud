@@ -80,8 +80,12 @@ func (s *IntervalScheduler) executeJob(job *domain.Job) {
 
 	s.metrics.IncrementRunning()
 
-	// Execute in goroutine
-	go s.runJob(jobExec)
+	// Run in a goroutine; defer cancel releases the WithTimeout timer when runJob returns
+	// (idempotent if CancelJob or shutdown already called cancel).
+	go func() {
+		defer cancel()
+		s.runJob(jobExec)
+	}()
 }
 
 // writeLog writes a log entry if the log writer is available.

@@ -78,7 +78,7 @@ Sources → [Crawler] → ES raw_content → [Classifier + ML Sidecars] → ES c
 
 **Dev Postgres**: Single shared instance (7 DBs). Auto-creates via `infrastructure/postgres/init-dev.sql` on first startup. Re-init: `... down -v`.
 
-**Taskfile (Preferred)**: `task lint`, `task test`, `task test:cover` (all services). Per-service: `task lint:SERVICE`, `task test:SERVICE`. Migrations: `task migrate:up`, `task migrate:SERVICE`. Tools: `task install:tools`. Use `task lint:force` before pushing (cache-clean, matches CI). Changed-only: `task lint:changed`, `task ci:changed`. Spec drift: `task drift:check` checks for stale specs vs recent service changes.
+**Taskfile (Preferred)**: `task lint`, `task test`, `task test:cover` (all services). Per-service: `task lint:SERVICE`, `task test:SERVICE`. Migrations: `task migrate:up`, `task migrate:SERVICE`. Tools: `task install:tools`. Use `task lint:force` before pushing (cache-clean, matches CI). Changed-only: `task lint:changed`, `task ci:changed`. Spec drift: `task drift:check` checks for stale specs vs recent service changes. Ports/env SSOT: `task ports:check` (after compose changes, run `task ports:generate`).
 
 **Spec Drift**: `task drift:check` (checks last 5 commits). Runs automatically as first step of `task ci`, `task ci:changed`, `task ci:force`. Also runs in lefthook pre-push and CI. Fails if any spec is stale or missing.
 
@@ -92,7 +92,7 @@ Sources → [Crawler] → ES raw_content → [Classifier + ML Sidecars] → ES c
 
 ## Service Ports
 
-auth:8040 | source-manager:8050 | crawler:8080 | publisher:8070 | classifier:8070 | pipeline:8075 | nc-http-proxy:8055 | index-manager:8090 | search:8092(dev)/8090(prod) | click-tracker:8093 | rfp-ingestor:8095 | ai-observer:8096 | dashboard:3002 | render-worker:3000. ML sidecars under `ml-sidecars/`: mining-ml:8077, indigenous-ml:8081.
+See [`docs/generated/ports-and-env.md`](docs/generated/ports-and-env.md) — generated from compose files (container vs host bindings, per overlay).
 
 ---
 
@@ -123,7 +123,7 @@ auth:8040 | source-manager:8050 | crawler:8080 | publisher:8070 | classifier:807
 Pre-commit hooks run automatically via [lefthook](https://github.com/evilmartians/lefthook). Config: `lefthook.yml`.
 
 - **pre-commit**: `go-fmt` (auto-fix), `go-lint` (golangci-lint), `dashboard-lint` — only changed services
-- **pre-push**: `go-test` (only changed services), `spec-drift` (drift-detector check), `layer-check` (layer boundary check)
+- **pre-push**: `go-test` (only changed services), `spec-drift` (drift-detector check), `ports-ssot` (`task ports:check`), `layer-check` (layer boundary check)
 - **Install**: `go install github.com/evilmartians/lefthook@latest && lefthook install`
 - **Skip (emergency)**: `git commit --no-verify`
 
@@ -206,7 +206,7 @@ See `ARCHITECTURE.md` for the full bootstrap pattern reference.
 
 **Pre-push hook** (lefthook): Runs `tools/drift-detector.sh` to check for stale specs before push.
 
-**CI pipeline**: `task drift:check` runs first (before lint) in `ci:`, `ci:changed:`, and `ci:force:` tasks. GitHub Actions also runs a parallel `spec-drift` job.
+**CI pipeline**: `task drift:check` runs first (before lint) in `ci:`, `ci:changed:`, and `ci:force:` tasks, followed by `task ports:check`. GitHub Actions also runs parallel `spec-drift` and `ports-ssot` jobs.
 
 **Pushing**: Always use `git push -u origin {branch-name}` — never force push to main
 
