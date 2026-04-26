@@ -1,6 +1,6 @@
 # Shared Infrastructure Specification
 
-> Last verified: 2026-04-22 (Phase 1B: `infrastructure/esmapping` — SSoT ES `raw_content` / `classified_content` field maps; 2026-04-20: `infrastructure/signal.Evaluate` need-signal gate — see #638)
+> Last verified: 2026-04-26 (`infrastructure/esmapping` adds classified_content `icp` object for sector alignment; 2026-04-20: `infrastructure/signal.Evaluate` need-signal gate — see #638)
 
 Covers the `infrastructure/` module: config loading, logging, database clients, middleware, events, and utilities used by all services.
 
@@ -36,6 +36,14 @@ Covers the `infrastructure/` module: config loading, logging, database clients, 
 | `infrastructure/signal/org_normalize.go` | Organization name canonicalization + attribution fallback (explicit → email → URL) |
 
 ## Interface Signatures
+
+### Elasticsearch Mapping SSoT (`esmapping`)
+```go
+func RawContentIndex(shards, replicas int) map[string]any
+func ClassifiedContentIndex(shards, replicas int) map[string]any
+```
+
+`ClassifiedContentIndex` is the canonical property map consumed by classifier and index-manager. It includes the top-level `icp` object for `sector_alignment`: `icp.segments` is nested with `segment` (keyword), `score` (float), and `matched_keywords` (keyword), plus `icp.model_version` (keyword). Existing classified indexes can receive this object as an additive `_mapping` update; no reindex is required.
 
 ### Logger (`logger/logger.go`)
 ```go

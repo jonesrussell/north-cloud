@@ -120,6 +120,14 @@ Examples:
   "location": { "type": "object", "properties": {
     "city": "keyword", "province": "keyword",
     "country": "keyword", "specificity": "keyword"
+  }},
+  "icp": { "type": "object", "properties": {
+    "segments": { "type": "nested", "properties": {
+      "segment": "keyword",
+      "score": "float",
+      "matched_keywords": "keyword"
+    }},
+    "model_version": "keyword"
   }}
 }
 ```
@@ -128,7 +136,7 @@ Helper functions: `getCrimeMapping()`, `getMiningMapping()`, `getLocationMapping
 ### Mapping Versions
 ```go
 RawContentMappingVersion        = "2.0.0"
-ClassifiedContentMappingVersion = "2.2.0"
+ClassifiedContentMappingVersion = "2.3.0"
 ```
 
 ### PostgreSQL Tables (index-manager)
