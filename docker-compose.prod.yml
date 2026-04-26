@@ -256,6 +256,7 @@ services:
       POSTGRES_SSLMODE: disable
       ELASTICSEARCH_URL: http://elasticsearch:9200
       ES_URL: http://elasticsearch:9200
+      SOURCE_MANAGER_URL: http://source-manager:8050
       REDIS_URL: ${REDIS_HOST:-redis}:6379
       REDIS_PASSWORD: "${REDIS_PASSWORD:-}"
       APP_DEBUG: "false"
@@ -272,6 +273,8 @@ services:
       # Validated 2026-03-23: 6/6 test cases correct (core, peripheral, not, false-positive, overlap, global).
       INDIGENOUS_ENABLED: "${INDIGENOUS_ENABLED:-true}"
       INDIGENOUS_ML_SERVICE_URL: http://indigenous-ml:8000
+      SECTOR_ALIGNMENT_ENABLED: "${SECTOR_ALIGNMENT_ENABLED:-false}"
+      SECTOR_ALIGNMENT_REFRESH_INTERVAL: "${SECTOR_ALIGNMENT_REFRESH_INTERVAL:-30s}"
       RFP_ENABLED: "true"
       PIPELINE_URL: http://pipeline:8075
       AUTH_INTERNAL_SECRET: "${AUTH_INTERNAL_SECRET:-}"

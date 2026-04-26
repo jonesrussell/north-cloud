@@ -115,7 +115,10 @@
         "RECIPE_ENABLED",
         "REDIS_PASSWORD",
         "REDIS_URL",
-        "RFP_ENABLED"
+        "RFP_ENABLED",
+        "SECTOR_ALIGNMENT_ENABLED",
+        "SECTOR_ALIGNMENT_REFRESH_INTERVAL",
+        "SOURCE_MANAGER_URL"
       ],
       "host_port": "${CLASSIFIER_PPROF_PORT:-6062}",
       "service": "classifier"
@@ -159,7 +162,10 @@
         "RECIPE_ENABLED",
         "REDIS_PASSWORD",
         "REDIS_URL",
-        "RFP_ENABLED"
+        "RFP_ENABLED",
+        "SECTOR_ALIGNMENT_ENABLED",
+        "SECTOR_ALIGNMENT_REFRESH_INTERVAL",
+        "SOURCE_MANAGER_URL"
       ],
       "host_port": "${CLASSIFIER_PORT:-8071}",
       "service": "classifier"
@@ -1005,7 +1011,10 @@
         "POSTGRES_USER",
         "REDIS_PASSWORD",
         "REDIS_URL",
-        "RFP_ENABLED"
+        "RFP_ENABLED",
+        "SECTOR_ALIGNMENT_ENABLED",
+        "SECTOR_ALIGNMENT_REFRESH_INTERVAL",
+        "SOURCE_MANAGER_URL"
       ],
       "host_port": "8071",
       "service": "classifier"

@@ -276,6 +276,7 @@ services:
       POSTGRES_SSLMODE: disable
       ELASTICSEARCH_URL: http://elasticsearch:9200
       ES_URL: http://elasticsearch:9200
+      SOURCE_MANAGER_URL: http://source-manager:8050
       REDIS_URL: redis:6379
       REDIS_PASSWORD: "${REDIS_PASSWORD:-}"
       CLASSIFIER_PORT: 8070
@@ -295,6 +296,8 @@ services:
       # Keep disabled by default until the indigenous ML model has been validated locally.
       INDIGENOUS_ENABLED: "${INDIGENOUS_ENABLED:-false}"
       INDIGENOUS_ML_SERVICE_URL: "http://indigenous-ml:8000"
+      SECTOR_ALIGNMENT_ENABLED: "${SECTOR_ALIGNMENT_ENABLED:-false}"
+      SECTOR_ALIGNMENT_REFRESH_INTERVAL: "${SECTOR_ALIGNMENT_REFRESH_INTERVAL:-30s}"
       RECIPE_ENABLED: "${RECIPE_ENABLED:-true}"
       JOB_ENABLED: "${JOB_ENABLED:-true}"
       RFP_ENABLED: "${RFP_ENABLED:-false}"
