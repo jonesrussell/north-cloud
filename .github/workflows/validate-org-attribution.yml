@@ -9,11 +9,13 @@ on:
       threshold:
         description: 'Minimum populated rate (0.0 – 1.0)'
         required: false
-        # Threshold is intentionally low because the denominator includes
-        # pre-normalizer documents that cannot populate. Raise to 0.80+ once
-        # the --since timestamp filter lands (#663) and 14 consecutive days
-        # of clean validator runs on --since 24h have been recorded.
+        # Threshold remains low until 14 consecutive clean --since 24h runs
+        # have been recorded; then raise to 0.80+.
         default: '0.25'
+      since:
+        description: 'RFC3339 timestamp or duration window for crawled_at (for example 24h)'
+        required: false
+        default: '24h'
 
 permissions:
   contents: read
@@ -31,6 +33,7 @@ jobs:
       # Dereference workflow_dispatch inputs into env once, so shell steps only
       # ever see a plain variable and never ${{ }} expression interpolation.
       THRESHOLD_INPUT: ${{ inputs.threshold }}
+      SINCE_INPUT: ${{ inputs.since }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -54,6 +57,16 @@ jobs:
           fi
           echo "value=$T" >> "$GITHUB_OUTPUT"
 
+      - name: Validate and export since window
+        id: since
+        run: |
+          S="${SINCE_INPUT:-24h}"
+          if ! printf '%s' "$S" | grep -Eq '^([0-9]+(ns|us|ms|s|m|h))+$|^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})$'; then
+            echo "Invalid since value: $S (must be a Go duration like 24h or RFC3339 timestamp)" >&2
+            exit 1
+          fi
+          echo "value=$S" >> "$GITHUB_OUTPUT"
+
       - name: Configure SSH
         uses: webfactory/ssh-agent@v0.9.0
         with:
@@ -75,6 +88,7 @@ jobs:
           DEPLOY_SSH_PORT: ${{ secrets.DEPLOY_SSH_PORT || '22' }}
           DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
           THRESHOLD: ${{ steps.threshold.outputs.value }}
+          SINCE: ${{ steps.since.outputs.value }}
         run: |
           scp -P "${DEPLOY_SSH_PORT}" /tmp/validate-org-attribution \
             "${DEPLOY_USER}@${DEPLOY_HOST}:/tmp/validate-org-attribution"
@@ -83,13 +97,15 @@ jobs:
           OUTPUT=$(ssh -p "${DEPLOY_SSH_PORT}" "${DEPLOY_USER}@${DEPLOY_HOST}" \
             "docker run --rm --network=north-cloud_north-cloud-network \
               -v /tmp/validate-org-attribution:/validator:ro \
-              alpine:3 /validator -es http://elasticsearch:9200 -threshold ${THRESHOLD}" 2>&1)
+              alpine:3 /validator -es http://elasticsearch:9200 -threshold ${THRESHOLD} -since ${SINCE}" 2>&1)
           STATUS=$?
           set -e
 
           echo "$OUTPUT"
           {
             echo "## Organization attribution populated rate"
+            echo ""
+            echo "Window: \`${SINCE}\`"
             echo ""
             echo '```'
             echo "$OUTPUT"

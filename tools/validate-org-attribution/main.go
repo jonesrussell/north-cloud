@@ -16,6 +16,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -28,6 +29,7 @@ const (
 	defaultThreshold          = 0.80
 	defaultESURL              = "http://localhost:9200"
 	defaultHTTPTimeoutSeconds = 15
+	rangeField                = "crawled_at"
 	// Need-signal documents live under the same wildcard pattern as everything
 	// the classifier writes; the exists filter on `need_signal` narrows to
 	// lead-pipeline documents only.
@@ -49,27 +51,33 @@ func main() {
 	}
 	esURL := flag.String("es", esDefault, "Elasticsearch base URL")
 	threshold := flag.Float64("threshold", defaultThreshold, "Minimum populated rate (0.0–1.0)")
+	sinceRaw := flag.String("since", "", "Only count documents with crawled_at >= this RFC3339 timestamp or duration (for example 24h)")
 	flag.Parse()
 
 	client := &http.Client{Timeout: defaultHTTPTimeoutSeconds * time.Second}
 	ctx := context.Background()
 
-	needTotal, err := count(ctx, client, *esURL, needIndexPattern, existsQuery("need_signal"))
+	since, err := parseSince(*sinceRaw, time.Now)
+	if err != nil {
+		failf("invalid -since: %v", err)
+	}
+
+	needTotal, err := count(ctx, client, *esURL, needIndexPattern, countQuery("need_signal", since))
 	if err != nil {
 		failf("need-signal total: %v", err)
 	}
 	needPopulated, err := count(ctx, client, *esURL, needIndexPattern,
-		existsQuery("need_signal.organization_name_normalized"))
+		countQuery("need_signal.organization_name_normalized", since))
 	if err != nil {
 		failf("need-signal populated: %v", err)
 	}
 
-	rfpTotal, err := count(ctx, client, *esURL, rfpIndexName, existsQuery("rfp"))
+	rfpTotal, err := count(ctx, client, *esURL, rfpIndexName, countQuery("rfp", since))
 	if err != nil {
 		failf("rfp total: %v", err)
 	}
 	rfpPopulated, err := count(ctx, client, *esURL, rfpIndexName,
-		existsQuery("rfp.organization_name_normalized"))
+		countQuery("rfp.organization_name_normalized", since))
 	if err != nil {
 		failf("rfp populated: %v", err)
 	}
@@ -93,12 +101,35 @@ func main() {
 	fmt.Printf("PASS: populated_rate %.4f ≥ threshold %.4f\n", combined, *threshold)
 }
 
-func existsQuery(field string) map[string]any {
-	return map[string]any{
-		"query": map[string]any{
-			"exists": map[string]any{"field": field},
-		},
+func parseSince(raw string, now func() time.Time) (string, error) {
+	if raw == "" {
+		return "", nil
 	}
+	if parsed, err := time.Parse(time.RFC3339Nano, raw); err == nil {
+		return parsed.Format(time.RFC3339Nano), nil
+	}
+	duration, err := time.ParseDuration(raw)
+	if err != nil {
+		return "", fmt.Errorf("expected RFC3339 timestamp or duration: %w", err)
+	}
+	if duration <= 0 {
+		return "", errors.New("duration must be positive")
+	}
+	return now().UTC().Add(-duration).Format(time.RFC3339Nano), nil
+}
+
+func countQuery(existsField, since string) map[string]any {
+	filters := []map[string]any{
+		{"exists": map[string]any{"field": existsField}},
+	}
+	if since != "" {
+		filters = append(filters, map[string]any{
+			"range": map[string]any{
+				rangeField: map[string]any{"gte": since},
+			},
+		})
+	}
+	return map[string]any{"query": map[string]any{"bool": map[string]any{"filter": filters}}}
 }
 
 func count(ctx context.Context, client *http.Client, esURL, index string, body map[string]any) (int64, error) {
