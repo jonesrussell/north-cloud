@@ -122,7 +122,7 @@ See [`docs/generated/ports-and-env.md`](docs/generated/ports-and-env.md) — gen
 
 Pre-commit hooks run automatically via [lefthook](https://github.com/evilmartians/lefthook). Config: `lefthook.yml`.
 
-- **pre-commit**: `go-fmt` (auto-fix), `go-lint` (golangci-lint), `dashboard-lint` — only changed services
+- **pre-commit**: `go-fmt` (auto-fix), `go-lint` (golangci-lint scoped to changed package dirs), `dashboard-lint`
 - **pre-push**: `go-test` (only changed services), `spec-drift` (drift-detector check), `ports-ssot` (`task ports:check`), `layer-check` (layer boundary check)
 - **Install**: `go install github.com/evilmartians/lefthook@latest && lefthook install`
 - **Skip (emergency)**: `git commit --no-verify`
