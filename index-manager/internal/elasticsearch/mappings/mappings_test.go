@@ -291,7 +291,7 @@ func TestGetClassifiedContentMapping_ClassificationFields(t *testing.T) {
 		"quality_score", "quality_factors",
 		"topics", "topic_scores", "crime", "location", "mining", "coforge",
 		"indigenous", "recipe", "job", "entertainment", "rfp", "need_signal",
-		"low_quality", "body", "source",
+		"icp", "low_quality", "body", "source",
 		"source_reputation", "source_category",
 		"classifier_version", "classification_method", "model_version", "confidence",
 		"processing_time_ms",
@@ -302,6 +302,43 @@ func TestGetClassifiedContentMapping_ClassificationFields(t *testing.T) {
 			t.Errorf("classified_content missing classification field %q", field)
 		}
 	}
+}
+
+func TestGetClassifiedContentMapping_ICPFields(t *testing.T) {
+	t.Helper()
+
+	mapping := mappings.GetClassifiedContentMapping(1, 1)
+	properties := mapping["mappings"].(map[string]any)["properties"].(map[string]any)
+
+	icpObj, ok := properties["icp"].(map[string]any)
+	if !ok {
+		t.Fatal("icp field missing or not an object")
+	}
+	if icpObj["type"] != "object" {
+		t.Fatalf("icp.type = %v, want object", icpObj["type"])
+	}
+
+	icpProps, ok := icpObj["properties"].(map[string]any)
+	if !ok {
+		t.Fatal("icp.properties missing")
+	}
+	assertFieldType(t, icpProps, "model_version", "keyword")
+
+	segments, ok := icpProps["segments"].(map[string]any)
+	if !ok {
+		t.Fatal("icp.segments missing or not an object")
+	}
+	if segments["type"] != "nested" {
+		t.Fatalf("icp.segments.type = %v, want nested", segments["type"])
+	}
+
+	segmentProps, ok := segments["properties"].(map[string]any)
+	if !ok {
+		t.Fatal("icp.segments.properties missing")
+	}
+	assertFieldType(t, segmentProps, "segment", "keyword")
+	assertFieldType(t, segmentProps, "score", "float")
+	assertFieldType(t, segmentProps, "matched_keywords", "keyword")
 }
 
 func TestGetClassifiedContentMapping_NestedCrimeFields(t *testing.T) {

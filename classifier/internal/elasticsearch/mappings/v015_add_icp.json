@@ -1,0 +1,26 @@
+{
+  "properties": {
+    "icp": {
+      "type": "object",
+      "properties": {
+        "segments": {
+          "type": "nested",
+          "properties": {
+            "segment": {
+              "type": "keyword"
+            },
+            "score": {
+              "type": "float"
+            },
+            "matched_keywords": {
+              "type": "keyword"
+            }
+          }
+        },
+        "model_version": {
+          "type": "keyword"
+        }
+      }
+    }
+  }
+}

@@ -39,6 +39,7 @@ Covers the classifier service, hybrid rule+ML classification pipeline, ML sideca
 | `classifier/internal/domain/raw_content.go` | RawContent input model |
 | `infrastructure/esmapping/` | SSoT Elasticsearch `raw_content` / `classified_content` property maps (shared with index-manager) |
 | `classifier/internal/elasticsearch/mappings/classified_content.go` | Thin wrapper: delegates to `esmapping` for classified index mapping JSON |
+| `classifier/internal/elasticsearch/mappings/v015_add_icp.json` | Additive `icp` object mapping for existing classified indexes |
 | `classifier/internal/elasticsearch/mappings/raw_content.go` | Thin wrapper: delegates to `esmapping` for raw index mapping JSON |
 | `classifier/internal/bootstrap/classifier.go` | Service initialization |
 | `classifier/internal/classifier/content_type_need_signal_heuristic.go` | Need signal heuristic (uses shared keywords from extractor) |
@@ -313,6 +314,8 @@ Runs when content type is `need_signal`. Extracts structured data into `NeedSign
 ### ES Mapping
 
 `need_signal` is a nested mapping under the `classified_content` index, following the same pattern as `mining`, `crime`, etc. Fields map to `NeedSignalResult` struct fields.
+
+`icp` is a top-level object reserved for the `sector_alignment` component. It contains `segments` as a nested array with `segment` (keyword), `score` (float), and `matched_keywords` (keyword), plus `model_version` (keyword). The additive mapping file is `classifier/internal/elasticsearch/mappings/v015_add_icp.json`; existing indexes can accept it through Elasticsearch `_mapping` / index-manager put-mapping without reindexing.
 
 ## Edge Cases
 

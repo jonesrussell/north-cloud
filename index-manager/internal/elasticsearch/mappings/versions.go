@@ -5,7 +5,7 @@ package mappings
 // Bump minor for additions.
 const (
 	RawContentMappingVersion        = "2.0.0"
-	ClassifiedContentMappingVersion = "2.2.0"
+	ClassifiedContentMappingVersion = "2.3.0"
 	CommunityMappingVersion         = "1.0.0"
 )
 

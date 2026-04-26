@@ -31,6 +31,39 @@ func TestClassifiedContentIndex_ContentTypeTextWithKeyword(t *testing.T) {
 	}
 }
 
+func TestClassifiedContentIndex_ICPMapping(t *testing.T) {
+	t.Helper()
+	m := esmapping.ClassifiedContentIndex(1, 1)
+	props := m["mappings"].(map[string]any)["properties"].(map[string]any)
+
+	icp := props["icp"].(map[string]any)
+	if icp["type"] != "object" {
+		t.Fatalf("icp.type = %v, want object", icp["type"])
+	}
+
+	icpProps := icp["properties"].(map[string]any)
+	segments := icpProps["segments"].(map[string]any)
+	if segments["type"] != "nested" {
+		t.Fatalf("icp.segments.type = %v, want nested", segments["type"])
+	}
+
+	segmentProps := segments["properties"].(map[string]any)
+	for field, wantType := range map[string]string{
+		"segment":          "keyword",
+		"score":            "float",
+		"matched_keywords": "keyword",
+	} {
+		got := segmentProps[field].(map[string]any)["type"]
+		if got != wantType {
+			t.Errorf("icp.segments.%s.type = %v, want %s", field, got, wantType)
+		}
+	}
+
+	if got := icpProps["model_version"].(map[string]any)["type"]; got != "keyword" {
+		t.Errorf("icp.model_version.type = %v, want keyword", got)
+	}
+}
+
 func TestClassifiedContentIndex_JSONStableSnapshot(t *testing.T) {
 	t.Helper()
 	s, err := esmapping.ToIndentedJSON(esmapping.ClassifiedContentIndex(1, 1))
@@ -42,6 +75,9 @@ func TestClassifiedContentIndex_JSONStableSnapshot(t *testing.T) {
 	}
 	if !strings.Contains(s, `"english_content"`) {
 		t.Error("expected english_content analyzer in mapping JSON")
+	}
+	if !strings.Contains(s, `"icp"`) {
+		t.Error("expected icp object in mapping JSON")
 	}
 	var tmp any
 	if uerr := json.Unmarshal([]byte(s), &tmp); uerr != nil {

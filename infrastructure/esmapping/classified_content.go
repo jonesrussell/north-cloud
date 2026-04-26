@@ -488,6 +488,23 @@ func getNeedSignalClassifierNested() map[string]any {
 	}
 }
 
+func getICPMapping() map[string]any {
+	return map[string]any{
+		"type": "object",
+		"properties": map[string]any{
+			"segments": map[string]any{
+				"type": "nested",
+				"properties": map[string]any{
+					"segment":          map[string]any{"type": "keyword"},
+					"score":            map[string]any{"type": "float"},
+					"matched_keywords": map[string]any{"type": "keyword"},
+				},
+			},
+			"model_version": map[string]any{"type": "keyword"},
+		},
+	}
+}
+
 // getClassificationFields returns the classification result field definitions
 func getClassificationFields() map[string]any {
 	return map[string]any{
@@ -528,6 +545,7 @@ func getClassificationFields() map[string]any {
 		"entertainment": getEntertainmentClassifierNested(),
 		"rfp":           getRFPClassifierNested(),
 		"need_signal":   getNeedSignalClassifierNested(),
+		"icp":           getICPMapping(),
 		"low_quality": map[string]any{
 			"type": "boolean",
 		},
