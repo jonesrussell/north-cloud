@@ -8,6 +8,7 @@ segments:
     keywords:
       - "First Nation"
       - "First Nations"
+      - "Indigenous"
       - "Indigenous-owned"
       - "Indigenous business"
       - "Indigenous procurement"
@@ -29,6 +30,7 @@ segments:
     required_any:
       - "First Nation"
       - "First Nations"
+      - "Indigenous"
       - "Metis"
       - "Inuit"
       - "treaty"
@@ -100,4 +102,4 @@ segments:
     topics:
       - "business"
       - "technology"
-    min_score: 0.35
+    min_score: 0.30
