@@ -34,6 +34,8 @@ Covers the `infrastructure/` module: config loading, logging, database clients, 
 | `infrastructure/gin/metrics.go` | Prometheus metrics route and handler (`/metrics`) |
 | `infrastructure/signal/threshold.go` | Unified need-signal accept/reject gate (shared by signal-crawler + classifier) |
 | `infrastructure/signal/org_normalize.go` | Organization name canonicalization + attribution fallback (explicit → email → URL) |
+| `infrastructure/icp/seed.go` | ICP seed loading, normalization, and validation |
+| `infrastructure/icp/matcher.go` | ICP segment matcher shared by classifier and validation tooling |
 
 ## Interface Signatures
 
@@ -44,6 +46,19 @@ func ClassifiedContentIndex(shards, replicas int) map[string]any
 ```
 
 `ClassifiedContentIndex` is the canonical property map consumed by classifier and index-manager. It includes the top-level `icp` object for `sector_alignment`: `icp.segments` is nested with `segment` (keyword), `score` (float), and `matched_keywords` (keyword), plus `icp.model_version` (keyword). Existing classified indexes can receive this object as an additive `_mapping` update; no reindex is required.
+
+### ICP Seed and Matcher (`icp`)
+```go
+const ModelVersionV1 = "v1"
+
+func LoadSeed(path string) (*Seed, error)
+func ValidateSeed(seed *Seed) error
+func Match(seed *Seed, doc Document) *Result
+```
+
+The ICP seed schema currently requires exactly three canonical segments: `indigenous_channel`, `northern_ontario_industry`, and `private_sector_smb`. Validation enforces schema version 1, a non-empty `seed_updated_at`, non-empty segment descriptions, at least one keyword/topic per segment, valid `min_score` values, no blank terms, and no missing/unknown/duplicate segment names.
+
+`Match` normalizes document topics and scores title/body/source/URL keyword matches plus `topic:<topic>` matches. It returns nil when no segment reaches its configured `min_score`; otherwise results are sorted by score descending, then segment name, and carry `model_version=v1`.
 
 ### Logger (`logger/logger.go`)
 ```go

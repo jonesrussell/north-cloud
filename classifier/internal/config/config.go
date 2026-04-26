@@ -212,7 +212,7 @@ type NeedSignalExtractionConfig struct {
 }
 
 type SectorAlignmentConfig struct {
-	Enabled          bool          `env:"SECTOR_ALIGNMENT_ENABLED"           yaml:"enabled"`
+	Enabled          bool          `env:"SECTOR_ALIGNMENT_ENABLED"          yaml:"enabled"`
 	SourceManagerURL string        `env:"SOURCE_MANAGER_URL"                yaml:"source_manager_url"`
 	RefreshInterval  time.Duration `env:"SECTOR_ALIGNMENT_REFRESH_INTERVAL" yaml:"refresh_interval"`
 }

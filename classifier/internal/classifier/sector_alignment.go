@@ -3,6 +3,7 @@ package classifier
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -14,6 +15,9 @@ import (
 )
 
 const defaultSectorAlignmentRefreshInterval = 30 * time.Second
+const defaultICPSeedHTTPTimeout = 5 * time.Second
+
+var errNoICPMatch = errors.New("no ICP segment match")
 
 type SectorAlignmentExtractor struct {
 	provider seedProvider
@@ -32,7 +36,7 @@ func NewHTTPICPSeedProvider(baseURL string, refreshInterval time.Duration, clien
 		refreshInterval = defaultSectorAlignmentRefreshInterval
 	}
 	if client == nil {
-		client = &http.Client{Timeout: 5 * time.Second}
+		client = &http.Client{Timeout: defaultICPSeedHTTPTimeout}
 	}
 	return &HTTPICPSeedProvider{
 		url:             strings.TrimRight(baseURL, "/") + "/api/v1/icp-segments",
@@ -57,7 +61,7 @@ func (p *HTTPICPSeedProvider) Seed(ctx context.Context) (*icp.Seed, error) {
 	if p.cached != nil && time.Since(p.fetchedAt) < p.refreshInterval {
 		return p.cached, nil
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, p.url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, p.url, http.NoBody)
 	if err != nil {
 		return nil, err
 	}
@@ -76,11 +80,11 @@ func (p *HTTPICPSeedProvider) Seed(ctx context.Context) (*icp.Seed, error) {
 		return nil, fmt.Errorf("source-manager ICP seed returned status %d", res.StatusCode)
 	}
 	var seed icp.Seed
-	if err = json.NewDecoder(res.Body).Decode(&seed); err != nil {
-		return nil, err
+	if decodeErr := json.NewDecoder(res.Body).Decode(&seed); decodeErr != nil {
+		return nil, decodeErr
 	}
-	if err = icp.ValidateSeed(&seed); err != nil {
-		return nil, err
+	if validateErr := icp.ValidateSeed(&seed); validateErr != nil {
+		return nil, validateErr
 	}
 	p.cached = &seed
 	p.fetchedAt = time.Now()
@@ -110,7 +114,7 @@ func (e *SectorAlignmentExtractor) Extract(
 		Topics:     topics,
 	})
 	if result == nil {
-		return nil, nil
+		return nil, errNoICPMatch
 	}
 	segments := make([]domain.ICPSegmentResult, 0, len(result.Segments))
 	for _, segment := range result.Segments {

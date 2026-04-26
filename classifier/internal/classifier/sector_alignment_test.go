@@ -1,16 +1,17 @@
-package classifier
+package classifier_test
 
 import (
 	"context"
 	"testing"
 
+	"github.com/jonesrussell/north-cloud/classifier/internal/classifier"
 	"github.com/jonesrussell/north-cloud/classifier/internal/domain"
 	"github.com/jonesrussell/north-cloud/infrastructure/icp"
 	"github.com/stretchr/testify/require"
 )
 
 func TestSectorAlignmentExtractorEmitsICPResult(t *testing.T) {
-	extractor := NewSectorAlignmentExtractor(StaticICPSeedProvider{SeedValue: &icp.Seed{
+	extractor := classifier.NewSectorAlignmentExtractor(classifier.StaticICPSeedProvider{SeedValue: &icp.Seed{
 		SegmentSchemaVersion: 1,
 		SeedUpdatedAt:        "2026-04-26",
 		Segments: []icp.Segment{

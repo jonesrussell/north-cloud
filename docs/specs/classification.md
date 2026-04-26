@@ -1,6 +1,6 @@
 # Classification Specification
 
-> Last verified: 2026-04-22 (Phase 1B: ES `raw_content` / `classified_content` field maps live in `infrastructure/esmapping`; classifier mapping package is a thin wrapper)
+> Last verified: 2026-04-26 (sector alignment ICP seed flow added behind `SECTOR_ALIGNMENT_ENABLED=false`; ES `icp` mapping lives in `infrastructure/esmapping`)
 
 Covers the classifier service, hybrid rule+ML classification pipeline, ML sidecar integration, and content enrichment.
 
@@ -14,6 +14,8 @@ Covers the classifier service, hybrid rule+ML classification pipeline, ML sideca
 | `classifier/internal/classifier/content_type.go` | Step 1: content type + subtype detection |
 | `classifier/internal/classifier/quality.go` | Step 2: quality scoring (0-100) |
 | `classifier/internal/classifier/topic.go` | Step 3: topic detection |
+| `classifier/internal/classifier/sector_alignment.go` | Optional ICP sector alignment component backed by source-manager seed data |
+| `classifier/internal/classifier/sector_alignment_test.go` | Sector alignment extraction/provider tests |
 | `classifier/internal/classifier/rule_engine.go` | Aho-Corasick keyword matching engine |
 | `classifier/internal/classifier/source_reputation.go` | Step 4: source reputation scoring |
 | `classifier/internal/classifier/crime.go` | Crime hybrid classifier (rules + ML) |
@@ -116,6 +118,13 @@ Emits a batch summary log (`passed`/`flagged`/`rejected` counts) when any items 
    - Lookup by source_name, create with default 50 if missing
    - Update after classification based on quality score
    - Spam threshold: quality < 30 → penalize reputation
+
+Optional sector alignment:
+   - Enabled only when SECTOR_ALIGNMENT_ENABLED=true (default false)
+   - Fetches ICP seed data from source-manager GET /api/v1/icp-segments
+   - Caches the seed in-process for SECTOR_ALIGNMENT_REFRESH_INTERVAL
+   - Uses shared infrastructure/icp.Match against title, body, source name, URL, and emitted topics
+   - Writes icp.segments[] and icp.model_version when at least one segment meets its threshold
 ```
 
 ### Hybrid Classification (optional, per content type/subtype)
@@ -172,6 +181,21 @@ type ClassificationResult struct {
     Recipe           *RecipeResult      // nil unless content_type=recipe
     Job              *JobResult         // nil unless content_type=job
     NeedSignal       *NeedSignalResult  // nil unless content_type=need_signal
+    ICP              *ICPResult         // nil unless sector alignment is enabled and matched
+}
+```
+
+### ICPResult
+```go
+type ICPResult struct {
+    Segments     []ICPSegmentResult `json:"segments"`
+    ModelVersion string             `json:"model_version"`
+}
+
+type ICPSegmentResult struct {
+    Segment         string   `json:"segment"`          // indigenous_channel, northern_ontario_industry, private_sector_smb
+    Score           float64  `json:"score"`            // 0.0-1.0
+    MatchedKeywords []string `json:"matched_keywords"` // keyword matches plus topic:<topic> matches
 }
 ```
 
@@ -267,6 +291,9 @@ type NeedSignalResult struct {
 - `ANTHROPIC_API_KEY` — required when LLM fallback is enabled
 - `ANTHROPIC_MODEL` (default: `claude-haiku-4-5`) — model for drill extraction
 - `NEED_SIGNAL_ENABLED` — enable need signal keyword detection and structured extraction
+- `SECTOR_ALIGNMENT_ENABLED` (default: `false`) — enable ICP segment alignment
+- `SOURCE_MANAGER_URL` — source-manager base URL for `GET /api/v1/icp-segments`
+- `SECTOR_ALIGNMENT_REFRESH_INTERVAL` (default: `30s`) — in-process ICP seed cache TTL
 - `CLASSIFIER_QUALITY_GATE_ENABLED` (default: `false`) — enable quality gate pre-indexing filter
 - `CLASSIFIER_QUALITY_GATE_THRESHOLD` (default: `40`) — minimum quality_score to pass without flagging
 
@@ -317,6 +344,12 @@ Runs when content type is `need_signal`. Extracts structured data into `NeedSign
 
 `icp` is a top-level object reserved for the `sector_alignment` component. It contains `segments` as a nested array with `segment` (keyword), `score` (float), and `matched_keywords` (keyword), plus `model_version` (keyword). The additive mapping file is `classifier/internal/elasticsearch/mappings/v015_add_icp.json`; existing indexes can accept it through Elasticsearch `_mapping` / index-manager put-mapping without reindexing.
 
+## Sector Alignment
+
+When `SECTOR_ALIGNMENT_ENABLED=true`, bootstrap wires `SectorAlignmentExtractor` with an HTTP seed provider pointed at source-manager. The provider fetches and validates the same seed schema source-manager serves, caches successful responses, and falls back to the cached copy if a later HTTP request fails. The extractor is non-blocking for classification quality: no seed match means `icp` is omitted, while seed/provider errors are logged and classification continues.
+
+The classifier does not own segment definitions. It only owns the feature flag, fetch/cache behavior, and conversion from `infrastructure/icp.Result` into the domain `ICPResult` stored on both `ClassificationResult` and `ClassifiedContent`.
+
 ## Edge Cases
 
 - **Missing Body/Source aliases**: ClassifiedContent must set Body=RawText and Source=URL or publisher silently skips.
@@ -324,6 +357,7 @@ Runs when content type is `need_signal`. Extracts structured data into `NeedSign
 - **Nil optional classifiers**: When disabled, field is nil in result and omitted from ES document. Downstream queries return empty.
 - **Mining keywords narrow by design**: Ambiguous terms excluded; ML handles nuance. Don't add broad keywords.
 - **Quality gate disabled by default**: `CLASSIFIER_QUALITY_GATE_ENABLED` must be explicitly set to `true`. When disabled, all classified content passes to ES unchanged (no `low_quality` field set). The `low_quality` boolean field uses `omitempty` so it is absent from ES documents when false.
+- **Sector alignment disabled by default**: `SECTOR_ALIGNMENT_ENABLED` must remain `false` in production until the ICP validator data is clean and the next wave of label validation has landed. When disabled or unmatched, `icp` is omitted.
 - **Indigenous topic vs Layer 7**: The `indigenous_detection` topic rule (migration 014) adds "indigenous" to `topics[]`. Layer 7 populates the nested `indigenous` object (relevance, categories, region). Both coexist — topic for filtering, nested for rich metadata.
 - **Crime authority indicators**: Patterns require presence of authority terms (police, rcmp, court, etc.) alongside crime terms for high confidence.
 - **Spam still classified**: quality < 30 flags spam but document is still written to classified_content index.

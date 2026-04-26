@@ -2,6 +2,7 @@ package classifier
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -528,6 +529,9 @@ func (c *Classifier) runSectorAlignment(
 	}
 	result, err := c.sectorAlignment.Extract(ctx, raw, topics)
 	if err != nil {
+		if errors.Is(err, errNoICPMatch) {
+			return nil
+		}
 		wrapped := fmt.Errorf("sector alignment content_id=%s: %w", raw.ID, err)
 		c.logger.Warn("Sector alignment failed",
 			infralogger.String("content_id", raw.ID),

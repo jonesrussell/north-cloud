@@ -1,6 +1,6 @@
 # Source Manager Specification
 
-> Last verified: 2026-03-22 (align go-redis v9.18.0 across all services)
+> Last verified: 2026-04-26 (ICP segment seed file, schema, hot-reload store, and public seed endpoint added)
 
 ## Purpose
 
@@ -13,14 +13,17 @@ Registry service for content sources, First Nations communities, and leadership 
 | `source-manager/main.go` | Entry point |
 | `source-manager/internal/bootstrap/` | Phased startup (config → db → redis → server) |
 | `source-manager/internal/api/router.go` | Route registration (public + JWT-protected) |
-| `source-manager/internal/handlers/` | HTTP handlers (source, community, person, band_office) |
+| `source-manager/internal/handlers/` | HTTP handlers (source, community, person, band_office, ICP seed) |
 | `source-manager/internal/models/` | Domain types (Source, Community, Person, BandOffice) |
 | `source-manager/internal/repository/` | PostgreSQL CRUD |
 | `source-manager/internal/events/publisher.go` | Redis event publishing |
 | `source-manager/internal/config/config.go` | Configuration struct |
 | `source-manager/internal/importer/` | OPD JSONL bulk-import (validation, canonical hashing) |
 | `source-manager/internal/projection/` | Dictionary ES projection (consent-filtered) |
+| `source-manager/internal/icpstore/store.go` | Hot-reloaded ICP seed store backed by `data/icp-segments.yml` |
 | `source-manager/cmd_import_opd.go` | CLI subcommand: `import-opd` |
+| `source-manager/data/icp-segments.yml` | Source-of-truth ICP segment seed data |
+| `source-manager/data/icp-segments.schema.json` | JSON Schema for ICP segment seed validation |
 | `source-manager/migrations/` | SQL migrations (001–018) |
 
 ## Interface Signatures
@@ -45,6 +48,7 @@ Registry service for content sources, First Nations communities, and leadership 
 | GET | `/api/v1/dictionary/entries/:id` | Get one public dictionary entry |
 | GET | `/api/v1/dictionary/words/:id` | Legacy dictionary entry route |
 | GET | `/api/v1/dictionary/search` | Search public dictionary entries |
+| GET | `/api/v1/icp-segments` | Current ICP segment seed for classifier sector alignment |
 | GET | `/health` | Health check |
 
 Dictionary pagination contract:
@@ -90,6 +94,7 @@ Dashboard/API → [Source Manager] → PostgreSQL (sources, communities, people,
 Crawler → GET /sources → fetches source list → creates crawl jobs
 Publisher → GET /sources, /cities → routing decisions
 Minoo → GET /communities → syncs First Nations data
+Classifier → GET /api/v1/icp-segments → fetches ICP seed for optional sector alignment
 ```
 
 ## Storage / Schema
@@ -128,6 +133,16 @@ Supporting tables for office contacts and leadership audit trail.
 | `REDIS_ADDRESS` | localhost:6379 | Redis connection |
 | `REDIS_EVENTS_ENABLED` | false | Feature flag for event publishing |
 | `CORS_ORIGINS` | localhost:3000,:3001,:3002 | CORS allowed origins |
+| `ICP_SEGMENTS_PATH` | data/icp-segments.yml | ICP segment seed path |
+| `ICP_RELOAD_INTERVAL` | 30s | Periodic fallback reload interval for ICP seed |
+
+## ICP Segment Seed
+
+`source-manager/data/icp-segments.yml` is the source of truth for the initial sector-alignment seed. The file is validated by `source-manager/data/icp-segments.schema.json`, `infrastructure/icp.ValidateSeed`, and the `tools/validate-icp-data` CI job. The seed currently carries three canonical segments: `indigenous_channel`, `northern_ontario_industry`, and `private_sector_smb`.
+
+At startup, source-manager loads the seed through `internal/icpstore.Store`. The store keeps the current seed in an atomic pointer, watches the seed directory with `fsnotify`, and also runs a periodic reload every `ICP_RELOAD_INTERVAL`. If file watching is unavailable, it falls back to periodic reload only. Reload errors are logged and the last good seed remains active.
+
+`GET /api/v1/icp-segments` returns the current seed as JSON. If the store or seed is unavailable, the endpoint returns `503`. The classifier consumes this endpoint only when `SECTOR_ALIGNMENT_ENABLED=true`.
 
 ## Edge Cases
 
