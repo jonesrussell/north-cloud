@@ -118,6 +118,90 @@ func TestTopicClassifier_Classify_MultipleTopics(t *testing.T) {
 	}
 }
 
+func TestTopicClassifier_Classify_DropsNoisyTopicFanout(t *testing.T) {
+	t.Helper()
+
+	rules := make([]domain.ClassificationRule, noisyTopicFanoutThreshold+1)
+	var text strings.Builder
+	for i := range rules {
+		topic := "topic_" + string(rune('a'+i))
+		keyword := "keyword_" + string(rune('a'+i))
+		rules[i] = domain.ClassificationRule{
+			RuleName:      topic + "_detection",
+			RuleType:      domain.RuleTypeTopic,
+			TopicName:     topic,
+			Keywords:      []string{keyword},
+			MinConfidence: 0.5,
+			Enabled:       true,
+		}
+		text.WriteString(keyword)
+		text.WriteByte(' ')
+	}
+
+	classifier := NewTopicClassifier(&mockLogger{}, rules, 5)
+
+	result, err := classifier.Classify(context.Background(), &domain.RawContent{
+		ID:      "noisy-long-page",
+		Title:   "Long page",
+		RawText: text.String(),
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(result.Topics) != 0 {
+		t.Fatalf("expected noisy topic fanout to be dropped, got topics: %v", result.Topics)
+	}
+	if len(result.TopicScores) != 0 {
+		t.Fatalf("expected noisy topic scores to be dropped, got scores: %v", result.TopicScores)
+	}
+	if result.HighestTopic != "" {
+		t.Fatalf("expected no highest topic after noisy fanout drop, got %q", result.HighestTopic)
+	}
+	for topic, count := range classifier.GetTopicStats() {
+		if count != 0 {
+			t.Fatalf("expected no stats recorded for dropped noisy fanout, got %s=%d", topic, count)
+		}
+	}
+}
+
+func TestTopicClassifier_Classify_MaxTopicsRecordsOnlyKeptTopics(t *testing.T) {
+	t.Helper()
+
+	rules := []domain.ClassificationRule{
+		topicRuleForTest("alpha", "alpha", 0.5),
+		topicRuleForTest("bravo", "bravo", 0.5),
+		topicRuleForTest("charlie", "charlie", 0.5),
+	}
+	classifier := NewTopicClassifier(&mockLogger{}, rules, 2)
+
+	result, err := classifier.Classify(context.Background(), &domain.RawContent{
+		ID:      "three-topic-page",
+		Title:   "alpha bravo charlie",
+		RawText: "alpha alpha alpha bravo bravo charlie",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(result.Topics) != 2 {
+		t.Fatalf("expected top 2 topics, got %v", result.Topics)
+	}
+	if slices.Contains(result.Topics, "charlie") {
+		t.Fatalf("expected lowest-scoring topic to be trimmed, got %v", result.Topics)
+	}
+
+	stats := classifier.GetTopicStats()
+	for _, topic := range result.Topics {
+		if stats[topic] != 1 {
+			t.Fatalf("expected kept topic %q to be recorded once, stats=%v", topic, stats)
+		}
+	}
+	if stats["charlie"] != 0 {
+		t.Fatalf("expected trimmed topic not to be recorded, stats=%v", stats)
+	}
+}
+
 func TestTopicClassifier_Classify_NoMatch(t *testing.T) {
 	rules := []domain.ClassificationRule{
 		{
@@ -156,6 +240,17 @@ func TestTopicClassifier_Classify_NoMatch(t *testing.T) {
 
 	if result.HighestTopic != "" {
 		t.Errorf("expected no highest topic, got %s", result.HighestTopic)
+	}
+}
+
+func topicRuleForTest(topic, keyword string, minConfidence float64) domain.ClassificationRule {
+	return domain.ClassificationRule{
+		RuleName:      topic + "_detection",
+		RuleType:      domain.RuleTypeTopic,
+		TopicName:     topic,
+		Keywords:      []string{keyword},
+		MinConfidence: minConfidence,
+		Enabled:       true,
 	}
 }
 

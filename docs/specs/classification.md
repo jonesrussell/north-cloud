@@ -101,11 +101,14 @@ Emits a batch summary log (`passed`/`flagged`/`rejected` counts) when any items 
    - Content richness: paragraphs, headings, formatting
    - Readability: sentence length variety
 
-3. Topic detection (Aho-Corasick, O(n+m)):
+3. Topic detection:
    - Rules loaded from PostgreSQL at startup (hot-reloadable via PUT /api/v1/rules/:id)
-   - Priority-descending evaluation, max 5 topics per document
-   - Returns: topic names + scores + matched keywords
-   - Thread-safe stats tracking (sync.Mutex + map): GetTopicStats() returns per-topic hit counts
+   - Keyword rules are scored with token-aware matching, log term frequency, and keyword coverage
+   - Topic scores must meet both the rule's `min_confidence` and the service-wide `0.5` floor
+   - If more than 15 topic candidates match, `topics=[]` is emitted because the fanout is treated as unreliable noise
+   - Otherwise the classifier keeps only the top `MaxTopics` topics (default 5) by score
+   - Returns: topic names + scores
+   - Thread-safe stats tracking (sync.Mutex + map): GetTopicStats() returns per-topic hit counts for emitted topics only
    - Indigenous topic rule (migration 014): populates `topics[]` with "indigenous" so content is filterable via `/api/v1/search?topics[]=indigenous`. Complements Layer 7 indigenous classifier which populates the nested `indigenous` object.
 
 4. Source reputation:

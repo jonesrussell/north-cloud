@@ -97,7 +97,7 @@ Elasticsearch: {source}_classified_content
 
 **Step 2 — Quality Score** (`quality.go`): Produces an integer 0-100 from four equally-weighted components (word count, metadata completeness, content richness, readability). Items scoring below the spam threshold (30) are flagged but still classified.
 
-**Step 3 — Topic Detection** (`topic.go`): Loads keyword rules from the `classification_rules` PostgreSQL table. Rules are evaluated in priority-descending order; up to `MaxTopics` (default 5) topics may match. Rules are cached in memory at startup.
+**Step 3 — Topic Detection** (`topic.go`): Loads keyword rules from the `classification_rules` PostgreSQL table. Candidate topics must meet both the rule threshold and the service-wide 0.5 floor. If more than 15 candidate topics match, the topic set is treated as unreliable fanout and emitted as `topics=[]`; otherwise up to `MaxTopics` (default 5) top-scoring topics may match. Rules are cached in memory at startup.
 
 **Step 4 — Source Reputation** (`source_reputation.go`): Looks up the source's historical reputation score (0-100 from PostgreSQL) and updates it after each classification based on the quality score and spam flag.
 

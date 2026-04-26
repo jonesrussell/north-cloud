@@ -22,6 +22,10 @@ const (
 
 	// coverageWeight is the weight for coverage component in score calculation
 	coverageWeight = 0.5
+
+	// noisyTopicFanoutThreshold is the maximum number of topic candidates a
+	// document may produce before the topic set is considered unreliable.
+	noisyTopicFanoutThreshold = 15
 )
 
 // TopicClassifier classifies content by topic using rule-based keyword matching
@@ -67,6 +71,10 @@ func (t *TopicClassifier) Classify(ctx context.Context, raw *domain.RawContent) 
 		Topics:      make([]string, 0),
 		TopicScores: make(map[string]float64),
 	}
+	candidates := &TopicResult{
+		Topics:      make([]string, 0),
+		TopicScores: make(map[string]float64),
+	}
 
 	// Combine title and text for matching
 	text := raw.Title + " " + raw.RawText
@@ -89,9 +97,8 @@ func (t *TopicClassifier) Classify(ctx context.Context, raw *domain.RawContent) 
 			threshold = minGlobalConfidence
 		}
 		if score >= threshold {
-			result.Topics = append(result.Topics, rule.TopicName)
-			result.TopicScores[rule.TopicName] = score
-			t.recordTopicHit(rule.TopicName)
+			candidates.Topics = append(candidates.Topics, rule.TopicName)
+			candidates.TopicScores[rule.TopicName] = score
 
 			t.logger.Debug("Topic matched",
 				infralogger.String("content_id", raw.ID),
@@ -102,16 +109,30 @@ func (t *TopicClassifier) Classify(ctx context.Context, raw *domain.RawContent) 
 		}
 	}
 
+	if len(candidates.Topics) > noisyTopicFanoutThreshold {
+		t.logger.Info("Dropping unreliable topic fanout",
+			infralogger.String("content_id", raw.ID),
+			infralogger.Int("candidate_topics", len(candidates.Topics)),
+			infralogger.Int("fanout_threshold", noisyTopicFanoutThreshold),
+		)
+
+		return result, nil
+	}
+
+	result = candidates
+
 	// Enforce maximum topic limit by keeping only top-scoring topics
 	if len(result.Topics) > t.maxTopics {
-		sort.Slice(result.Topics, func(i, j int) bool {
-			return result.TopicScores[result.Topics[i]] > result.TopicScores[result.Topics[j]]
-		})
+		sortTopicsByScore(result.Topics, result.TopicScores)
 		removed := result.Topics[t.maxTopics:]
 		result.Topics = result.Topics[:t.maxTopics]
 		for _, topic := range removed {
 			delete(result.TopicScores, topic)
 		}
+	}
+
+	for _, topic := range result.Topics {
+		t.recordTopicHit(topic)
 	}
 
 	// Determine highest scoring topic
@@ -126,6 +147,18 @@ func (t *TopicClassifier) Classify(ctx context.Context, raw *domain.RawContent) 
 	)
 
 	return result, nil
+}
+
+func sortTopicsByScore(topics []string, scores map[string]float64) {
+	sort.Slice(topics, func(i, j int) bool {
+		left := topics[i]
+		right := topics[j]
+		if scores[left] == scores[right] {
+			return left < right
+		}
+
+		return scores[left] > scores[right]
+	})
 }
 
 // scoreTextAgainstRule calculates a score (0.0-1.0) using log-Term Frequency + coverage
