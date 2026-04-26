@@ -42,10 +42,11 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: '1.26'
+          cache: false
 
       - name: Build validator
         working-directory: tools/validate-org-attribution
-        run: CGO_ENABLED=0 go build -o /tmp/validate-org-attribution .
+        run: GOWORK=off CGO_ENABLED=0 go build -o /tmp/validate-org-attribution .
 
       - name: Validate and export threshold
         id: threshold
