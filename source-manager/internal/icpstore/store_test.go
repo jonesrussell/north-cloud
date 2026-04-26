@@ -1,4 +1,4 @@
-package icpstore
+package icpstore_test
 
 import (
 	"context"
@@ -8,6 +8,7 @@ import (
 	"time"
 
 	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
+	"github.com/jonesrussell/north-cloud/source-manager/internal/icpstore"
 	"github.com/stretchr/testify/require"
 )
 
@@ -15,7 +16,7 @@ func TestStoreReloadsSeedWithoutRestart(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "icp-segments.yml")
 	require.NoError(t, os.WriteFile(path, []byte(testSeedYAML("2026-04-26")), 0o600))
 
-	store, err := New(path, 25*time.Millisecond, infralogger.NewNop())
+	store, err := icpstore.New(path, 25*time.Millisecond, infralogger.NewNop())
 	require.NoError(t, err)
 
 	ctx, cancel := context.WithCancel(context.Background())
