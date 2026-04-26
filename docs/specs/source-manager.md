@@ -140,7 +140,7 @@ Supporting tables for office contacts and leadership audit trail.
 
 `source-manager/data/icp-segments.yml` is the source of truth for the initial sector-alignment seed. The file is validated by `source-manager/data/icp-segments.schema.json`, `infrastructure/icp.ValidateSeed`, and the `tools/validate-icp-data` CI job. The seed currently carries three canonical segments: `indigenous_channel`, `northern_ontario_industry`, and `private_sector_smb`.
 
-The seed is tuned against both the held-out label corpus and live validator coverage. Plain `Indigenous` is an allowed `indigenous_channel` keyword/required signal so live Indigenous-topic content does not require a more specific Nation/community term before it can align. `private_sector_smb` uses a 0.30 minimum score to allow sparse but explicit SMB signals while still relying on the validator label corpus to catch false positives.
+The seed is tuned against both the held-out label corpus and live validator coverage. Plain `Indigenous` is an allowed `indigenous_channel` keyword/required signal, and that segment uses a low 0.08 minimum score so a single explicit Indigenous signal can align even when the Indigenous sidecar does not add the `indigenous` topic. `private_sector_smb` uses a 0.30 minimum score to allow sparse but explicit SMB signals while still relying on the validator label corpus to catch false positives.
 
 At startup, source-manager loads the seed through `internal/icpstore.Store`. The store keeps the current seed in an atomic pointer, watches the seed directory with `fsnotify`, and also runs a periodic reload every `ICP_RELOAD_INTERVAL`. If file watching is unavailable, it falls back to periodic reload only. Reload errors are logged and the last good seed remains active.
 
