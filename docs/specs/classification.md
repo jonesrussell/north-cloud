@@ -1,6 +1,6 @@
 # Classification Specification
 
-> Last verified: 2026-04-26 (sector alignment ICP seed flow added behind `SECTOR_ALIGNMENT_ENABLED=false`; ES `icp` mapping lives in `infrastructure/esmapping`)
+> Last verified: 2026-04-26 (sector alignment ICP seed flow is wired behind `SECTOR_ALIGNMENT_ENABLED=false`; reclassification uses the canonical `BuildClassifiedContent` path so `icp` and other optional outputs survive backfills)
 
 Covers the classifier service, hybrid rule+ML classification pipeline, ML sidecar integration, and content enrichment.
 
@@ -349,6 +349,8 @@ Runs when content type is `need_signal`. Extracts structured data into `NeedSign
 When `SECTOR_ALIGNMENT_ENABLED=true`, bootstrap wires `SectorAlignmentExtractor` with an HTTP seed provider pointed at source-manager. The provider fetches and validates the same seed schema source-manager serves, caches successful responses, and falls back to the cached copy if a later HTTP request fails. The extractor is non-blocking for classification quality: no seed match means `icp` is omitted, while seed/provider errors are logged and classification continues.
 
 The classifier does not own segment definitions. It only owns the feature flag, fetch/cache behavior, and conversion from `infrastructure/icp.Result` into the domain `ICPResult` stored on both `ClassificationResult` and `ClassifiedContent`.
+
+Reclassification (`POST /api/v1/classify/reclassify/:content_id`) must use `BuildClassifiedContent` rather than hand-building the ES document. That keeps batch classification and manual backfills identical, including `icp`, `need_signal`, publisher aliases (`Body`, `Source`), and all optional sidecar outputs.
 
 ## Edge Cases
 

@@ -213,23 +213,7 @@ func (h *Handler) ReclassifyDocument(c *gin.Context) {
 	}
 
 	// Step 4: Update classified_content index
-	classifiedContent := &domain.ClassifiedContent{
-		RawContent:           *raw,
-		ContentType:          result.ContentType,
-		ContentSubtype:       result.ContentSubtype,
-		QualityScore:         result.QualityScore,
-		QualityFactors:       result.QualityFactors,
-		Topics:               result.Topics,
-		TopicScores:          result.TopicScores,
-		SourceReputation:     result.SourceReputation,
-		SourceCategory:       result.SourceCategory,
-		ClassifierVersion:    result.ClassifierVersion,
-		ClassificationMethod: result.ClassificationMethod,
-		ModelVersion:         result.ModelVersion,
-		Confidence:           result.Confidence,
-		Body:                 raw.RawText, // Publisher alias
-		Source:               raw.URL,     // Publisher alias
-	}
+	classifiedContent := h.classifier.BuildClassifiedContent(raw, result)
 
 	err = h.storage.IndexClassifiedContent(ctx, classifiedContent)
 	if err != nil {
