@@ -48,7 +48,7 @@ segments:
       - "Nunavut"
       - "Yukon"
       - "Northwest Territories"
-    min_score: 0.30
+    min_score: 0.08
 
   - name: northern_ontario_industry
     description: "Mining, forestry, energy, and municipal industry in the Algoma, Manitoulin, Sudbury, and Thunder Bay corridor."
