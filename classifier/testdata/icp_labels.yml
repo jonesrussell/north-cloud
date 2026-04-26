@@ -302,3 +302,706 @@ labels:
       True none/none/none anchor for batch 1. Topic classification verified clean
       (no segment-adjacent signal leakage). Canonical example of "structurally
       unrelated to all three segments".
+
+  # ---------------------------------------------------------------------------
+  # Batch 2 (2026-04-26 completion pass for issue #667).
+  # These entries complete the 50-label floor while preserving the locked pilot
+  # balance: 15 indigenous_channel positives, 15 northern_ontario_industry
+  # positives, 10+ private_sector_smb positives, plus adjacency/true-none anchors.
+  # ---------------------------------------------------------------------------
+
+  - doc_id: "cc_pilot_20260426_itk_arctic_policy"
+    es_index: classified_content
+    ingest_timestamp: 2026-04-01T12:00:00Z
+    title: "Inuit Tapiriit Kanatami releases Arctic infrastructure policy framework"
+    excerpt: >-
+      Inuit Tapiriit Kanatami published a national policy framework calling for
+      Inuit-led housing, broadband, and transportation investments across Inuit
+      Nunangat, with federal partnership and regional Inuit organization input.
+    segments:
+      indigenous_channel: strong
+      northern_ontario_industry: none
+      private_sector_smb: none
+    labeller_confidence: high
+    labeller: jonesrussell
+    labelled_at: 2026-04-26T19:30:00Z
+    notes: >-
+      Canonical pan-Canadian Indigenous-channel governance signal. National Inuit
+      institution is the subject; no Northern Ontario industry or SMB signal.
+
+  - doc_id: "cc_pilot_20260426_aptn_language_funding"
+    es_index: classified_content
+    ingest_timestamp: 2026-04-01T12:05:00Z
+    title: "APTN reports new funding for Indigenous language revitalization"
+    excerpt: >-
+      The report covers First Nations, Metis, and Inuit language programs receiving
+      support through Indigenous-led cultural organizations and community educators
+      across Canada.
+    segments:
+      indigenous_channel: strong
+      northern_ontario_industry: none
+      private_sector_smb: none
+    labeller_confidence: high
+    labeller: jonesrussell
+    labelled_at: 2026-04-26T19:30:00Z
+    notes: >-
+      Indigenous media and Indigenous cultural organizations are central to the
+      story. It is channel/governance/culture, not industry or SMB.
+
+  - doc_id: "cc_pilot_20260426_ccab_procurement_awards"
+    es_index: classified_content
+    ingest_timestamp: 2026-04-01T12:10:00Z
+    title: "Canadian Council for Aboriginal Business announces procurement award finalists"
+    excerpt: >-
+      CCAB named Indigenous-owned suppliers and corporate partners shortlisted for
+      annual procurement awards recognizing Indigenous business growth, partnerships,
+      and supplier development in Canada.
+    segments:
+      indigenous_channel: strong
+      northern_ontario_industry: none
+      private_sector_smb: partial
+    labeller_confidence: high
+    labeller: jonesrussell
+    labelled_at: 2026-04-26T19:30:00Z
+    notes: >-
+      Indigenous business network is the core channel. SMB is partial because
+      suppliers are discussed as a class, but the article is not about one specific
+      mid-market firm.
+
+  - doc_id: "cc_pilot_20260426_nacca_loan_program"
+    es_index: classified_content
+    ingest_timestamp: 2026-04-01T12:15:00Z
+    title: "NACCA expands Indigenous entrepreneur loan program"
+    excerpt: >-
+      The National Aboriginal Capital Corporations Association announced expanded
+      lending capacity for Aboriginal financial institutions supporting First Nation,
+      Metis, and Inuit entrepreneurs across Canada.
+    segments:
+      indigenous_channel: strong
+      northern_ontario_industry: none
+      private_sector_smb: partial
+    labeller_confidence: high
+    labeller: jonesrussell
+    labelled_at: 2026-04-26T19:30:00Z
+    notes: >-
+      Strong Indigenous financial institution channel signal. SMB is partial because
+      the program serves entrepreneurs, but no individual SMB is the subject.
+
+  - doc_id: "cc_pilot_20260426_mko_health_agreement"
+    es_index: classified_content
+    ingest_timestamp: 2026-04-01T12:20:00Z
+    title: "MKO signs health-services agreement for northern Manitoba First Nations"
+    excerpt: >-
+      Manitoba Keewatinowi Okimakanak announced a health-services agreement with
+      First Nations leadership, focusing on community-led delivery and federal
+      coordination.
+    segments:
+      indigenous_channel: strong
+      northern_ontario_industry: none
+      private_sector_smb: none
+    labeller_confidence: high
+    labeller: jonesrussell
+    labelled_at: 2026-04-26T19:30:00Z
+    notes: >-
+      MKO governance content is in scope for pan-Canadian Indigenous-channel
+      positives. No Ontario industry or private-sector firm is the subject.
+
+  - doc_id: "cc_pilot_20260426_treaty3_child_welfare"
+    es_index: classified_content
+    ingest_timestamp: 2026-04-01T12:25:00Z
+    title: "Grand Council Treaty #3 advances child-welfare jurisdiction plan"
+    excerpt: >-
+      Grand Council Treaty #3 described a community-led child-welfare jurisdiction
+      plan for Treaty #3 First Nations, with implementation work led by Indigenous
+      governance and service organizations.
+    segments:
+      indigenous_channel: strong
+      northern_ontario_industry: none
+      private_sector_smb: none
+    labeller_confidence: high
+    labeller: jonesrussell
+    labelled_at: 2026-04-26T19:30:00Z
+    notes: >-
+      Treaty #3 governance is the story subject. The geography overlaps NW Ontario,
+      but there is no mining, forestry, energy, or municipal industry signal.
+
+  - doc_id: "cc_pilot_20260426_indiginews_housing"
+    es_index: classified_content
+    ingest_timestamp: 2026-04-01T12:30:00Z
+    title: "IndigiNews profiles First Nation housing project on Vancouver Island"
+    excerpt: >-
+      The article profiles a First Nation-led housing project, community planning
+      process, and Indigenous contractor participation on Vancouver Island.
+    segments:
+      indigenous_channel: strong
+      northern_ontario_industry: none
+      private_sector_smb: partial
+    labeller_confidence: medium
+    labeller: jonesrussell
+    labelled_at: 2026-04-26T19:30:00Z
+    notes: >-
+      Canadian Indigenous community project is a strong channel fit. Contractor
+      participation gives SMB adjacency, but the firm is not sufficiently central
+      for strong.
+
+  - doc_id: "cc_pilot_20260426_turtle_island_education"
+    es_index: classified_content
+    ingest_timestamp: 2026-04-01T12:35:00Z
+    title: "First Nations education leaders call for long-term funding agreement"
+    excerpt: >-
+      First Nations education authorities and chiefs called for stable federal
+      funding, citing treaty obligations, student supports, and community control
+      of schools.
+    segments:
+      indigenous_channel: strong
+      northern_ontario_industry: none
+      private_sector_smb: none
+    labeller_confidence: high
+    labeller: jonesrussell
+    labelled_at: 2026-04-26T19:30:00Z
+    notes: >-
+      Indigenous governance and education institutions are the subject. No target
+      industry or private-sector business signal.
+
+  - doc_id: "cc_pilot_20260426_metis_nation_business_forum"
+    es_index: classified_content
+    ingest_timestamp: 2026-04-01T12:40:00Z
+    title: "Metis Nation business forum connects entrepreneurs with procurement teams"
+    excerpt: >-
+      A Metis Nation business forum brought Indigenous entrepreneurs, procurement
+      officers, and community economic development staff together for supplier
+      readiness sessions.
+    segments:
+      indigenous_channel: strong
+      northern_ontario_industry: none
+      private_sector_smb: partial
+    labeller_confidence: high
+    labeller: jonesrussell
+    labelled_at: 2026-04-26T19:30:00Z
+    notes: >-
+      Strong Indigenous-channel economic development signal. SMB is partial because
+      entrepreneurs are the audience, but no named SMB carries the story.
+
+  - doc_id: "cc_pilot_20260426_first_nation_broadband"
+    es_index: classified_content
+    ingest_timestamp: 2026-04-01T12:45:00Z
+    title: "First Nation broadband authority launches northern connectivity project"
+    excerpt: >-
+      A First Nation-owned broadband authority announced a Canada-backed connectivity
+      project serving remote communities, with construction and operations governed
+      by the participating First Nations.
+    segments:
+      indigenous_channel: strong
+      northern_ontario_industry: none
+      private_sector_smb: partial
+    labeller_confidence: medium
+    labeller: jonesrussell
+    labelled_at: 2026-04-26T19:30:00Z
+    notes: >-
+      Indigenous-owned authority makes this a strong channel fit. Private-sector
+      adjacency exists through broadband operations, but the authority/community
+      governance frame dominates.
+
+  - doc_id: "cc_pilot_20260426_anishinaabe_tourism"
+    es_index: classified_content
+    ingest_timestamp: 2026-04-01T12:50:00Z
+    title: "Anishinaabe tourism operators launch regional cultural trail"
+    excerpt: >-
+      Anishinaabe-owned tourism operators and First Nation economic development
+      staff launched a cultural trail promoting community-owned experiences and
+      Indigenous procurement.
+    segments:
+      indigenous_channel: strong
+      northern_ontario_industry: none
+      private_sector_smb: strong
+    labeller_confidence: medium
+    labeller: jonesrussell
+    labelled_at: 2026-04-26T19:30:00Z
+    notes: >-
+      Multi-label positive. Indigenous ownership and First Nation economic
+      development support indigenous_channel; named operators fit private-sector
+      SMB. Not a Northern Ontario target-industry story.
+
+  - doc_id: "cc_pilot_20260426_glencore_sudbury_smelter"
+    es_index: classified_content
+    ingest_timestamp: 2026-04-01T13:00:00Z
+    title: "Glencore advances Sudbury smelter modernization project"
+    excerpt: >-
+      Glencore detailed modernization work at its Sudbury smelter, including nickel
+      processing upgrades, contractor mobilization, and permitting milestones for
+      the Northern Ontario operation.
+    segments:
+      indigenous_channel: none
+      northern_ontario_industry: strong
+      private_sector_smb: none
+    labeller_confidence: high
+    labeller: jonesrussell
+    labelled_at: 2026-04-26T19:30:00Z
+    notes: >-
+      Canonical Sudbury mining and processing operator story. Large multinational,
+      so no SMB label.
+
+  - doc_id: "cc_pilot_20260426_newmont_porcupine"
+    es_index: classified_content
+    ingest_timestamp: 2026-04-01T13:05:00Z
+    title: "Newmont reports Porcupine mine production update in Timmins"
+    excerpt: >-
+      Newmont reported production and workforce updates for the Porcupine gold
+      operation in Timmins, with capital spending planned for mine life extension.
+    segments:
+      indigenous_channel: none
+      northern_ontario_industry: strong
+      private_sector_smb: none
+    labeller_confidence: high
+    labeller: jonesrussell
+    labelled_at: 2026-04-26T19:30:00Z
+    notes: >-
+      Timmins gold operation is directly inside the Northern Ontario mining corridor.
+      Operator scale excludes private-sector SMB.
+
+  - doc_id: "cc_pilot_20260426_iamgold_cote"
+    es_index: classified_content
+    ingest_timestamp: 2026-04-01T13:10:00Z
+    title: "IAMGOLD Cote Gold ramps up production near Gogama"
+    excerpt: >-
+      IAMGOLD said the Cote Gold mine near Gogama is ramping up processing rates,
+      hiring mine staff, and expanding Northern Ontario supplier contracts.
+    segments:
+      indigenous_channel: none
+      northern_ontario_industry: strong
+      private_sector_smb: none
+    labeller_confidence: high
+    labeller: jonesrussell
+    labelled_at: 2026-04-26T19:30:00Z
+    notes: >-
+      Gogama mine production story is a clean Northern Ontario industry positive.
+      Supplier mentions are too generic for SMB.
+
+  - doc_id: "cc_pilot_20260426_alamos_young_davidson"
+    es_index: classified_content
+    ingest_timestamp: 2026-04-01T13:15:00Z
+    title: "Alamos Gold expands Young-Davidson mine plan near Matachewan"
+    excerpt: >-
+      Alamos Gold outlined an expanded mine plan for Young-Davidson near Matachewan,
+      including underground development, gold output guidance, and regional hiring.
+    segments:
+      indigenous_channel: none
+      northern_ontario_industry: strong
+      private_sector_smb: none
+    labeller_confidence: high
+    labeller: jonesrussell
+    labelled_at: 2026-04-26T19:30:00Z
+    notes: >-
+      Matachewan gold mining operation is a canonical corridor mining signal.
+
+  - doc_id: "cc_pilot_20260426_new_gold_rainy_river"
+    es_index: classified_content
+    ingest_timestamp: 2026-04-01T13:20:00Z
+    title: "New Gold updates Rainy River mine guidance for Northwestern Ontario"
+    excerpt: >-
+      New Gold updated production guidance for the Rainy River mine near Fort
+      Frances, citing mill performance, gold recovery, and Northern Ontario staffing.
+    segments:
+      indigenous_channel: none
+      northern_ontario_industry: strong
+      private_sector_smb: none
+    labeller_confidence: high
+    labeller: jonesrussell
+    labelled_at: 2026-04-26T19:30:00Z
+    notes: >-
+      Rainy River is a direct NW Ontario mining operator story. No Indigenous or
+      SMB subject.
+
+  - doc_id: "cc_pilot_20260426_resolute_thunder_bay"
+    es_index: classified_content
+    ingest_timestamp: 2026-04-01T13:25:00Z
+    title: "Resolute Forest Products invests in Thunder Bay pulp and paper mill"
+    excerpt: >-
+      Resolute Forest Products announced capital work at its Thunder Bay pulp and
+      paper mill, including equipment upgrades, forestry supply planning, and local
+      mill jobs.
+    segments:
+      indigenous_channel: none
+      northern_ontario_industry: strong
+      private_sector_smb: none
+    labeller_confidence: high
+    labeller: jonesrussell
+    labelled_at: 2026-04-26T19:30:00Z
+    notes: >-
+      Thunder Bay forestry and pulp/paper operation is a clean NOI forestry positive.
+
+  - doc_id: "cc_pilot_20260426_greenfirst_kapuskasing"
+    es_index: classified_content
+    ingest_timestamp: 2026-04-01T13:30:00Z
+    title: "GreenFirst plans Kapuskasing sawmill modernization"
+    excerpt: >-
+      GreenFirst Forest Products described a Kapuskasing sawmill modernization plan
+      tied to lumber output, forestry contractors, and Northern Ontario supply-chain
+      capacity.
+    segments:
+      indigenous_channel: none
+      northern_ontario_industry: strong
+      private_sector_smb: none
+    labeller_confidence: high
+    labeller: jonesrussell
+    labelled_at: 2026-04-26T19:30:00Z
+    notes: >-
+      Kapuskasing forestry and sawmill story fits the NOI forestry bucket.
+
+  - doc_id: "cc_pilot_20260426_domtar_espanola"
+    es_index: classified_content
+    ingest_timestamp: 2026-04-01T13:35:00Z
+    title: "Domtar reviews restart options for Espanola pulp mill"
+    excerpt: >-
+      Domtar discussed options for the Espanola pulp mill, including forestry fibre
+      supply, mill employment, and regional industrial impacts.
+    segments:
+      indigenous_channel: none
+      northern_ontario_industry: strong
+      private_sector_smb: none
+    labeller_confidence: high
+    labeller: jonesrussell
+    labelled_at: 2026-04-26T19:30:00Z
+    notes: >-
+      Espanola pulp mill is a direct Northern Ontario forestry/industry signal.
+
+  - doc_id: "cc_pilot_20260426_opg_kapuskasing_hydro"
+    es_index: classified_content
+    ingest_timestamp: 2026-04-01T13:40:00Z
+    title: "OPG schedules upgrades for Kapuskasing hydro facilities"
+    excerpt: >-
+      Ontario Power Generation outlined maintenance and upgrade work for hydro
+      facilities near Kapuskasing, with regional contractors and power-system
+      reliability cited as project drivers.
+    segments:
+      indigenous_channel: none
+      northern_ontario_industry: strong
+      private_sector_smb: none
+    labeller_confidence: high
+    labeller: jonesrussell
+    labelled_at: 2026-04-26T19:30:00Z
+    notes: >-
+      Corridor energy infrastructure story. OPG is not SMB, but the energy/industry
+      component is canonical for NOI.
+
+  - doc_id: "cc_pilot_20260426_ontario_northland_moosonee"
+    es_index: classified_content
+    ingest_timestamp: 2026-04-01T13:45:00Z
+    title: "Ontario Northland advances rail work between Cochrane and Moosonee"
+    excerpt: >-
+      Ontario Northland described rail corridor upgrades serving Cochrane, Moosonee,
+      freight customers, and Northern Ontario communities.
+    segments:
+      indigenous_channel: none
+      northern_ontario_industry: strong
+      private_sector_smb: none
+    labeller_confidence: high
+    labeller: jonesrussell
+    labelled_at: 2026-04-26T19:30:00Z
+    notes: >-
+      Northern Ontario transportation and industrial corridor infrastructure fits
+      the energy/industry/municipal side of NOI.
+
+  - doc_id: "cc_pilot_20260426_sudbury_mining_supplier"
+    es_index: classified_content
+    ingest_timestamp: 2026-04-01T13:50:00Z
+    title: "Sudbury mining supplier wins ventilation contract for nickel mine"
+    excerpt: >-
+      A privately held Sudbury mining supplier with 70 employees won a ventilation
+      systems contract for a Northern Ontario nickel mine.
+    segments:
+      indigenous_channel: none
+      northern_ontario_industry: strong
+      private_sector_smb: strong
+    labeller_confidence: high
+    labeller: jonesrussell
+    labelled_at: 2026-04-26T19:30:00Z
+    notes: >-
+      Clean multi-label case: subject is both a Northern Ontario mining supplier
+      and a private mid-sized business.
+
+  - doc_id: "cc_pilot_20260426_ottawa_accounting_firm"
+    es_index: classified_content
+    ingest_timestamp: 2026-04-01T14:00:00Z
+    title: "Ottawa accounting firm expands advisory practice for family businesses"
+    excerpt: >-
+      A privately held CPA firm in Ottawa added partners and launched an advisory
+      practice for family-owned businesses, with 38 staff serving Ontario clients.
+    segments:
+      indigenous_channel: none
+      northern_ontario_industry: none
+      private_sector_smb: strong
+    labeller_confidence: high
+    labeller: jonesrussell
+    labelled_at: 2026-04-26T19:30:00Z
+    notes: >-
+      Canonical professional-services SMB: accounting firm, private ownership,
+      mid-sized staff count, Ontario client base.
+
+  - doc_id: "cc_pilot_20260426_kanata_saas_bootstrapped"
+    es_index: classified_content
+    ingest_timestamp: 2026-04-01T14:05:00Z
+    title: "Kanata bootstrapped SaaS company grows without venture capital"
+    excerpt: >-
+      A bootstrapped SaaS startup in Kanata reported profitable growth, 42 employees,
+      and expansion plans for its Canadian mid-market customer base.
+    segments:
+      indigenous_channel: none
+      northern_ontario_industry: none
+      private_sector_smb: strong
+    labeller_confidence: high
+    labeller: jonesrussell
+    labelled_at: 2026-04-26T19:30:00Z
+    notes: >-
+      Direct hit for the bootstrapped SaaS and mid-market/private company language
+      in the segment definition.
+
+  - doc_id: "cc_pilot_20260426_family_owned_manufacturer"
+    es_index: classified_content
+    ingest_timestamp: 2026-04-01T14:10:00Z
+    title: "Family-owned Ontario manufacturer marks 40 years in business"
+    excerpt: >-
+      A family-owned precision manufacturer in Ontario marked 40 years of operations,
+      employing 85 people and serving Canadian industrial customers.
+    segments:
+      indigenous_channel: none
+      northern_ontario_industry: none
+      private_sector_smb: strong
+    labeller_confidence: high
+    labeller: jonesrussell
+    labelled_at: 2026-04-26T19:30:00Z
+    notes: >-
+      Family-owned, privately held, and mid-sized. Industry is manufacturing but not
+      specifically Northern Ontario mining/forestry/energy.
+
+  - doc_id: "cc_pilot_20260426_engineering_consultancy"
+    es_index: classified_content
+    ingest_timestamp: 2026-04-01T14:15:00Z
+    title: "Engineering consultancy opens second Ontario office"
+    excerpt: >-
+      A Canadian engineering consultancy with 55 staff opened a second Ontario
+      office to serve municipal infrastructure and private industrial clients.
+    segments:
+      indigenous_channel: none
+      northern_ontario_industry: partial
+      private_sector_smb: strong
+    labeller_confidence: medium
+    labeller: jonesrussell
+    labelled_at: 2026-04-26T19:30:00Z
+    notes: >-
+      Strong SMB professional-services fit. NOI is partial because municipal and
+      industrial infrastructure is adjacent, but the excerpt lacks a clear Northern
+      Ontario geography anchor.
+
+  - doc_id: "cc_pilot_20260426_canadian_law_firm_merger"
+    es_index: classified_content
+    ingest_timestamp: 2026-04-01T14:20:00Z
+    title: "Regional Canadian law firm merges with boutique litigation practice"
+    excerpt: >-
+      A regional Canadian law firm with 60 lawyers merged with a boutique litigation
+      practice, expanding services for owner-managed businesses and mid-market clients.
+    segments:
+      indigenous_channel: none
+      northern_ontario_industry: none
+      private_sector_smb: strong
+    labeller_confidence: high
+    labeller: jonesrussell
+    labelled_at: 2026-04-26T19:30:00Z
+    notes: >-
+      Law firm and owner-managed/mid-market client language makes this a canonical
+      professional-services SMB label.
+
+  - doc_id: "cc_pilot_20260426_it_services_firm"
+    es_index: classified_content
+    ingest_timestamp: 2026-04-01T14:25:00Z
+    title: "Privately held IT services firm acquires cybersecurity boutique"
+    excerpt: >-
+      A privately held Canadian IT services firm acquired a 20-person cybersecurity
+      boutique, bringing combined headcount to 95 and expanding managed-service
+      offerings.
+    segments:
+      indigenous_channel: none
+      northern_ontario_industry: none
+      private_sector_smb: strong
+    labeller_confidence: high
+    labeller: jonesrussell
+    labelled_at: 2026-04-26T19:30:00Z
+    notes: >-
+      Privately held, Canadian, services firm, and mid-sized headcount are all direct
+      private_sector_smb signals.
+
+  - doc_id: "cc_pilot_20260426_architecture_studio"
+    es_index: classified_content
+    ingest_timestamp: 2026-04-01T14:30:00Z
+    title: "Ontario architecture studio wins municipal design award"
+    excerpt: >-
+      A privately owned architecture studio with 28 employees won a municipal design
+      award for community recreation and library projects across Ontario.
+    segments:
+      indigenous_channel: none
+      northern_ontario_industry: none
+      private_sector_smb: strong
+    labeller_confidence: high
+    labeller: jonesrussell
+    labelled_at: 2026-04-26T19:30:00Z
+    notes: >-
+      Private professional-services firm with a modest employee count. Municipal
+      design work is not enough for NOI without Northern Ontario geography.
+
+  - doc_id: "cc_pilot_20260426_private_sector_rfp_advisor"
+    es_index: classified_content
+    ingest_timestamp: 2026-04-01T14:35:00Z
+    title: "Procurement advisory firm helps Canadian businesses pursue public RFPs"
+    excerpt: >-
+      A Canadian consulting firm specializing in procurement strategy added staff
+      after helping small and medium-sized businesses respond to public-sector RFPs.
+    segments:
+      indigenous_channel: none
+      northern_ontario_industry: none
+      private_sector_smb: strong
+    labeller_confidence: high
+    labeller: jonesrussell
+    labelled_at: 2026-04-26T19:30:00Z
+    notes: >-
+      Consulting firm and SMB-client context are directly aligned with the segment.
+
+  - doc_id: "cc_pilot_20260426_abc_indigenous_arts"
+    es_index: classified_content
+    ingest_timestamp: 2026-04-01T15:00:00Z
+    title: "ABC Indigenous arts program expands regional radio coverage"
+    excerpt: >-
+      An Australian Indigenous arts and radio program expanded regional coverage,
+      citing Aboriginal community media, ATSIC history, and cultural programming.
+    segments:
+      indigenous_channel: none
+      northern_ontario_industry: none
+      private_sector_smb: none
+    labeller_confidence: high
+    labeller: jonesrussell
+    labelled_at: 2026-04-26T19:30:00Z
+    notes: >-
+      AU Indigenous adjacency-negative. Indigenous topic alone must not satisfy the
+      Canadian indigenous_channel definition.
+
+  - doc_id: "cc_pilot_20260426_waatea_maori_media"
+    es_index: classified_content
+    ingest_timestamp: 2026-04-01T15:05:00Z
+    title: "Waatea covers Maori broadcasting partnership in Auckland"
+    excerpt: >-
+      Waatea reported a Maori broadcasting partnership in Auckland focused on local
+      language programming and New Zealand community media.
+    segments:
+      indigenous_channel: none
+      northern_ontario_industry: none
+      private_sector_smb: none
+    labeller_confidence: high
+    labeller: jonesrussell
+    labelled_at: 2026-04-26T19:30:00Z
+    notes: >-
+      NZ Indigenous adjacency-negative. This protects against topic-only matches
+      without Canadian institutions or geography.
+
+  - doc_id: "cc_pilot_20260426_toronto_auto_parts"
+    es_index: classified_content
+    ingest_timestamp: 2026-04-01T15:10:00Z
+    title: "Toronto auto-parts plant adds third shift after export growth"
+    excerpt: >-
+      A multinational auto-parts plant in Toronto added a third shift after export
+      demand increased for components shipped to US assembly plants.
+    segments:
+      indigenous_channel: none
+      northern_ontario_industry: none
+      private_sector_smb: none
+    labeller_confidence: high
+    labeller: jonesrussell
+    labelled_at: 2026-04-26T19:30:00Z
+    notes: >-
+      Southern Ontario manufacturing and multinational ownership are outside both
+      NOI and private_sector_smb definitions.
+
+  - doc_id: "cc_pilot_20260426_bc_copper_mine"
+    es_index: classified_content
+    ingest_timestamp: 2026-04-01T15:15:00Z
+    title: "BC copper mine receives environmental assessment certificate"
+    excerpt: >-
+      A British Columbia copper mine received an environmental assessment certificate
+      after provincial review, with construction planning expected later this year.
+    segments:
+      indigenous_channel: none
+      northern_ontario_industry: none
+      private_sector_smb: none
+    labeller_confidence: high
+    labeller: jonesrussell
+    labelled_at: 2026-04-26T19:30:00Z
+    notes: >-
+      Canadian mining but wrong geography. Per v1 rules, BC mining is adjacency-none,
+      not NOI partial.
+
+  - doc_id: "cc_pilot_20260426_royal_bank_small_business"
+    es_index: classified_content
+    ingest_timestamp: 2026-04-01T15:20:00Z
+    title: "Royal Bank launches small-business financing survey"
+    excerpt: >-
+      Royal Bank published a survey on small-business financing conditions and
+      announced new advisory resources for entrepreneurs.
+    segments:
+      indigenous_channel: none
+      northern_ontario_industry: none
+      private_sector_smb: none
+    labeller_confidence: high
+    labeller: jonesrussell
+    labelled_at: 2026-04-26T19:30:00Z
+    notes: >-
+      Talks about small business, but the subject is a large-cap bank, not a
+      private-sector SMB prospect.
+
+  - doc_id: "cc_pilot_20260426_g7_trade_story"
+    es_index: classified_content
+    ingest_timestamp: 2026-04-01T15:25:00Z
+    title: "G7 leaders debate trade policy ahead of summit"
+    excerpt: >-
+      International leaders debated tariffs, supply chains, and trade policy ahead
+      of the G7 summit, with no Canadian sector, Indigenous, or SMB subject.
+    segments:
+      indigenous_channel: none
+      northern_ontario_industry: none
+      private_sector_smb: none
+    labeller_confidence: high
+    labeller: jonesrussell
+    labelled_at: 2026-04-26T19:30:00Z
+    notes: >-
+      True none/none/none international politics anchor.
+
+  - doc_id: "cc_pilot_20260426_nhl_playoff_preview"
+    es_index: classified_content
+    ingest_timestamp: 2026-04-01T15:30:00Z
+    title: "NHL playoff preview highlights goaltending matchups"
+    excerpt: >-
+      A sports feature previewed NHL playoff matchups, roster injuries, and
+      goaltending statistics.
+    segments:
+      indigenous_channel: none
+      northern_ontario_industry: none
+      private_sector_smb: none
+    labeller_confidence: high
+    labeller: jonesrussell
+    labelled_at: 2026-04-26T19:30:00Z
+    notes: >-
+      True none/none/none sports anchor with no segment-adjacent signal.
+
+  - doc_id: "cc_pilot_20260426_lifestyle_recipe"
+    es_index: classified_content
+    ingest_timestamp: 2026-04-01T15:35:00Z
+    title: "Spring dinner recipes feature asparagus and lemon"
+    excerpt: >-
+      A lifestyle article collected spring dinner recipes, cooking tips, ingredients,
+      and serving suggestions.
+    segments:
+      indigenous_channel: none
+      northern_ontario_industry: none
+      private_sector_smb: none
+    labeller_confidence: high
+    labeller: jonesrussell
+    labelled_at: 2026-04-26T19:30:00Z
+    notes: >-
+      True none/none/none lifestyle anchor.
