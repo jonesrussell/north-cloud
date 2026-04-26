@@ -11,6 +11,7 @@ import (
 	"github.com/jonesrussell/north-cloud/source-manager/internal/config"
 	"github.com/jonesrussell/north-cloud/source-manager/internal/events"
 	"github.com/jonesrussell/north-cloud/source-manager/internal/handlers"
+	"github.com/jonesrussell/north-cloud/source-manager/internal/icpstore"
 	"github.com/jonesrussell/north-cloud/source-manager/internal/repository"
 	"github.com/jonesrussell/north-cloud/source-manager/internal/services"
 )
@@ -90,6 +91,7 @@ func NewServer(
 	cfg *config.Config,
 	infraLog infralogger.Logger,
 	publisher *events.Publisher,
+	icpStore *icpstore.Store,
 ) *infragin.Server {
 	sourceHandler := handlers.NewSourceHandler(db, infraLog, publisher)
 	communityHandler := handlers.NewCommunityHandler(communityRepo, infraLog)
@@ -99,6 +101,7 @@ func NewServer(
 	linkerHandler := handlers.NewLinkerHandler(communityRepo, db, infraLog)
 	dictionaryHandler := handlers.NewDictionaryHandler(dictionaryRepo, infraLog)
 	travelTimeHandler := handlers.NewTravelTimeHandler(travelTimeSvc, infraLog)
+	icpHandler := handlers.NewICPHandler(icpStore)
 
 	// Build CORS config
 	corsConfig := infragin.CORSConfig{
@@ -120,7 +123,7 @@ func NewServer(
 			setupServiceRoutes(
 				router, sourceHandler, communityHandler, personHandler,
 				bandOfficeHandler, verificationHandler, linkerHandler,
-				dictionaryHandler, travelTimeHandler, cfg,
+				dictionaryHandler, travelTimeHandler, icpHandler, cfg,
 			)
 		}).
 		Build()
@@ -140,6 +143,7 @@ func setupServiceRoutes(
 	linkerHandler *handlers.LinkerHandler,
 	dictionaryHandler *handlers.DictionaryHandler,
 	travelTimeHandler *handlers.TravelTimeHandler,
+	icpHandler *handlers.ICPHandler,
 	cfg *config.Config,
 ) {
 	// Public API endpoints (no JWT required) - for internal service-to-service communication
@@ -150,6 +154,7 @@ func setupServiceRoutes(
 	publicAPI.GET("/sources/indigenous", sourceHandler.ListIndigenous)
 	// GET /api/v1/cities - allow publisher to get cities without auth
 	publicAPI.GET("/cities", sourceHandler.GetCities)
+	publicAPI.GET("/icp-segments", icpHandler.GetSegments)
 
 	// Communities — public read endpoints (service-to-service, Minoo sync)
 	publicCommunities := publicAPI.Group("/communities")

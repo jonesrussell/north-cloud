@@ -43,6 +43,8 @@ const (
 	defaultIndigenousMLServiceURL    = "http://indigenous-ml:8081"
 	defaultMiningMLServiceURL        = "http://mining-ml:8077"
 	defaultQualityGateThreshold      = 40
+	defaultSourceManagerURL          = "http://source-manager:8050"
+	defaultSectorAlignmentRefreshSec = 30
 )
 
 // Config holds all configuration for the classifier service.
@@ -143,6 +145,7 @@ type ClassificationConfig struct {
 	Job              JobExtractionConfig        `yaml:"job"`
 	RFP              RFPExtractionConfig        `yaml:"rfp"`
 	NeedSignal       NeedSignalExtractionConfig `yaml:"need_signal"`
+	SectorAlignment  SectorAlignmentConfig      `yaml:"sector_alignment"`
 	DrillExtraction  DrillExtractionConfig      `yaml:"drill_extraction"`
 	QualityGate      QualityGateConfig          `yaml:"quality_gate"`
 	// SidecarRegistry maps sidecar name (e.g. "crime", "mining") to enabled + URL.
@@ -206,6 +209,12 @@ type RFPExtractionConfig struct {
 // NeedSignalExtractionConfig holds need signal extraction settings.
 type NeedSignalExtractionConfig struct {
 	Enabled bool `env:"NEED_SIGNAL_ENABLED" yaml:"enabled"`
+}
+
+type SectorAlignmentConfig struct {
+	Enabled          bool          `env:"SECTOR_ALIGNMENT_ENABLED"           yaml:"enabled"`
+	SourceManagerURL string        `env:"SOURCE_MANAGER_URL"                yaml:"source_manager_url"`
+	RefreshInterval  time.Duration `env:"SECTOR_ALIGNMENT_REFRESH_INTERVAL" yaml:"refresh_interval"`
 }
 
 // DrillExtractionConfig holds drill results extraction settings.
@@ -417,6 +426,12 @@ func setClassificationDefaults(c *ClassificationConfig) {
 	// QualityGate defaults: disabled by default for safe rollout
 	if c.QualityGate.Threshold == 0 {
 		c.QualityGate.Threshold = defaultQualityGateThreshold
+	}
+	if c.SectorAlignment.SourceManagerURL == "" {
+		c.SectorAlignment.SourceManagerURL = defaultSourceManagerURL
+	}
+	if c.SectorAlignment.RefreshInterval == 0 {
+		c.SectorAlignment.RefreshInterval = defaultSectorAlignmentRefreshSec * time.Second
 	}
 	// Routing: if absent, use default routing table (article -> all; article:event -> location; article:blotter -> crime; article:report -> none)
 	if c.Routing == nil {

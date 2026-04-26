@@ -33,6 +33,7 @@ type Classifier struct {
 	jobExtractor        *JobExtractor
 	rfpExtractor        *RFPExtractor
 	needSignalExtractor *NeedSignalExtractor
+	sectorAlignment     *SectorAlignmentExtractor
 	logger              infralogger.Logger
 	version             string
 	routingTable        map[string][]string // route key -> sidecar names (e.g. "article:event" -> ["location"])
@@ -45,17 +46,18 @@ type Config struct {
 	UpdateSourceRep         bool
 	QualityConfig           QualityConfig
 	SourceReputationConfig  SourceReputationConfig
-	CrimeClassifier         *CrimeClassifier         // Optional: hybrid street crime classifier
-	MiningClassifier        *MiningClassifier        // Optional: hybrid mining classifier
-	CoforgeClassifier       *CoforgeClassifier       // Optional: hybrid coforge classifier
-	EntertainmentClassifier *EntertainmentClassifier // Optional: hybrid entertainment classifier
-	IndigenousClassifier    *IndigenousClassifier    // Optional: hybrid indigenous classifier
-	RecipeExtractor         *RecipeExtractor         // Optional: structured recipe extractor
-	JobExtractor            *JobExtractor            // Optional: structured job extractor
-	RFPExtractor            *RFPExtractor            // Optional: structured RFP extractor
-	NeedSignalExtractor     *NeedSignalExtractor     // Optional: structured need signal extractor
-	RoutingTable            map[string][]string      // Optional: content-type routing (see ResolveSidecars)
-	MaxTopics               int                      // Maximum topics per item (default 5)
+	CrimeClassifier         *CrimeClassifier          // Optional: hybrid street crime classifier
+	MiningClassifier        *MiningClassifier         // Optional: hybrid mining classifier
+	CoforgeClassifier       *CoforgeClassifier        // Optional: hybrid coforge classifier
+	EntertainmentClassifier *EntertainmentClassifier  // Optional: hybrid entertainment classifier
+	IndigenousClassifier    *IndigenousClassifier     // Optional: hybrid indigenous classifier
+	RecipeExtractor         *RecipeExtractor          // Optional: structured recipe extractor
+	JobExtractor            *JobExtractor             // Optional: structured job extractor
+	RFPExtractor            *RFPExtractor             // Optional: structured RFP extractor
+	NeedSignalExtractor     *NeedSignalExtractor      // Optional: structured need signal extractor
+	SectorAlignment         *SectorAlignmentExtractor // Optional: ICP segment matcher
+	RoutingTable            map[string][]string       // Optional: content-type routing (see ResolveSidecars)
+	MaxTopics               int                       // Maximum topics per item (default 5)
 }
 
 // NewClassifier creates a new classifier with all strategies
@@ -110,6 +112,7 @@ func NewClassifier(
 		jobExtractor:        config.JobExtractor,
 		rfpExtractor:        config.RFPExtractor,
 		needSignalExtractor: config.NeedSignalExtractor,
+		sectorAlignment:     config.SectorAlignment,
 		logger:              logger,
 		version:             config.Version,
 		routingTable:        routingTable,
@@ -195,6 +198,7 @@ func (c *Classifier) Classify(ctx context.Context, raw *domain.RawContent) (*dom
 	if indigenousResult != nil && indigenousResult.Relevance != indigenousRelevanceNot {
 		topicResult.Topics = append(topicResult.Topics, "indigenous")
 	}
+	icpResult := c.runSectorAlignment(ctx, raw, topicResult.Topics)
 
 	// Update source reputation if enabled
 	isSpam := qualityResult.TotalScore < spamThresholdScore // Spam threshold
@@ -240,6 +244,7 @@ func (c *Classifier) Classify(ctx context.Context, raw *domain.RawContent) (*dom
 		Job:                  jobResult,
 		RFP:                  rfpResult,
 		NeedSignal:           needSignalResult,
+		ICP:                  icpResult,
 	}
 
 	c.logger.Info("Classification complete",
@@ -515,6 +520,24 @@ func (c *Classifier) runRecipeExtraction(
 	return result
 }
 
+func (c *Classifier) runSectorAlignment(
+	ctx context.Context, raw *domain.RawContent, topics []string,
+) *domain.ICPResult {
+	if c.sectorAlignment == nil {
+		return nil
+	}
+	result, err := c.sectorAlignment.Extract(ctx, raw, topics)
+	if err != nil {
+		wrapped := fmt.Errorf("sector alignment content_id=%s: %w", raw.ID, err)
+		c.logger.Warn("Sector alignment failed",
+			infralogger.String("content_id", raw.ID),
+			infralogger.Error(wrapped),
+		)
+		return nil
+	}
+	return result
+}
+
 // runJobExtraction runs job extraction when enabled. Extraction is best-effort:
 // failure returns nil job and does not fail the overall classification.
 func (c *Classifier) runJobExtraction(
@@ -620,6 +643,7 @@ func (c *Classifier) BuildClassifiedContent(raw *domain.RawContent, result *doma
 		Job:                  result.Job,
 		RFP:                  result.RFP,
 		NeedSignal:           result.NeedSignal,
+		ICP:                  result.ICP,
 		// Publisher compatibility aliases
 		Body:   raw.RawText, // Alias for RawText
 		Source: raw.URL,     // Alias for URL

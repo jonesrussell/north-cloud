@@ -57,6 +57,7 @@ COPY --from=builder /build/source-manager/seed-communities .
 COPY --from=builder /build/source-manager/seed-municipalities .
 COPY --from=builder /build/source-manager/refresh-communities .
 COPY --from=builder /build/source-manager/config.yml.example ./config.yml
+COPY --from=builder /build/source-manager/data ./data
 
 # Switch to non-root user
 USER appuser

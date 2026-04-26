@@ -7,6 +7,7 @@ import (
 	"github.com/jonesrussell/north-cloud/source-manager/internal/config"
 	"github.com/jonesrussell/north-cloud/source-manager/internal/database"
 	"github.com/jonesrussell/north-cloud/source-manager/internal/events"
+	"github.com/jonesrussell/north-cloud/source-manager/internal/icpstore"
 	"github.com/jonesrussell/north-cloud/source-manager/internal/repository"
 	"github.com/jonesrussell/north-cloud/source-manager/internal/services"
 	"github.com/jonesrussell/north-cloud/source-manager/internal/services/osrm"
@@ -17,6 +18,7 @@ func SetupHTTPServer(
 	cfg *config.Config,
 	db *database.DB,
 	publisher *events.Publisher,
+	icpStore *icpstore.Store,
 	log infralogger.Logger,
 ) *infragin.Server {
 	sourceRepo := repository.NewSourceRepository(db.DB(), log)
@@ -32,6 +34,6 @@ func SetupHTTPServer(
 
 	return api.NewServer(
 		sourceRepo, communityRepo, personRepo, bandOfficeRepo,
-		verificationRepo, dictionaryRepo, travelTimeSvc, cfg, log, publisher,
+		verificationRepo, dictionaryRepo, travelTimeSvc, cfg, log, publisher, icpStore,
 	)
 }

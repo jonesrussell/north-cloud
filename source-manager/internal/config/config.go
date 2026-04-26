@@ -24,6 +24,8 @@ const (
 	defaultAutoRejectThreshold   = 0.30
 	defaultAnthropicModel        = "claude-haiku-4-5-20251001"
 	defaultOSRMBaseURL           = "http://router.project-osrm.org"
+	defaultICPSegmentsPath       = "data/icp-segments.yml"
+	defaultICPReloadInterval     = 30 * time.Second
 )
 
 type Config struct {
@@ -34,11 +36,17 @@ type Config struct {
 	Redis        RedisConfig        `yaml:"redis"`
 	Verification VerificationConfig `yaml:"verification"`
 	OSRM         OSRMConfig         `yaml:"osrm"`
+	ICP          ICPConfig          `yaml:"icp"`
 }
 
 // OSRMConfig holds OSRM routing engine configuration.
 type OSRMConfig struct {
 	BaseURL string `env:"OSRM_BASE_URL" yaml:"base_url"`
+}
+
+type ICPConfig struct {
+	SegmentsPath   string        `env:"ICP_SEGMENTS_PATH"   yaml:"segments_path"`
+	ReloadInterval time.Duration `env:"ICP_RELOAD_INTERVAL" yaml:"reload_interval"`
 }
 
 // RedisConfig holds Redis connection configuration for event publishing.
@@ -186,5 +194,11 @@ func setDefaults(cfg *Config) {
 	// OSRM defaults
 	if cfg.OSRM.BaseURL == "" {
 		cfg.OSRM.BaseURL = defaultOSRMBaseURL
+	}
+	if cfg.ICP.SegmentsPath == "" {
+		cfg.ICP.SegmentsPath = defaultICPSegmentsPath
+	}
+	if cfg.ICP.ReloadInterval == 0 {
+		cfg.ICP.ReloadInterval = defaultICPReloadInterval
 	}
 }

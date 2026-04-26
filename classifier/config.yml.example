@@ -83,6 +83,11 @@ classification:
     confidence_threshold: 0.3
     max_topics: 5
 
+  sector_alignment:
+    enabled: false
+    source_manager_url: "http://source-manager:8050"
+    refresh_interval: "30s"
+
   # Source reputation
   source_reputation:
     enabled: true

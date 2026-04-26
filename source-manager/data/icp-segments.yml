@@ -1,0 +1,103 @@
+# ICP segment seed for classifier sector_alignment.
+# model_version stays v1 for seed-only edits; bump only when matcher logic changes.
+segment_schema_version: 1
+seed_updated_at: "2026-04-26"
+segments:
+  - name: indigenous_channel
+    description: "Indigenous-owned or Indigenous-adjacent Canadian organizations, Indigenous financial institutions, and IBA-relevant industry."
+    keywords:
+      - "First Nation"
+      - "First Nations"
+      - "Indigenous-owned"
+      - "Indigenous business"
+      - "Indigenous procurement"
+      - "Indigenous financial institution"
+      - "Aboriginal financial institution"
+      - "economic development corporation"
+      - "Impact Benefit Agreement"
+      - "IBA"
+      - "band council"
+      - "tribal council"
+      - "Metis Nation"
+      - "Inuit"
+      - "Assembly of First Nations"
+      - "Canadian Council for Aboriginal Business"
+      - "CCAB"
+      - "NACCA"
+    topics:
+      - "indigenous"
+    required_any:
+      - "First Nation"
+      - "First Nations"
+      - "Metis"
+      - "Inuit"
+      - "treaty"
+      - "band council"
+      - "tribal council"
+      - "Ontario"
+      - "Canada"
+      - "Canadian"
+      - "Nishnawbe"
+      - "Anishinaabe"
+      - "Cree"
+      - "Ojibwe"
+      - "Mi'kmaq"
+      - "Haudenosaunee"
+      - "Nunavut"
+      - "Yukon"
+      - "Northwest Territories"
+    min_score: 0.30
+
+  - name: northern_ontario_industry
+    description: "Mining, forestry, energy, and municipal industry in the Algoma, Manitoulin, Sudbury, and Thunder Bay corridor."
+    keywords:
+      - "Northern Ontario"
+      - "Sudbury"
+      - "Greater Sudbury"
+      - "Thunder Bay"
+      - "Sault Ste. Marie"
+      - "Algoma"
+      - "Manitoulin"
+      - "Timmins"
+      - "North Bay"
+      - "Kenora"
+      - "Dryden"
+      - "Elliot Lake"
+      - "mining"
+      - "mine"
+      - "nickel"
+      - "forestry"
+      - "sawmill"
+      - "pulp and paper"
+      - "energy project"
+      - "hydro"
+      - "municipality"
+      - "municipal"
+    topics:
+      - "mining"
+      - "energy"
+    min_score: 0.30
+
+  - name: private_sector_smb
+    description: "Mid-size Canadian law, accounting, engineering, consultancy, bootstrapped SaaS, and family-owned businesses."
+    keywords:
+      - "law firm"
+      - "accounting firm"
+      - "CPA firm"
+      - "engineering consultancy"
+      - "consulting firm"
+      - "SaaS startup"
+      - "bootstrapped"
+      - "family-owned"
+      - "mid-market"
+      - "small business"
+      - "medium-sized business"
+      - "Canadian company"
+      - "Canada-based"
+      - "Ontario-based"
+      - "privately held"
+      - "professional services firm"
+    topics:
+      - "business"
+      - "technology"
+    min_score: 0.35

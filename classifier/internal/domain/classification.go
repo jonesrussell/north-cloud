@@ -61,6 +61,9 @@ type ClassificationResult struct {
 
 	// Need signal detection (optional)
 	NeedSignal *NeedSignalResult `json:"need_signal,omitempty"`
+
+	// ICP segment alignment (optional)
+	ICP *ICPResult `json:"icp,omitempty"`
 }
 
 // IndigenousResult holds Indigenous hybrid classification results.
@@ -216,6 +219,9 @@ type ClassifiedContent struct {
 
 	// Need signal detection (optional)
 	NeedSignal *NeedSignalResult `json:"need_signal,omitempty"`
+
+	// ICP segment alignment (optional)
+	ICP *ICPResult `json:"icp,omitempty"`
 
 	// Publisher compatibility aliases
 	// These duplicate RawContent fields for backward compatibility with publisher
@@ -380,4 +386,15 @@ type NeedSignalResult struct {
 	SourceURL                  string   `json:"source_url,omitempty"`
 	Keywords                   []string `json:"keywords,omitempty"`
 	Confidence                 float64  `json:"confidence"`
+}
+
+type ICPResult struct {
+	Segments     []ICPSegmentResult `json:"segments"`
+	ModelVersion string             `json:"model_version"`
+}
+
+type ICPSegmentResult struct {
+	Segment         string   `json:"segment"`
+	Score           float64  `json:"score"`
+	MatchedKeywords []string `json:"matched_keywords"`
 }

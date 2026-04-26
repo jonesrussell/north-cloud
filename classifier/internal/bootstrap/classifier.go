@@ -203,7 +203,7 @@ func createClassifierConfig(cfg *config.Config, logger infralogger.Logger) class
 		miningCC.WithDrillExtraction(drillClient, drillCfg)
 	}
 
-	recipeExtractor, jobExtractor, rfpExtractor, needSignalExtractor := createExtractors(cfg, logger)
+	recipeExtractor, jobExtractor, rfpExtractor, needSignalExtractor, sectorAlignment := createExtractors(cfg, logger)
 
 	return classifier.Config{
 		Version:         "1.0.0",
@@ -233,6 +233,7 @@ func createClassifierConfig(cfg *config.Config, logger infralogger.Logger) class
 		JobExtractor:            jobExtractor,
 		RFPExtractor:            rfpExtractor,
 		NeedSignalExtractor:     needSignalExtractor,
+		SectorAlignment:         sectorAlignment,
 		RoutingTable:            cfg.Classification.Routing,
 		MaxTopics:               cfg.Classification.Topic.MaxTopics,
 	}
@@ -241,7 +242,13 @@ func createClassifierConfig(cfg *config.Config, logger infralogger.Logger) class
 // createExtractors creates the optional structured extractors (recipe, job, RFP, need signal).
 func createExtractors(
 	cfg *config.Config, logger infralogger.Logger,
-) (*classifier.RecipeExtractor, *classifier.JobExtractor, *classifier.RFPExtractor, *classifier.NeedSignalExtractor) {
+) (
+	*classifier.RecipeExtractor,
+	*classifier.JobExtractor,
+	*classifier.RFPExtractor,
+	*classifier.NeedSignalExtractor,
+	*classifier.SectorAlignmentExtractor,
+) {
 	var recipeExtractor *classifier.RecipeExtractor
 	if cfg.Classification.Recipe.Enabled {
 		recipeExtractor = classifier.NewRecipeExtractor(logger)
@@ -266,7 +273,19 @@ func createExtractors(
 		logger.Info("Need signal extractor enabled")
 	}
 
-	return recipeExtractor, jobExtractor, rfpExtractor, needSignalExtractor
+	var sectorAlignment *classifier.SectorAlignmentExtractor
+	if cfg.Classification.SectorAlignment.Enabled {
+		provider := classifier.NewHTTPICPSeedProvider(
+			cfg.Classification.SectorAlignment.SourceManagerURL,
+			cfg.Classification.SectorAlignment.RefreshInterval,
+			nil,
+		)
+		sectorAlignment = classifier.NewSectorAlignmentExtractor(provider)
+		logger.Info("Sector alignment extractor enabled",
+			infralogger.String("source_manager_url", cfg.Classification.SectorAlignment.SourceManagerURL))
+	}
+
+	return recipeExtractor, jobExtractor, rfpExtractor, needSignalExtractor, sectorAlignment
 }
 
 // createOptionalClassifier creates an optional ML classifier when enabled; returns nil otherwise.

@@ -28,6 +28,14 @@ curl http://localhost:8050/api/v1/sources/test-crawl \
   -d '{"url": "https://example.com", "selectors": {"article": {"title": "h1", "body": "article"}}}'
 ```
 
+## ICP Segment Seed
+
+`data/icp-segments.yml` is the source of truth for `sector_alignment` ICP rules.
+Edits must pass the ICP data schema gate in CI. Keep `icp.model_version` at `v1`
+for YAML-only seed changes; bump the model version only when matcher logic or the
+emitted field shape changes. Source-manager hot-reloads the seed and serves it to
+classifier at `GET /api/v1/icp-segments`.
+
 ## Layer Rules
 
 The source-manager's internal packages form a strict DAG organized into five layers.
@@ -35,7 +43,7 @@ A package may import from its own layer or any lower layer. Never from a higher 
 
 | Layer | Packages | Role |
 |-------|----------|------|
-| L0 | `config`, `models`, `events`, `aiverify`, `testcrawl` | Foundation — no internal imports |
+| L0 | `config`, `models`, `events`, `aiverify`, `testcrawl`, `icpstore` | Foundation — no internal imports |
 | L1 | `database`, `services/osrm` | Persistence / Infrastructure — depends on L0 |
 | L2 | `repository`, `projection`, `metadata`, `importer` | Data access + Enrichment — depends on L0–L1 |
 | L3 | `services`, `seeder` | Business logic — depends on L0–L2 |

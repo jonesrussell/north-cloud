@@ -11,6 +11,7 @@ import (
 	"github.com/jonesrussell/north-cloud/infrastructure/profiling"
 	"github.com/jonesrussell/north-cloud/infrastructure/provider/anthropic"
 	"github.com/jonesrussell/north-cloud/source-manager/internal/aiverify"
+	"github.com/jonesrussell/north-cloud/source-manager/internal/icpstore"
 	"github.com/jonesrussell/north-cloud/source-manager/internal/repository"
 )
 
@@ -56,8 +57,16 @@ func Start() error {
 	// Phase 3: Setup event publisher (optional)
 	publisher := SetupEventPublisher(cfg, log)
 
+	icpStore, err := icpstore.New(cfg.ICP.SegmentsPath, cfg.ICP.ReloadInterval, log)
+	if err != nil {
+		return fmt.Errorf("failed to load ICP seed: %w", err)
+	}
+	icpCtx, icpCancel := context.WithCancel(context.Background())
+	defer icpCancel()
+	go icpStore.Run(icpCtx)
+
 	// Phase 4: Setup and run HTTP server
-	server := SetupHTTPServer(cfg, db, publisher, log)
+	server := SetupHTTPServer(cfg, db, publisher, icpStore, log)
 
 	// Phase 4.5: Verification worker (optional, disabled by default)
 	if cfg.Verification.AIEnabled {

@@ -39,6 +39,23 @@ jobs:
       - name: Verify compose-derived ports docs
         run: task ports:check
 
+  icp-data:
+    name: ICP Data Schema
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.26.2'
+          cache: false
+
+      - name: Validate ICP seed and labels
+        working-directory: tools/validate-icp-data
+        run: GOWORK=off go run . -seed ../../source-manager/data/icp-segments.yml -labels ../../classifier/testdata/icp_labels.yml
+
   detect-changes:
     name: Detect Changed Services
     runs-on: ubuntu-latest

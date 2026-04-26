@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ICP segment seed",
+  "type": "object",
+  "required": ["segment_schema_version", "seed_updated_at", "segments"],
+  "additionalProperties": false,
+  "properties": {
+    "segment_schema_version": { "type": "integer", "const": 1 },
+    "seed_updated_at": { "type": "string", "format": "date" },
+    "segments": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": { "$ref": "#/$defs/segment" }
+    }
+  },
+  "$defs": {
+    "segment": {
+      "type": "object",
+      "required": ["name", "description", "keywords", "topics", "min_score"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "enum": ["indigenous_channel", "northern_ontario_industry", "private_sector_smb"]
+        },
+        "description": { "type": "string", "minLength": 1 },
+        "keywords": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "topics": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "required_any": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "min_score": { "type": "number", "exclusiveMinimum": 0, "maximum": 1 }
+      }
+    }
+  }
+}
