@@ -1,0 +1,151 @@
+name: validate-sector-alignment
+
+on:
+  schedule:
+    # Daily at 14:20 UTC, after the org-attribution validation window.
+    - cron: '20 14 * * *'
+  workflow_dispatch:
+    inputs:
+      coverage_threshold:
+        description: 'Minimum icp.segments[] populated rate (0.0 - 1.0)'
+        required: false
+        # Initial permissive gate. Promote to 0.80+ after 14 consecutive clean
+        # --since 24h runs against production classified-content data.
+        default: '0.25'
+      accuracy_threshold:
+        description: 'Minimum held-out F1 per ICP segment (0.0 - 1.0)'
+        required: false
+        # Initial permissive gate. Promote to 0.70+ after 14 consecutive clean
+        # runs and review of private_sector_smb production coverage.
+        default: '0.25'
+      since:
+        description: 'RFC3339 timestamp or duration window for crawled_at (for example 24h)'
+        required: false
+        default: '24h'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: validate-sector-alignment
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    name: Check sector_alignment coverage and held-out accuracy
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      COVERAGE_THRESHOLD_INPUT: ${{ inputs.coverage_threshold }}
+      ACCURACY_THRESHOLD_INPUT: ${{ inputs.accuracy_threshold }}
+      SINCE_INPUT: ${{ inputs.since }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.26'
+          cache: false
+
+      - name: Build validator
+        working-directory: tools/validate-sector-alignment
+        run: GOWORK=off CGO_ENABLED=0 go build -o /tmp/validate-sector-alignment .
+
+      - name: Validate and export thresholds
+        id: thresholds
+        run: |
+          C="${COVERAGE_THRESHOLD_INPUT:-0.25}"
+          A="${ACCURACY_THRESHOLD_INPUT:-0.25}"
+          for value in "$C" "$A"; do
+            if ! printf '%s' "$value" | grep -Eq '^0(\.[0-9]+)?$|^1(\.0+)?$'; then
+              echo "Invalid threshold: $value (must be 0.0 - 1.0)" >&2
+              exit 1
+            fi
+          done
+          echo "coverage=$C" >> "$GITHUB_OUTPUT"
+          echo "accuracy=$A" >> "$GITHUB_OUTPUT"
+
+      - name: Validate and export since window
+        id: since
+        run: |
+          S="${SINCE_INPUT:-24h}"
+          if ! printf '%s' "$S" | grep -Eq '^([0-9]+(ns|us|ms|s|m|h))+$|^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})$'; then
+            echo "Invalid since value: $S (must be a Go duration like 24h or RFC3339 timestamp)" >&2
+            exit 1
+          fi
+          echo "value=$S" >> "$GITHUB_OUTPUT"
+
+      - name: Configure SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.DEPLOY_SSH_KEY }}
+
+      - name: Add server to known hosts
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_SSH_PORT: ${{ secrets.DEPLOY_SSH_PORT || '22' }}
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          ssh-keyscan -H -p "${DEPLOY_SSH_PORT}" "${DEPLOY_HOST}" >> ~/.ssh/known_hosts 2>/dev/null
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Run validator against production ES
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_SSH_PORT: ${{ secrets.DEPLOY_SSH_PORT || '22' }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          COVERAGE_THRESHOLD: ${{ steps.thresholds.outputs.coverage }}
+          ACCURACY_THRESHOLD: ${{ steps.thresholds.outputs.accuracy }}
+          SINCE: ${{ steps.since.outputs.value }}
+        run: |
+          ssh -p "${DEPLOY_SSH_PORT}" "${DEPLOY_USER}@${DEPLOY_HOST}" \
+            'mkdir -p /tmp/validate-sector-alignment-data'
+
+          scp -P "${DEPLOY_SSH_PORT}" /tmp/validate-sector-alignment \
+            "${DEPLOY_USER}@${DEPLOY_HOST}:/tmp/validate-sector-alignment"
+          scp -P "${DEPLOY_SSH_PORT}" source-manager/data/icp-segments.yml \
+            "${DEPLOY_USER}@${DEPLOY_HOST}:/tmp/validate-sector-alignment-data/icp-segments.yml"
+          scp -P "${DEPLOY_SSH_PORT}" classifier/testdata/icp_labels.yml \
+            "${DEPLOY_USER}@${DEPLOY_HOST}:/tmp/validate-sector-alignment-data/icp_labels.yml"
+
+          set +e
+          OUTPUT=$(ssh -p "${DEPLOY_SSH_PORT}" "${DEPLOY_USER}@${DEPLOY_HOST}" \
+            "docker run --rm --network=north-cloud_north-cloud-network \
+              -v /tmp/validate-sector-alignment:/validator:ro \
+              -v /tmp/validate-sector-alignment-data:/data:ro \
+              alpine:3 /validator \
+                -es http://elasticsearch:9200 \
+                -coverage-threshold ${COVERAGE_THRESHOLD} \
+                -accuracy-threshold ${ACCURACY_THRESHOLD} \
+                -since ${SINCE} \
+                -seed /data/icp-segments.yml \
+                -labels /data/icp_labels.yml" 2>&1)
+          STATUS=$?
+          set -e
+
+          echo "$OUTPUT"
+          {
+            echo "## Sector alignment validation"
+            echo ""
+            echo "Window: \`${SINCE}\`"
+            echo "Coverage threshold: \`${COVERAGE_THRESHOLD}\`"
+            echo "Accuracy threshold: \`${ACCURACY_THRESHOLD}\`"
+            echo ""
+            echo '```json'
+            echo "$OUTPUT"
+            echo '```'
+            echo ""
+            if [ "$STATUS" -eq 0 ]; then
+              echo "**PASS** - coverage and held-out accuracy met thresholds."
+            else
+              echo "**FAIL** - see #669. For private_sector_smb, distinguish zero production coverage from held-out classifier accuracy regression."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          ssh -p "${DEPLOY_SSH_PORT}" "${DEPLOY_USER}@${DEPLOY_HOST}" \
+            'rm -f /tmp/validate-sector-alignment && rm -rf /tmp/validate-sector-alignment-data'
+
+          exit $STATUS
