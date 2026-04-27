@@ -212,3 +212,18 @@ minoo-snapshot.md
 # after first 20 labels; do not commit. See `docs/prospect-engine-plan.md` Appendix C.
 classifier/testdata/icp_labelling_log.md
 .claude/scheduled_tasks.lock
+
+# Spec Kitty (kept .kittify-specific only; .claude/, .cursor/, etc. are
+# already tracked in this repo and intentionally NOT ignored)
+.kittify/.dashboard
+.kittify/charter/context-state.json
+.kittify/charter/directives.yaml
+.kittify/charter/governance.yaml
+.kittify/charter/metadata.yaml
+.kittify/charter/references.yaml
+.kittify/dossiers/
+.kittify/events/
+.kittify/merge-state.json
+.kittify/missions/__pycache__/
+.kittify/runtime/
+.kittify/workspaces/
