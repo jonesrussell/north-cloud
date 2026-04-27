@@ -39,11 +39,11 @@ the systemd unit + deploy pipeline.
 | T023  | Wire `cmd/main.go` (config load, logger init, build deps, Run, exit code)                                | WP05  |          | [D] |
 | T024  | Integration test: real ES + httptest.Server (in `internal/producer/integration_test.go`, build tag)      | WP05  |          | [D] |
 | T025  | Unit tests for `producer.Run` with fakes for ES + client                                                 | WP05  |          | [D] |
-| T026  | Write `signal-producer.service` (Type=oneshot, User=, StateDirectory=, EnvironmentFile=)                 | WP06  |          |
-| T027  | Write `signal-producer.timer` (OnCalendar=*:0/15, Persistent=true)                                       | WP06  |          |
-| T028  | Update `scripts/deploy.sh` and GH Actions workflow to install/enable the unit                             | WP06  |          |
-| T029  | Update `docs/RUNBOOK.md` with source-down triage and force-rewind recipe                                 | WP06  |          |
-| T030  | Add producer to deploy health-check skip-list and document first-run smoke test                          | WP06  |          |
+| T026  | Write `signal-producer.service` (Type=oneshot, User=, StateDirectory=, EnvironmentFile=)                 | WP06  |          | [D] |
+| T027  | Write `signal-producer.timer` (OnCalendar=*:0/15, Persistent=true)                                       | WP06  |          | [D] |
+| T028  | Update `scripts/deploy.sh` and GH Actions workflow to install/enable the unit                             | WP06  |          | [D] |
+| T029  | Update `docs/RUNBOOK.md` with source-down triage and force-rewind recipe                                 | WP06  |          | [D] |
+| T030  | Add producer to deploy health-check skip-list and document first-run smoke test                          | WP06  |          | [D] |
 
 `[P]` indicates parallel-safe across WPs (WP02/03/04 are three independent
 parallel lanes after WP01). Subtasks within a single WP execute sequentially.
@@ -146,11 +146,11 @@ parallel lanes after WP01). Subtasks within a single WP execute sequentially.
 
 #### Included subtasks
 
-- [ ] T026 `signal-producer.service` unit (WP06)
-- [ ] T027 `signal-producer.timer` unit (WP06)
-- [ ] T028 Deploy script + GH Actions updates (WP06)
-- [ ] T029 RUNBOOK source-down + force-rewind (WP06)
-- [ ] T030 Health-check skip-list + smoke test (WP06)
+- [x] T026 `signal-producer.service` unit (WP06)
+- [x] T027 `signal-producer.timer` unit (WP06)
+- [x] T028 Deploy script + GH Actions updates (WP06)
+- [x] T029 RUNBOOK source-down + force-rewind (WP06)
+- [x] T030 Health-check skip-list + smoke test (WP06)
 
 ## Dependency Graph
 
