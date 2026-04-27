@@ -200,6 +200,7 @@ jobs:
           CGO_ENABLED: "0"
           GOOS: linux
           GOARCH: amd64
+          GOWORK: "off"
         run: |
           cd signal-producer
           go build -trimpath -ldflags="-s -w" -o signal-producer ./cmd
