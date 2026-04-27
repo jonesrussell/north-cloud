@@ -1,0 +1,113 @@
+schema_version: 1.0.0
+mission: software-dev
+profile: comprehensive
+answers:
+  project_intent: >-
+    North Cloud is a content intelligence pipeline (crawler → classifier + ML
+    sidecars → publisher routing → Redis pub/sub → consumers). The repo is
+    treated as frozen except for the open issue backlog. Goal: triage that
+    backlog, then implement the surviving items cleanly using modern Go and
+    industry best practices, returning the repo to a pristine state. Spec
+    Kitty drives the workflow. The first mission is a backlog triage that
+    deprecates, groups, and prioritizes the 13 open issues; each survivor
+    (or cluster) becomes its own spec-driven mission. Trivial fixes may
+    bypass the full loop; non-trivial work goes through specify → plan →
+    tasks → implement → review.
+  languages_frameworks: >-
+    Go 1.26+ for all backend services (monorepo with per-service modules,
+    GOWORK=off, go.work for IDE only). Vue 3 + TypeScript + Vite for the
+    dashboard frontend. Python is reserved for ML sidecars under
+    ml-sidecars/ and ml-modules/. PHP, other languages, or new frameworks
+    are out of scope without an amendment. Shared code lives only under
+    infrastructure/; services must not import from each other. Scaffold-
+    level dependencies (Redis, Postgres, Elasticsearch, Docker Compose,
+    Caddy, nginx) are fixed by the existing architecture and not up for
+    debate inside a mission.
+  testing_requirements: >-
+    Target 80%+ test coverage on Go services. All test helpers must call
+    t.Helper(). Use context-aware database methods. Per-service tests run
+    via `task test:SERVICE`; full suite via `task test`. Integration tests
+    must hit real dependencies (Postgres, ES) when the behavior under test
+    crosses a service boundary; do not mock infrastructure clients. UI
+    changes require manual browser verification — type-check and unit tests
+    do not establish feature correctness.
+  quality_gates: >-
+    Required before merge: (1) golangci-lint clean via `task lint:force`
+    (matches CI; no os.Getenv outside cmd/ and infrastructure/config/,
+    cognitive complexity ≤20, funlen ≤100, line length ≤150, no
+    interface{}, named constants for magic numbers, pre-allocated slices,
+    no variable shadowing); (2) `task test` for changed services; (3)
+    `task drift:check` clean (specs aligned with code); (4) `task
+    ports:check` clean after compose changes; (5) `task layers:check`
+    clean (no upward layer imports); (6) lefthook pre-commit and pre-push
+    hooks pass without --no-verify. CI must be green before merge.
+  review_policy: >-
+    Solo maintainer. No human peer reviewer exists. Review is performed by
+    a Spec Kitty implement-review loop where an agent acts as reviewer and
+    the maintainer arbitrates rejections. CI gates (lint, tests, drift,
+    layer-check, ports SSOT) are non-negotiable backstops. For any change
+    the agent reviewer cannot confidently approve, the maintainer reviews
+    directly with a fresh-eyes pass before merge. Force-pushes to main
+    are forbidden.
+  performance_targets: >-
+    No new pipeline-level performance targets are set as part of this
+    charter. Existing service-level expectations stand: classifier and
+    publisher must keep up with crawler throughput; search API responses
+    typically under 2s. Performance regressions surfaced by the drift
+    governor or production observability are treated as bugs and triaged
+    into the backlog.
+  deployment_constraints: >-
+    Production runs on Docker Compose orchestrated by a deploy.sh script
+    invoked by GitHub Actions; production is NOT a git checkout. Migrations
+    must use unique numeric prefixes (golang-migrate crashes on duplicates).
+    ES mapping changes go through index-manager. Container naming follows
+    `north-cloud-{service}`. Squid, nginx, Caddy, and Redis production
+    configs have known gotchas documented in CLAUDE.md and must be
+    respected. Health checks plus auto-rollback gate every deploy.
+    Dev uses docker-compose.base.yml + docker-compose.dev.yml.
+  documentation_policy: >-
+    Specs in docs/specs/ are the source of truth for service behavior.
+    `task drift:check` runs in pre-push and CI; any code change that drifts
+    a spec must update the spec in the same PR. CLAUDE.md files (root and
+    per-service) capture orchestration and operational knowledge. Generated
+    docs (docs/generated/ports-and-env.md) are regenerated via `task
+    ports:generate`, not hand-edited. ARCHITECTURE.md owns deep design;
+    CLAUDE.md owns quick reference. New runbook entries land in
+    docs/RUNBOOK.md.
+  risk_boundaries: >-
+    NC is the content pipeline layer only. Out of scope: the entity model
+    (Minoo), framework internals (Waaseyaa), editorial decisions, frontend
+    rendering of consuming apps. Services import only from infrastructure/;
+    no cross-service imports. The classifier must import indigenous
+    taxonomy slugs from jonesrussell/indigenous-taxonomy rather than
+    hardcoding them. No --no-verify, no --no-gpg-sign, no force-push to
+    main, no skipping CI, no destructive git operations without explicit
+    maintainer instruction. Secrets never committed.
+  amendment_process: >-
+    Charter amendments are proposed by editing
+    .kittify/charter/interview/answers.yaml and regenerating the bundle,
+    or by direct PR to charter.md with rationale. Maintainer self-approves
+    amendments since there is no peer reviewer, but each amendment must
+    state what changed and why in the commit message. Mission-scope
+    deviations that do not amend the charter are recorded as exceptions
+    on the mission, not silently absorbed.
+  exception_policy: >-
+    Exceptions to quality gates (e.g. a one-off lint suppression, a
+    coverage shortfall, a temporary spec drift) must be documented in the
+    PR or mission notes with: (a) scope of the exception, (b) reason, (c)
+    sunset criteria or follow-up issue. Exceptions are not granted for
+    force-pushing main, skipping git hooks, committing secrets, or
+    bypassing the layer/drift/ports checks.
+selected_paradigms: []
+selected_directives: []
+available_tools:
+  - git
+  - spec-kitty
+  - golangci-lint
+  - go
+  - task
+  - docker
+  - lefthook
+  - gh
+agent_profile:
+agent_role:
