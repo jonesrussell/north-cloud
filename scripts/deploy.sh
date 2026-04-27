@@ -51,8 +51,10 @@ echo "Deployment directory: $DEPLOY_DIR"
 echo "Timestamp: $(date -u +"%Y-%m-%d %H:%M:%S UTC")"
 
 # Services that are built but not deployed via docker-compose
-# (currently none — mcp-north-cloud runs in compose despite being stdio-based)
-NON_COMPOSE_SERVICES=""
+# - signal-producer: ships as a host binary scheduled by an Ansible-managed
+#   systemd timer; the binary lands in the deploy tarball and Ansible installs
+#   it. deploy.sh does nothing for it beyond the rsync that already happened.
+NON_COMPOSE_SERVICES="signal-producer"
 
 # Parse changed services
 if [ -n "${CHANGED_SERVICES:-}" ]; then
