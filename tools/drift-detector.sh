@@ -27,6 +27,7 @@ declare -A PATTERN_TO_SPEC=(
   ["infrastructure/"]="docs/specs/shared-infrastructure.md"
   ["rfp-ingestor/"]="docs/specs/rfp-ingestor.md"
   ["signal-crawler/"]="docs/specs/lead-pipeline.md"
+  ["signal-producer/"]="docs/specs/lead-pipeline.md"
   ["social-publisher/"]="docs/specs/social-publisher.md"
   ["source-manager/"]="docs/specs/source-manager.md"
   ["pipeline/"]="docs/specs/pipeline.md"

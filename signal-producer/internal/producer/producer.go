@@ -268,6 +268,7 @@ func (p *Producer) deliverHits(ctx context.Context, hits []ESHit, cp Checkpoint)
 		infralogger.Int("total_hits", res.hits),
 		infralogger.Int("total_signals", res.delivered),
 		infralogger.Int("skipped", res.skippedMap),
+		infralogger.Int("skipped_rcv", res.skippedRcv),
 		infralogger.Int("batches", res.batches),
 		infralogger.Int("ingested", res.ingestedTotal),
 	)
