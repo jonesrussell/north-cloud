@@ -1,7 +1,7 @@
 {
-  "event_count": 17,
-  "last_event_id": "01KQ6TGY94KNWHA247Y108PMPR",
-  "materialized_at": "2026-04-27T06:37:43.588049+00:00",
+  "event_count": 18,
+  "last_event_id": "01KQ6TMZ241F8GWEM73A2530X7",
+  "materialized_at": "2026-04-27T06:39:55.460587+00:00",
   "mission_number": "",
   "mission_slug": "signal-producer-pipeline-01KQ6QZS",
   "mission_type": "software-dev",
@@ -12,9 +12,9 @@
     "claimed": 0,
     "done": 0,
     "for_review": 0,
-    "in_progress": 1,
+    "in_progress": 0,
     "in_review": 0,
-    "planned": 4
+    "planned": 5
   },
   "work_packages": {
     "WP01": {
@@ -25,11 +25,11 @@
       "last_transition_at": "2026-04-27T06:32:30.784891+00:00"
     },
     "WP02": {
-      "actor": "claude:opus-4.7:reviewer:reviewer",
+      "actor": "user",
       "force_count": 2,
-      "lane": "in_progress",
-      "last_event_id": "01KQ6TGY94KNWHA247Y108PMPR",
-      "last_transition_at": "2026-04-27T06:37:43.588049+00:00"
+      "lane": "planned",
+      "last_event_id": "01KQ6TMZ241F8GWEM73A2530X7",
+      "last_transition_at": "2026-04-27T06:39:55.460587+00:00"
     },
     "WP03": {
       "actor": "finalize-tasks",
