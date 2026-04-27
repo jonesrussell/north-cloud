@@ -1,0 +1,106 @@
+{
+  "version": 1,
+  "mission_slug": "signal-producer-pipeline-01KQ6QZS",
+  "mission_id": "01KQ6QZSNBQF3VW515AKM0SQ46",
+  "mission_branch": "kitty/mission-signal-producer-pipeline-01KQ6QZS",
+  "target_branch": "main",
+  "lanes": [
+    {
+      "lane_id": "lane-a",
+      "wp_ids": [
+        "WP01",
+        "WP02",
+        "WP03",
+        "WP04",
+        "WP05",
+        "WP06"
+      ],
+      "write_scope": [
+        ".github/workflows/deploy.yml",
+        "Taskfile.yml",
+        "docs/RUNBOOK.md",
+        "docs/specs/lead-pipeline.md",
+        "scripts/deploy.sh",
+        "scripts/detect-changed-services.sh",
+        "signal-producer/.gitignore",
+        "signal-producer/.layers",
+        "signal-producer/CLAUDE.md",
+        "signal-producer/Taskfile.yml",
+        "signal-producer/cmd/main.go",
+        "signal-producer/config.yml.example",
+        "signal-producer/deploy/README.md",
+        "signal-producer/deploy/env.example",
+        "signal-producer/deploy/signal-producer.service",
+        "signal-producer/deploy/signal-producer.timer",
+        "signal-producer/go.mod",
+        "signal-producer/go.sum",
+        "signal-producer/internal/client/retry.go",
+        "signal-producer/internal/client/retry_test.go",
+        "signal-producer/internal/client/waaseyaa.go",
+        "signal-producer/internal/client/waaseyaa_test.go",
+        "signal-producer/internal/config/config.go",
+        "signal-producer/internal/config/config_test.go",
+        "signal-producer/internal/mapper/mapper.go",
+        "signal-producer/internal/mapper/mapper_test.go",
+        "signal-producer/internal/producer/checkpoint.go",
+        "signal-producer/internal/producer/checkpoint_test.go",
+        "signal-producer/internal/producer/integration_test.go",
+        "signal-producer/internal/producer/producer.go",
+        "signal-producer/internal/producer/producer_test.go"
+      ],
+      "predicted_surfaces": [
+        "api",
+        "app-shell",
+        "artifact-rendering",
+        "legacy-cleanup",
+        "tests",
+        "tracker-integration",
+        "workspace"
+      ],
+      "depends_on_lanes": [],
+      "parallel_group": 0
+    }
+  ],
+  "computed_at": "2026-04-27T06:17:41.686912+00:00",
+  "computed_from": "dependency_graph+ownership",
+  "planning_artifact_wps": [],
+  "collapse_report": {
+    "events": [
+      {
+        "wp_a": "WP02",
+        "wp_b": "WP01",
+        "rule": "dependency",
+        "evidence": "WP02 depends on WP01"
+      },
+      {
+        "wp_a": "WP03",
+        "wp_b": "WP01",
+        "rule": "dependency",
+        "evidence": "WP03 depends on WP01"
+      },
+      {
+        "wp_a": "WP04",
+        "wp_b": "WP01",
+        "rule": "dependency",
+        "evidence": "WP04 depends on WP01"
+      },
+      {
+        "wp_a": "WP05",
+        "wp_b": "WP02",
+        "rule": "dependency",
+        "evidence": "WP05 depends on WP02"
+      },
+      {
+        "wp_a": "WP06",
+        "wp_b": "WP05",
+        "rule": "dependency",
+        "evidence": "WP06 depends on WP05"
+      }
+    ],
+    "total_merges": 5,
+    "independent_wps_collapsed": 0,
+    "by_rule": {
+      "dependency": 5
+    }
+  }
+}
