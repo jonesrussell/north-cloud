@@ -13,13 +13,13 @@ worktree overhead with no parallelism benefit, so we keep it as **WP01** only.
 
 | ID    | Description                                                                                  | WP    | Parallel |
 | ----- | -------------------------------------------------------------------------------------------- | ----- | -------- |
-| T001  | Pre-flight checks and pin a GitHub snapshot                                                  | WP01  |          |
-| T002  | Per-issue read and classify (verdict, scope, justification)                                  | WP01  |          |
-| T003  | Annotate `keep` records with size, dependencies, and bypass-eligibility                      | WP01  |          |
-| T004  | Sequence survivors via topological sort with milestone and size tiebreakers                  | WP01  |          |
-| T005  | Draft Recommended Next Missions and cross-check active branches and PRs                      | WP01  |          |
-| T006  | Compose `triage-report.md` from the records                                                  | WP01  |          |
-| T007  | Self-review against spec FRs/NFRs/Cs and commit                                              | WP01  |          |
+| T001  | Pre-flight checks and pin a GitHub snapshot                                                  | WP01  |          | [D] |
+| T002  | Per-issue read and classify (verdict, scope, justification)                                  | WP01  |          | [D] |
+| T003  | Annotate `keep` records with size, dependencies, and bypass-eligibility                      | WP01  |          | [D] |
+| T004  | Sequence survivors via topological sort with milestone and size tiebreakers                  | WP01  |          | [D] |
+| T005  | Draft Recommended Next Missions and cross-check active branches and PRs                      | WP01  |          | [D] |
+| T006  | Compose `triage-report.md` from the records                                                  | WP01  |          | [D] |
+| T007  | Self-review against spec FRs/NFRs/Cs and commit                                              | WP01  |          | [D] |
 
 No subtask is `[P]` parallel — each step depends on the previous step's output.
 
@@ -36,13 +36,13 @@ No subtask is `[P]` parallel — each step depends on the previous step's output
 
 #### Included subtasks
 
-- [ ] T001 Pre-flight checks and pin a GitHub snapshot (WP01)
-- [ ] T002 Per-issue read and classify (WP01)
-- [ ] T003 Annotate `keep` records with size, dependencies, and bypass-eligibility (WP01)
-- [ ] T004 Sequence survivors with topological sort + tiebreakers (WP01)
-- [ ] T005 Draft Recommended Next Missions and cross-check active work (WP01)
-- [ ] T006 Compose `triage-report.md` (WP01)
-- [ ] T007 Self-review against spec FRs/NFRs/Cs and commit (WP01)
+- [x] T001 Pre-flight checks and pin a GitHub snapshot (WP01)
+- [x] T002 Per-issue read and classify (WP01)
+- [x] T003 Annotate `keep` records with size, dependencies, and bypass-eligibility (WP01)
+- [x] T004 Sequence survivors with topological sort + tiebreakers (WP01)
+- [x] T005 Draft Recommended Next Missions and cross-check active work (WP01)
+- [x] T006 Compose `triage-report.md` (WP01)
+- [x] T007 Self-review against spec FRs/NFRs/Cs and commit (WP01)
 
 #### Implementation sketch
 
