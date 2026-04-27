@@ -263,3 +263,4 @@ spec-kitty agent action implement WP04 --agent <agent-name> --mission signal-pro
 - 2026-04-27T06:59:23Z – claude:opus-4.7:implementer:implementer – shell_pid=12784 – Started implementation via action command
 - 2026-04-27T07:03:04Z – claude:opus-4.7:implementer:implementer – shell_pid=12784 – Waaseyaa HTTP client ready for review
 - 2026-04-27T07:03:32Z – claude:opus-4.7:reviewer:reviewer – shell_pid=26240 – Started review via action command
+- 2026-04-27T07:04:56Z – claude:opus-4.7:reviewer:reviewer – shell_pid=26240 – Waaseyaa HTTP client: 21s retry budget, 4xx fast-fail, 5xx+transport retryable, server-side header/body assertions, ctx cancel honored. No mapper import, no interface{}.
