@@ -90,7 +90,7 @@ jobs:
           else
             echo "run_all=false" >> $GITHUB_OUTPUT
             # Check for Go services
-            if echo "$SERVICES" | grep -qE '"(ai-observer|auth|classifier|click-tracker|crawler|index-manager|mcp-north-cloud|pipeline|publisher|search|signal-crawler|source-manager|nc-http-proxy)"'; then
+            if echo "$SERVICES" | grep -qE '"(ai-observer|auth|classifier|click-tracker|crawler|index-manager|mcp-north-cloud|pipeline|publisher|search|signal-crawler|signal-producer|source-manager|nc-http-proxy)"'; then
               echo "has_go=true" >> $GITHUB_OUTPUT
             else
               echo "has_go=false" >> $GITHUB_OUTPUT

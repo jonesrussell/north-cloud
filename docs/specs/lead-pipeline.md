@@ -266,6 +266,10 @@ writes to ES and never owns durable state beyond the checkpoint file.
 `mapper` and `client` are independent leaves and MUST NOT import each other.
 The DAG is enforced by `signal-producer/.layers` and `task layers:check`.
 
+Tests live in `<pkg>_test` packages per the `testpackage` lint rule. Each
+internal package exposes a small `export_test.go` to grant tests access to
+unexported sentinels and helpers without leaking them to consumers.
+
 ### Deployment posture
 
 One-shot Docker container managed by an Ansible-installed systemd timer
