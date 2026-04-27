@@ -26,11 +26,15 @@ answers:
   testing_requirements: >-
     Target 80%+ test coverage on Go services. All test helpers must call
     t.Helper(). Use context-aware database methods. Per-service tests run
-    via `task test:SERVICE`; full suite via `task test`. Integration tests
-    must hit real dependencies (Postgres, ES) when the behavior under test
-    crosses a service boundary; do not mock infrastructure clients. UI
-    changes require manual browser verification — type-check and unit tests
-    do not establish feature correctness.
+    via `task test:SERVICE`; full suite via `task test`. Distinguish test
+    tiers: unit tests should be fast and may use well-scoped fakes or
+    in-process test doubles for in-service logic; integration tests that
+    verify behavior crossing service boundaries must run against real
+    dependencies (Postgres, Elasticsearch) and use the CI integration
+    harness. Use build tags to separate quick vs slow suites so local
+    feedback remains fast while CI runs full integration checks. UI
+    changes require manual browser verification — type-check and unit
+    tests do not establish feature correctness.
   quality_gates: >-
     Required before merge: (1) golangci-lint clean via `task lint:force`
     (matches CI; no os.Getenv outside cmd/ and infrastructure/config/,
