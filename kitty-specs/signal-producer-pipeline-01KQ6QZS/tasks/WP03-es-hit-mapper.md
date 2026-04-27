@@ -241,3 +241,4 @@ spec-kitty agent action implement WP03 --agent <agent-name> --mission signal-pro
 - 2026-04-27T06:57:24Z – claude:opus-4.7:implementer:implementer – shell_pid=21608 – Mapper ready for review
 - 2026-04-27T06:57:54Z – claude:opus-4.7:reviewer:reviewer – shell_pid=6680 – Started review via action command
 - 2026-04-27T06:58:58Z – claude:opus-4.7:reviewer:reviewer – shell_pid=6680 – Pure mapper, schema matches contract, prefix-distinction test present, no interface{}/I-O/globals.
+- 2026-04-27T12:30:53Z – claude:opus-4.7:reviewer:reviewer – shell_pid=6680 – Done override: Mission merged to main as 20d785e4; merge command's done-transition step failed mid-flight with materialization error
