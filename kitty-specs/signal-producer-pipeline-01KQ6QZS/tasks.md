@@ -28,11 +28,11 @@ the systemd unit + deploy pipeline.
 | T012  | Implement `MapHit` for `content_type=need_signal` (prefix `nc-sig-`)                                     | WP03  | [D] |
 | T013  | Tolerance for missing optional fields (province, sector → empty string)                                  | WP03  | [D] |
 | T014  | Unit tests in `internal/mapper/mapper_test.go` (both types, missing fields, prefix collision)            | WP03  | [D] |
-| T015  | Define `WaaseyaaClient` interface + `IngestResult` struct in `internal/client/waaseyaa.go`               | WP04  | [P]      |
-| T016  | Implement `PostSignals` (X-Api-Key header, JSON marshal, POST, response parse)                           | WP04  | [P]      |
-| T017  | Implement retry helper in `internal/client/retry.go` (3 retries, 1s/5s/15s backoff, 5xx + net only)      | WP04  | [P]      |
-| T018  | Wire context cancellation through retries                                                                 | WP04  | [P]      |
-| T019  | Unit tests in `internal/client/waaseyaa_test.go` (success, 5xx retry, 4xx no-retry, ctx cancel, header)  | WP04  | [P]      |
+| T015  | Define `WaaseyaaClient` interface + `IngestResult` struct in `internal/client/waaseyaa.go`               | WP04  | [D] |
+| T016  | Implement `PostSignals` (X-Api-Key header, JSON marshal, POST, response parse)                           | WP04  | [D] |
+| T017  | Implement retry helper in `internal/client/retry.go` (3 retries, 1s/5s/15s backoff, 5xx + net only)      | WP04  | [D] |
+| T018  | Wire context cancellation through retries                                                                 | WP04  | [D] |
+| T019  | Unit tests in `internal/client/waaseyaa_test.go` (success, 5xx retry, 4xx no-retry, ctx cancel, header)  | WP04  | [D] |
 | T020  | Implement ES query in `internal/producer/producer.go` (range + content_type + quality_score + sort)      | WP05  |          |
 | T021  | Implement `Run(ctx)` main loop (load checkpoint, query ES, map, batch, post, advance, summary log)       | WP05  |          |
 | T022  | Implement source-down detection (3 consecutive empty runs → WARN with `signal_producer.source_down`)     | WP05  |          |
@@ -111,11 +111,11 @@ parallel lanes after WP01). Subtasks within a single WP execute sequentially.
 
 #### Included subtasks
 
-- [ ] T015 Define `WaaseyaaClient` + `IngestResult` (WP04)
-- [ ] T016 Implement `PostSignals` (WP04)
-- [ ] T017 Retry helper (WP04)
-- [ ] T018 Context cancellation (WP04)
-- [ ] T019 Unit tests (WP04)
+- [x] T015 Define `WaaseyaaClient` + `IngestResult` (WP04)
+- [x] T016 Implement `PostSignals` (WP04)
+- [x] T017 Retry helper (WP04)
+- [x] T018 Context cancellation (WP04)
+- [x] T019 Unit tests (WP04)
 
 ### WP05 — Producer Main Loop and Binary
 
