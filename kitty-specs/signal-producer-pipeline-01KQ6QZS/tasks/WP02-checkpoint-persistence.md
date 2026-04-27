@@ -183,3 +183,4 @@ spec-kitty agent action implement WP02 --agent <agent-name> --mission signal-pro
 - 2026-04-27T06:43:39Z – claude:opus-4.7:implementer:implementer – shell_pid=17880 – Cycle 2: go.mod populated; package now compiles
 - 2026-04-27T06:44:07Z – claude:opus-4.7:reviewer:reviewer – shell_pid=91728 – Started review via action command
 - 2026-04-27T06:46:01Z – claude:opus-4.7:reviewer:reviewer – shell_pid=91728 – Cycle 2: go.mod fix verified, hashes match auth/go.sum
+- 2026-04-27T12:30:49Z – claude:opus-4.7:reviewer:reviewer – shell_pid=91728 – Done override: Mission merged to main as 20d785e4; merge command's done-transition step failed mid-flight with materialization error
