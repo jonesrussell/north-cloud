@@ -99,6 +99,7 @@ else
                 echo 'services_matrix={"service":[]}'
                 echo "services_list="
                 echo "has_services=false"
+                echo "has_docker_services=false"
                 echo "has_infrastructure=false"
                 echo "has_migrations=false"
                 ;;
@@ -236,6 +237,15 @@ case "$FORMAT" in
             MATRIX_JSON="$MATRIX_JSON]"
 
             echo "services_matrix={\"service\":$MATRIX_JSON}"
+            # has_docker_services is true only if the matrix has at least one
+            # entry. Host-binary services (e.g. signal-producer) are in
+            # services_list but not the matrix; build-and-push must not run
+            # when matrix is empty (see deploy.yml).
+            if [ "$MATRIX_JSON" != "[]" ]; then
+                echo "has_docker_services=true"
+            else
+                echo "has_docker_services=false"
+            fi
             # Map directory names to deploy names for docker compose
             DEPLOY_LIST=""
             for svc in $CHANGED_SERVICES_STR; do
@@ -248,6 +258,7 @@ case "$FORMAT" in
             echo 'services_matrix={"service":[]}'
             echo "services_list="
             echo "has_services=false"
+            echo "has_docker_services=false"
         fi
         echo "has_infrastructure=$INFRA_CHANGED"
         echo "has_migrations=$MIGRATIONS_CHANGED"

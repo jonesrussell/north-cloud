@@ -40,6 +40,7 @@ jobs:
       services_list: ${{ steps.changes.outputs.services_list }}
       # Boolean flags for deploy decisions
       has_services: ${{ steps.changes.outputs.has_services }}
+      has_docker_services: ${{ steps.changes.outputs.has_docker_services }}
       has_infrastructure: ${{ steps.changes.outputs.has_infrastructure }}
       has_migrations: ${{ steps.changes.outputs.has_migrations }}
     steps:
@@ -89,7 +90,7 @@ jobs:
   build-and-push:
     name: Build ${{ matrix.service.name }}
     needs: detect-changes
-    if: needs.detect-changes.outputs.has_services == 'true'
+    if: needs.detect-changes.outputs.has_docker_services == 'true'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
