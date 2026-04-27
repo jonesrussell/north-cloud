@@ -319,3 +319,4 @@ spec-kitty agent action implement WP05 --agent <agent-name> --mission signal-pro
 - 2026-04-27T07:22:10Z – claude:opus-4.7:implementer:implementer – shell_pid=32008 – Cycle 2: all-unmappable now increments source-down counter
 - 2026-04-27T07:22:38Z – claude:opus-4.7:reviewer:reviewer – shell_pid=12312 – Started review via action command
 - 2026-04-27T07:23:43Z – claude:opus-4.7:reviewer:reviewer – shell_pid=12312 – Cycle 2: all-unmappable counter fix verified
+- 2026-04-27T12:31:00Z – claude:opus-4.7:reviewer:reviewer – shell_pid=12312 – Done override: Mission merged to main as 20d785e4; merge command's done-transition step failed mid-flight with materialization error
