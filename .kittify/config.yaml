@@ -4,3 +4,8 @@ agents:
   available:
   - claude
   auto_commit: true
+project:
+  uuid: 13d712a0-c24a-4a9d-b9c1-08349905213e
+  slug: north-cloud
+  node_id: 14f26208c21e
+  build_id: 3d75ccfa-6480-45ae-aacf-a8cf51aa774a
