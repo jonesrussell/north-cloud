@@ -58,7 +58,7 @@ func coldStart() Checkpoint {
 //
 // The logger parameter lets callers (and tests) inject a fake.
 func LoadCheckpoint(path string, log infralogger.Logger) (Checkpoint, error) {
-	data, err := os.ReadFile(path) //nolint:gosec // operator-controlled path
+	data, err := os.ReadFile(path)
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
 			return coldStart(), nil

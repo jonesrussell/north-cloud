@@ -40,15 +40,15 @@ type Config struct {
 
 // WaaseyaaConfig groups receiver-side knobs.
 type WaaseyaaConfig struct {
-	URL             string `yaml:"url" env:"WAASEYAA_URL"`
-	APIKey          string `yaml:"api_key" env:"WAASEYAA_API_KEY"`
-	BatchSize       int    `yaml:"batch_size" env:"WAASEYAA_BATCH_SIZE"`
+	URL             string `yaml:"url"               env:"WAASEYAA_URL"`
+	APIKey          string `yaml:"api_key"           env:"WAASEYAA_API_KEY"`
+	BatchSize       int    `yaml:"batch_size"        env:"WAASEYAA_BATCH_SIZE"`
 	MinQualityScore int    `yaml:"min_quality_score" env:"WAASEYAA_MIN_QUALITY_SCORE"`
 }
 
 // ElasticsearchConfig groups source-side knobs.
 type ElasticsearchConfig struct {
-	URL     string   `yaml:"url" env:"ES_URL"`
+	URL     string   `yaml:"url"     env:"ES_URL"`
 	Indexes []string `yaml:"indexes" env:"ES_INDEXES"`
 }
 

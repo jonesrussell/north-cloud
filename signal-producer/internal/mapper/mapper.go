@@ -62,8 +62,8 @@ func MapHit(hit map[string]any) (Signal, error) {
 	if err != nil {
 		return Signal{}, err
 	}
-	if _, err := requiredString(hit, fieldCrawledAt); err != nil {
-		return Signal{}, err
+	if _, crawledErr := requiredString(hit, fieldCrawledAt); crawledErr != nil {
+		return Signal{}, crawledErr
 	}
 	contentType, err := requiredString(hit, fieldContentType)
 	if err != nil {
@@ -82,8 +82,8 @@ func MapHit(hit map[string]any) (Signal, error) {
 	case contentTypeRFP:
 		applyRFPFields(&signal, hit, id)
 	case contentTypeNeedSignal:
-		if err := applyNeedSignalFields(&signal, hit, id); err != nil {
-			return Signal{}, err
+		if applyErr := applyNeedSignalFields(&signal, hit, id); applyErr != nil {
+			return Signal{}, applyErr
 		}
 	default:
 		return Signal{}, fmt.Errorf("mapper: unsupported content_type %q", contentType)

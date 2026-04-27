@@ -1,4 +1,4 @@
-package producer
+package producer_test
 
 import (
 	"context"
@@ -12,17 +12,18 @@ import (
 
 	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
 	"github.com/jonesrussell/north-cloud/signal-producer/internal/client"
+	"github.com/jonesrussell/north-cloud/signal-producer/internal/producer"
 )
 
 // fakeESClient is a deterministic ESClient implementation for unit tests.
 type fakeESClient struct {
-	hits []ESHit
+	hits []producer.ESHit
 	err  error
 	// queries records every Search call so tests can assert query shape.
 	queries []map[string]any
 }
 
-func (f *fakeESClient) Search(_ context.Context, _ []string, query map[string]any) ([]ESHit, error) {
+func (f *fakeESClient) Search(_ context.Context, _ []string, query map[string]any) ([]producer.ESHit, error) {
 	f.queries = append(f.queries, query)
 	if f.err != nil {
 		return nil, f.err
@@ -61,38 +62,29 @@ func successResp(ingested int) fakeWaaseyaaResp {
 	return fakeWaaseyaaResp{res: &client.IngestResult{Ingested: ingested}, err: nil}
 }
 
-// makeHit returns a minimum-viable ES hit the mapper accepts.
-func makeHit(t *testing.T, id, contentType string, crawledAt time.Time) ESHit {
+// makeHit returns a minimum-viable ES hit the mapper accepts. Hard-coded to
+// content_type "rfp" — every caller uses the same value (unparam).
+func makeHit(t *testing.T, id string, crawledAt time.Time) producer.ESHit {
 	t.Helper()
-	hit := ESHit{
+	hit := producer.ESHit{
 		"_id":           id,
 		"title":         "Test " + id,
 		"quality_score": float64(60),
 		"url":           "https://example.com/" + id,
 		"crawled_at":    crawledAt.UTC().Format(time.RFC3339),
-		"content_type":  contentType,
+		"content_type":  "rfp",
 	}
-	if contentType == "rfp" {
-		hit["rfp"] = map[string]any{
-			"organization_name": "Org",
-			"province":          "ON",
-			"categories":        []any{"Construction"},
-		}
-	}
-	if contentType == "need_signal" {
-		hit["need_signal"] = map[string]any{
-			"organization_name": "Org",
-			"province":          "ON",
-			"sector":            "Construction",
-			"signal_type":       "rfq",
-		}
+	hit["rfp"] = map[string]any{
+		"organization_name": "Org",
+		"province":          "ON",
+		"categories":        []any{"Construction"},
 	}
 	return hit
 }
 
 // testHarness bundles the per-test scaffolding.
 type testHarness struct {
-	cfg    Config
+	cfg    producer.Config
 	es     *fakeESClient
 	wc     *fakeWaaseyaa
 	cpFile string
@@ -103,19 +95,19 @@ func newHarness(t *testing.T) *testHarness {
 	t.Helper()
 	dir := t.TempDir()
 	cpFile := filepath.Join(dir, "checkpoint.json")
-	cfg := Config{
-		Waaseyaa: WaaseyaaConfig{
+	cfg := producer.Config{
+		Waaseyaa: producer.WaaseyaaConfig{
 			URL:             "https://waaseyaa.example.com",
 			APIKey:          "k",
 			BatchSize:       50,
 			MinQualityScore: 40,
 		},
-		Elasticsearch: ElasticsearchConfig{
+		Elasticsearch: producer.ElasticsearchConfig{
 			URL:     "http://localhost:9200",
 			Indexes: []string{"*_classified_content"},
 		},
-		Schedule:   ScheduleConfig{LookbackBuffer: 5 * time.Minute},
-		Checkpoint: CheckpointConfig{File: cpFile},
+		Schedule:   producer.ScheduleConfig{LookbackBuffer: 5 * time.Minute},
+		Checkpoint: producer.CheckpointConfig{File: cpFile},
 	}
 	return &testHarness{
 		cfg:    cfg,
@@ -126,30 +118,30 @@ func newHarness(t *testing.T) *testHarness {
 	}
 }
 
-func (h *testHarness) seedCheckpoint(cp Checkpoint) {
+func (h *testHarness) seedCheckpoint(cp producer.Checkpoint) {
 	h.t.Helper()
-	if err := SaveCheckpoint(h.cpFile, cp); err != nil {
+	if err := producer.SaveCheckpoint(h.cpFile, cp); err != nil {
 		h.t.Fatalf("seedCheckpoint: %v", err)
 	}
 }
 
-func (h *testHarness) loadCheckpoint() Checkpoint {
+func (h *testHarness) loadCheckpoint() producer.Checkpoint {
 	h.t.Helper()
 	data, err := os.ReadFile(h.cpFile)
 	if err != nil {
 		h.t.Fatalf("read checkpoint: %v", err)
 	}
-	var cp Checkpoint
-	if err := json.Unmarshal(data, &cp); err != nil {
-		h.t.Fatalf("unmarshal checkpoint: %v", err)
+	var cp producer.Checkpoint
+	if unmarshalErr := json.Unmarshal(data, &cp); unmarshalErr != nil {
+		h.t.Fatalf("unmarshal checkpoint: %v", unmarshalErr)
 	}
 	return cp
 }
 
-func (h *testHarness) run() *Producer {
+func (h *testHarness) run() *producer.Producer {
 	h.t.Helper()
 	log, _ := infralogger.New(infralogger.Config{Level: "fatal"})
-	return New(h.cfg, h.es, h.wc, log)
+	return producer.New(h.cfg, h.es, h.wc, log)
 }
 
 // --- Tests ---
@@ -157,13 +149,13 @@ func (h *testHarness) run() *Producer {
 func TestRun_HappyPath(t *testing.T) {
 	h := newHarness(t)
 	now := time.Now().UTC().Truncate(time.Second)
-	h.seedCheckpoint(Checkpoint{
+	h.seedCheckpoint(producer.Checkpoint{
 		LastSuccessfulRun: now.Add(-time.Hour),
 		LastBatchSize:     0,
 		ConsecutiveEmpty:  2, // should reset on success
 	})
-	for i := 0; i < 5; i++ {
-		h.es.hits = append(h.es.hits, makeHit(t, fmt.Sprintf("id%d", i), "rfp", now.Add(-time.Duration(5-i)*time.Minute)))
+	for i := range 5 {
+		h.es.hits = append(h.es.hits, makeHit(t, fmt.Sprintf("id%d", i), now.Add(-time.Duration(5-i)*time.Minute)))
 	}
 	h.wc.script = []fakeWaaseyaaResp{successResp(5)}
 
@@ -191,7 +183,7 @@ func TestRun_HappyPath(t *testing.T) {
 func TestRun_EmptyResult(t *testing.T) {
 	h := newHarness(t)
 	original := time.Now().UTC().Add(-time.Hour).Truncate(time.Second)
-	h.seedCheckpoint(Checkpoint{LastSuccessfulRun: original, LastBatchSize: 7})
+	h.seedCheckpoint(producer.Checkpoint{LastSuccessfulRun: original, LastBatchSize: 7})
 
 	if err := h.run().Run(context.Background()); err != nil {
 		t.Fatalf("Run: %v", err)
@@ -212,7 +204,7 @@ func TestRun_SourceDownThreshold(t *testing.T) {
 	h := newHarness(t)
 	original := time.Now().UTC().Add(-time.Hour).Truncate(time.Second)
 	// Pre-set ConsecutiveEmpty=2 so this empty run hits the threshold (3).
-	h.seedCheckpoint(Checkpoint{LastSuccessfulRun: original, ConsecutiveEmpty: 2})
+	h.seedCheckpoint(producer.Checkpoint{LastSuccessfulRun: original, ConsecutiveEmpty: 2})
 
 	if err := h.run().Run(context.Background()); err != nil {
 		t.Fatalf("Run: %v", err)
@@ -239,9 +231,9 @@ func TestRun_BatchExactlyAtLimit(t *testing.T) {
 	h := newHarness(t)
 	h.cfg.Waaseyaa.BatchSize = 3
 	now := time.Now().UTC().Truncate(time.Second)
-	h.seedCheckpoint(Checkpoint{LastSuccessfulRun: now.Add(-time.Hour)})
-	for i := 0; i < 3; i++ {
-		h.es.hits = append(h.es.hits, makeHit(t, fmt.Sprintf("id%d", i), "rfp", now.Add(-time.Duration(3-i)*time.Minute)))
+	h.seedCheckpoint(producer.Checkpoint{LastSuccessfulRun: now.Add(-time.Hour)})
+	for i := range 3 {
+		h.es.hits = append(h.es.hits, makeHit(t, fmt.Sprintf("id%d", i), now.Add(-time.Duration(3-i)*time.Minute)))
 	}
 	h.wc.script = []fakeWaaseyaaResp{successResp(3)}
 
@@ -257,9 +249,9 @@ func TestRun_TwoBatchesBothSucceed(t *testing.T) {
 	h := newHarness(t)
 	h.cfg.Waaseyaa.BatchSize = 3
 	now := time.Now().UTC().Truncate(time.Second)
-	h.seedCheckpoint(Checkpoint{LastSuccessfulRun: now.Add(-time.Hour)})
-	for i := 0; i < 4; i++ {
-		h.es.hits = append(h.es.hits, makeHit(t, fmt.Sprintf("id%d", i), "rfp", now.Add(-time.Duration(4-i)*time.Minute)))
+	h.seedCheckpoint(producer.Checkpoint{LastSuccessfulRun: now.Add(-time.Hour)})
+	for i := range 4 {
+		h.es.hits = append(h.es.hits, makeHit(t, fmt.Sprintf("id%d", i), now.Add(-time.Duration(4-i)*time.Minute)))
 	}
 	h.wc.script = []fakeWaaseyaaResp{successResp(3), successResp(1)}
 
@@ -280,9 +272,9 @@ func TestRun_FirstBatchSucceedsSecondFails(t *testing.T) {
 	h.cfg.Waaseyaa.BatchSize = 3
 	now := time.Now().UTC().Truncate(time.Second)
 	original := now.Add(-time.Hour)
-	h.seedCheckpoint(Checkpoint{LastSuccessfulRun: original})
-	for i := 0; i < 4; i++ {
-		h.es.hits = append(h.es.hits, makeHit(t, fmt.Sprintf("id%d", i), "rfp", now.Add(-time.Duration(4-i)*time.Minute)))
+	h.seedCheckpoint(producer.Checkpoint{LastSuccessfulRun: original})
+	for i := range 4 {
+		h.es.hits = append(h.es.hits, makeHit(t, fmt.Sprintf("id%d", i), now.Add(-time.Duration(4-i)*time.Minute)))
 	}
 	clientErr := fmt.Errorf("post: %w", client.ErrClientResponse())
 	h.wc.script = []fakeWaaseyaaResp{
@@ -306,12 +298,12 @@ func TestRun_FirstBatchSucceedsSecondFails(t *testing.T) {
 func TestRun_MapperErrorOnOneHit(t *testing.T) {
 	h := newHarness(t)
 	now := time.Now().UTC().Truncate(time.Second)
-	h.seedCheckpoint(Checkpoint{LastSuccessfulRun: now.Add(-time.Hour)})
-	for i := 0; i < 4; i++ {
-		h.es.hits = append(h.es.hits, makeHit(t, fmt.Sprintf("id%d", i), "rfp", now.Add(-time.Duration(4-i)*time.Minute)))
+	h.seedCheckpoint(producer.Checkpoint{LastSuccessfulRun: now.Add(-time.Hour)})
+	for i := range 4 {
+		h.es.hits = append(h.es.hits, makeHit(t, fmt.Sprintf("id%d", i), now.Add(-time.Duration(4-i)*time.Minute)))
 	}
 	// Add a malformed hit (missing required title).
-	bad := makeHit(t, "bad", "rfp", now)
+	bad := makeHit(t, "bad", now)
 	delete(bad, "title")
 	h.es.hits = append(h.es.hits, bad)
 	h.wc.script = []fakeWaaseyaaResp{successResp(4)}
@@ -326,9 +318,9 @@ func TestRun_MapperErrorOnOneHit(t *testing.T) {
 
 // makeUnmappableHit returns an ES hit guaranteed to fail mapping (missing
 // the required title field — same trick as TestRun_MapperErrorOnOneHit).
-func makeUnmappableHit(t *testing.T, id string, crawledAt time.Time) ESHit {
+func makeUnmappableHit(t *testing.T, id string, crawledAt time.Time) producer.ESHit {
 	t.Helper()
-	hit := makeHit(t, id, "rfp", crawledAt)
+	hit := makeHit(t, id, crawledAt)
 	delete(hit, "title")
 	return hit
 }
@@ -337,8 +329,8 @@ func TestRun_AllHitsUnmappable_IncrementsCounter(t *testing.T) {
 	h := newHarness(t)
 	now := time.Now().UTC().Truncate(time.Second)
 	original := now.Add(-time.Hour)
-	h.seedCheckpoint(Checkpoint{LastSuccessfulRun: original, ConsecutiveEmpty: 0})
-	for i := 0; i < 3; i++ {
+	h.seedCheckpoint(producer.Checkpoint{LastSuccessfulRun: original, ConsecutiveEmpty: 0})
+	for i := range 3 {
 		h.es.hits = append(h.es.hits, makeUnmappableHit(t, fmt.Sprintf("bad%d", i), now.Add(-time.Duration(3-i)*time.Minute)))
 	}
 
@@ -362,8 +354,8 @@ func TestRun_AllHitsUnmappable_FiresSourceDownAtThreshold(t *testing.T) {
 	now := time.Now().UTC().Truncate(time.Second)
 	original := now.Add(-time.Hour)
 	// Pre-seed counter at 2 so this run hits the threshold equality (3).
-	h.seedCheckpoint(Checkpoint{LastSuccessfulRun: original, ConsecutiveEmpty: 2})
-	for i := 0; i < 2; i++ {
+	h.seedCheckpoint(producer.Checkpoint{LastSuccessfulRun: original, ConsecutiveEmpty: 2})
+	for i := range 2 {
 		h.es.hits = append(h.es.hits, makeUnmappableHit(t, fmt.Sprintf("bad%d", i), now.Add(-time.Duration(2-i)*time.Minute)))
 	}
 
@@ -397,7 +389,7 @@ func TestRun_AllHitsUnmappable_FiresSourceDownAtThreshold(t *testing.T) {
 
 func TestRun_ContextCancelled(t *testing.T) {
 	h := newHarness(t)
-	h.seedCheckpoint(Checkpoint{LastSuccessfulRun: time.Now().UTC().Add(-time.Hour)})
+	h.seedCheckpoint(producer.Checkpoint{LastSuccessfulRun: time.Now().UTC().Add(-time.Hour)})
 
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
@@ -415,8 +407,11 @@ func TestRun_ContextCancelled(t *testing.T) {
 
 func TestBuildQuery_Shape(t *testing.T) {
 	cp := time.Date(2026, 4, 27, 10, 0, 0, 0, time.UTC)
-	q := buildQuery(cp, 5*time.Minute, 40)
-	bs, _ := json.Marshal(q)
+	q := producer.BuildQuery(cp, 5*time.Minute, 40)
+	bs, err := json.Marshal(q)
+	if err != nil {
+		t.Fatalf("marshal query: %v", err)
+	}
 	s := string(bs)
 	for _, want := range []string{
 		`"crawled_at":"2026-04-27T09:55:00Z"`,

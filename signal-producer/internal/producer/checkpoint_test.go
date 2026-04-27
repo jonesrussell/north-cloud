@@ -1,4 +1,4 @@
-package producer
+package producer_test
 
 import (
 	"encoding/json"
@@ -11,6 +11,7 @@ import (
 	"time"
 
 	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
+	"github.com/jonesrussell/north-cloud/signal-producer/internal/producer"
 )
 
 // capturedLog is one Warn/Info/Error call recorded by the test logger.
@@ -63,7 +64,7 @@ func (l *captureLogger) hasLevel(level string) bool {
 func withinColdStartWindow(t *testing.T, ts time.Time) bool {
 	t.Helper()
 	now := time.Now()
-	expected := now.Add(-DefaultColdStartLookback)
+	expected := now.Add(-producer.DefaultColdStartLookback)
 	delta := ts.Sub(expected)
 	if delta < 0 {
 		delta = -delta
@@ -77,7 +78,7 @@ func TestLoadCheckpoint_Missing_DefaultsToColdStart(t *testing.T) {
 	path := filepath.Join(dir, "checkpoint.json")
 	log := newCaptureLogger()
 
-	cp, err := LoadCheckpoint(path, log)
+	cp, err := producer.LoadCheckpoint(path, log)
 	if err != nil {
 		t.Fatalf("expected nil error for missing file, got %v", err)
 	}
@@ -101,7 +102,7 @@ func TestLoadCheckpoint_Corrupt_FallsBackWithWarn(t *testing.T) {
 	}
 	log := newCaptureLogger()
 
-	cp, err := LoadCheckpoint(path, log)
+	cp, err := producer.LoadCheckpoint(path, log)
 	if err != nil {
 		t.Fatalf("expected nil error on corrupt file, got %v", err)
 	}
@@ -124,7 +125,7 @@ func TestLoadCheckpoint_InvalidValues_FallsBackWithWarn(t *testing.T) {
 	}
 	log := newCaptureLogger()
 
-	cp, err := LoadCheckpoint(path, log)
+	cp, err := producer.LoadCheckpoint(path, log)
 	if err != nil {
 		t.Fatalf("expected nil error on invalid values, got %v", err)
 	}
@@ -140,15 +141,15 @@ func TestSaveLoadRoundtrip(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
 	path := filepath.Join(dir, "checkpoint.json")
-	want := Checkpoint{
+	want := producer.Checkpoint{
 		LastSuccessfulRun: time.Date(2026, 4, 27, 5, 30, 0, 0, time.UTC),
 		LastBatchSize:     23,
 	}
-	if err := SaveCheckpoint(path, want); err != nil {
+	if err := producer.SaveCheckpoint(path, want); err != nil {
 		t.Fatalf("SaveCheckpoint: %v", err)
 	}
 
-	got, err := LoadCheckpoint(path, infralogger.NewNop())
+	got, err := producer.LoadCheckpoint(path, infralogger.NewNop())
 	if err != nil {
 		t.Fatalf("LoadCheckpoint: %v", err)
 	}
@@ -193,11 +194,11 @@ func TestSaveCheckpoint_AtomicOnFailure(t *testing.T) {
 		t.Fatalf("seed canonical-as-dir: %v", err)
 	}
 
-	cp := Checkpoint{
+	cp := producer.Checkpoint{
 		LastSuccessfulRun: time.Now().UTC(),
 		LastBatchSize:     1,
 	}
-	err := SaveCheckpoint(canonical, cp)
+	err := producer.SaveCheckpoint(canonical, cp)
 	if err == nil {
 		t.Fatal("expected SaveCheckpoint to fail when canonical path is a directory")
 	}
@@ -232,11 +233,11 @@ func TestSaveCheckpoint_FileMode(t *testing.T) {
 
 	dir := t.TempDir()
 	path := filepath.Join(dir, "checkpoint.json")
-	cp := Checkpoint{
+	cp := producer.Checkpoint{
 		LastSuccessfulRun: time.Now().UTC(),
 		LastBatchSize:     7,
 	}
-	if err := SaveCheckpoint(path, cp); err != nil {
+	if err := producer.SaveCheckpoint(path, cp); err != nil {
 		t.Fatalf("SaveCheckpoint: %v", err)
 	}
 
@@ -244,8 +245,8 @@ func TestSaveCheckpoint_FileMode(t *testing.T) {
 	if err != nil {
 		t.Fatalf("stat: %v", err)
 	}
-	if got := info.Mode().Perm(); got != checkpointFileMode {
-		t.Fatalf("file mode = %#o, want %#o", got, checkpointFileMode)
+	if got := info.Mode().Perm(); got != producer.CheckpointFileMode {
+		t.Fatalf("file mode = %#o, want %#o", got, producer.CheckpointFileMode)
 	}
 }
 
@@ -254,7 +255,7 @@ func TestSaveCheckpoint_OpenError_ReturnsWrappedError(t *testing.T) {
 	// A path whose parent directory does not exist forces the OpenFile to fail
 	// before any tmp file is created.
 	bogus := filepath.Join(t.TempDir(), "no-such-dir", "checkpoint.json")
-	err := SaveCheckpoint(bogus, Checkpoint{
+	err := producer.SaveCheckpoint(bogus, producer.Checkpoint{
 		LastSuccessfulRun: time.Now().UTC(),
 	})
 	if err == nil {
@@ -280,7 +281,7 @@ func TestLoadCheckpoint_PermissionDenied_ReturnsError(t *testing.T) {
 		_ = os.Chmod(path, 0o600)
 	})
 
-	if _, err := LoadCheckpoint(path, infralogger.NewNop()); err == nil {
+	if _, err := producer.LoadCheckpoint(path, infralogger.NewNop()); err == nil {
 		t.Fatal("expected wrapped error for permission-denied open")
 	}
 }

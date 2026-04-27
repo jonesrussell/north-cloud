@@ -1,4 +1,4 @@
-package client
+package client_test
 
 import (
 	"context"
@@ -9,6 +9,7 @@ import (
 	"time"
 
 	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
+	"github.com/jonesrussell/north-cloud/signal-producer/internal/client"
 )
 
 func retryTestBackoffs() []time.Duration {
@@ -26,7 +27,7 @@ func TestRetry_FirstAttemptSucceeds(t *testing.T) {
 		atomic.AddInt32(&calls, 1)
 		return nil
 	}
-	if err := retry(context.Background(), retryTestBackoffs(), op, infralogger.NewNop()); err != nil {
+	if err := client.Retry(context.Background(), retryTestBackoffs(), op, infralogger.NewNop()); err != nil {
 		t.Fatalf("retry: %v", err)
 	}
 	if c := atomic.LoadInt32(&calls); c != 1 {
@@ -40,11 +41,11 @@ func TestRetry_RetryableThenSuccess(t *testing.T) {
 	op := func(_ context.Context) error {
 		n := atomic.AddInt32(&calls, 1)
 		if n < 3 {
-			return fmt.Errorf("transient: %w", errServer)
+			return fmt.Errorf("transient: %w", client.ErrServer)
 		}
 		return nil
 	}
-	if err := retry(context.Background(), retryTestBackoffs(), op, infralogger.NewNop()); err != nil {
+	if err := client.Retry(context.Background(), retryTestBackoffs(), op, infralogger.NewNop()); err != nil {
 		t.Fatalf("retry: %v", err)
 	}
 	if c := atomic.LoadInt32(&calls); c != 3 {
@@ -57,14 +58,14 @@ func TestRetry_ClientErrorShortCircuits(t *testing.T) {
 	var calls int32
 	op := func(_ context.Context) error {
 		atomic.AddInt32(&calls, 1)
-		return fmt.Errorf("bad: %w", errClient)
+		return fmt.Errorf("bad: %w", client.ErrClient)
 	}
-	err := retry(context.Background(), retryTestBackoffs(), op, infralogger.NewNop())
+	err := client.Retry(context.Background(), retryTestBackoffs(), op, infralogger.NewNop())
 	if err == nil {
 		t.Fatal("expected error")
 	}
-	if !errors.Is(err, errClient) {
-		t.Errorf("expected errClient, got %v", err)
+	if !errors.Is(err, client.ErrClient) {
+		t.Errorf("expected ErrClient, got %v", err)
 	}
 	if c := atomic.LoadInt32(&calls); c != 1 {
 		t.Errorf("calls: got %d, want 1 (no retry on 4xx)", c)
@@ -76,14 +77,14 @@ func TestRetry_ExhaustsBackoffs(t *testing.T) {
 	var calls int32
 	op := func(_ context.Context) error {
 		atomic.AddInt32(&calls, 1)
-		return fmt.Errorf("still bad: %w", errServer)
+		return fmt.Errorf("still bad: %w", client.ErrServer)
 	}
-	err := retry(context.Background(), retryTestBackoffs(), op, infralogger.NewNop())
+	err := client.Retry(context.Background(), retryTestBackoffs(), op, infralogger.NewNop())
 	if err == nil {
 		t.Fatal("expected error after exhausting retries")
 	}
-	if !errors.Is(err, errServer) {
-		t.Errorf("expected errServer wrap, got %v", err)
+	if !errors.Is(err, client.ErrServer) {
+		t.Errorf("expected ErrServer wrap, got %v", err)
 	}
 	// 1 initial + 3 retries.
 	if c := atomic.LoadInt32(&calls); c != 4 {
@@ -96,7 +97,7 @@ func TestRetry_ContextCancelDuringSleep(t *testing.T) {
 	var calls int32
 	op := func(_ context.Context) error {
 		atomic.AddInt32(&calls, 1)
-		return fmt.Errorf("server: %w", errServer)
+		return fmt.Errorf("server: %w", client.ErrServer)
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	// Use a long backoff and cancel before the timer fires.
@@ -106,7 +107,7 @@ func TestRetry_ContextCancelDuringSleep(t *testing.T) {
 		cancel()
 	}()
 	start := time.Now()
-	err := retry(ctx, backoffs, op, infralogger.NewNop())
+	err := client.Retry(ctx, backoffs, op, infralogger.NewNop())
 	elapsed := time.Since(start)
 	if err == nil {
 		t.Fatal("expected error from cancel")
@@ -134,7 +135,7 @@ func TestRetry_TransportErrorIsRetryable(t *testing.T) {
 		}
 		return nil
 	}
-	if err := retry(context.Background(), retryTestBackoffs(), op, infralogger.NewNop()); err != nil {
+	if err := client.Retry(context.Background(), retryTestBackoffs(), op, infralogger.NewNop()); err != nil {
 		t.Fatalf("retry: %v", err)
 	}
 	if c := atomic.LoadInt32(&calls); c != 2 {

@@ -1,4 +1,4 @@
-package client
+package client_test
 
 import (
 	"context"
@@ -12,6 +12,7 @@ import (
 	"time"
 
 	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
+	"github.com/jonesrussell/north-cloud/signal-producer/internal/client"
 )
 
 // fastBackoffs is the test retry schedule. Total sleep ~60ms, keeping the
@@ -26,9 +27,9 @@ const testAPIKey = "test-api-key-123"
 
 // newTestClient builds a Client wired to the supplied test server. Tests
 // inject fastBackoffs so retries don't make the suite slow.
-func newTestClient(t *testing.T, srv *httptest.Server) *Client {
+func newTestClient(t *testing.T, srv *httptest.Server) *client.Client {
 	t.Helper()
-	c, err := New(Config{
+	c, err := client.New(client.Config{
 		BaseURL:    srv.URL,
 		APIKey:     testAPIKey,
 		HTTPClient: srv.Client(),
@@ -44,14 +45,14 @@ func newTestClient(t *testing.T, srv *httptest.Server) *Client {
 // assertRequestShape verifies the producer-to-Waaseyaa wire contract.
 func assertRequestShape(t *testing.T, r *http.Request) {
 	t.Helper()
-	if got := r.Header.Get(HeaderAPIKey); got != testAPIKey {
+	if got := r.Header.Get(client.HeaderAPIKey); got != testAPIKey {
 		t.Errorf("X-Api-Key header: got %q, want %q", got, testAPIKey)
 	}
-	if got := r.Header.Get(HeaderContentType); got != ContentTypeJSON {
-		t.Errorf("Content-Type header: got %q, want %q", got, ContentTypeJSON)
+	if got := r.Header.Get(client.HeaderContentType); got != client.ContentTypeJSON {
+		t.Errorf("Content-Type header: got %q, want %q", got, client.ContentTypeJSON)
 	}
-	if r.URL.Path != SignalsEndpointPath {
-		t.Errorf("path: got %q, want %q", r.URL.Path, SignalsEndpointPath)
+	if r.URL.Path != client.SignalsEndpointPath {
+		t.Errorf("path: got %q, want %q", r.URL.Path, client.SignalsEndpointPath)
 	}
 	if r.Method != http.MethodPost {
 		t.Errorf("method: got %q, want POST", r.Method)
@@ -63,16 +64,16 @@ func assertRequestShape(t *testing.T, r *http.Request) {
 	var envelope struct {
 		Signals []any `json:"signals"`
 	}
-	if err := json.Unmarshal(body, &envelope); err != nil {
-		t.Fatalf("decode body: %v: %s", err, string(body))
+	if unmarshalErr := json.Unmarshal(body, &envelope); unmarshalErr != nil {
+		t.Fatalf("decode body: %v: %s", unmarshalErr, string(body))
 	}
 	if envelope.Signals == nil {
 		t.Errorf("body.signals must be present (even empty), got nil")
 	}
 }
 
-func sampleBatch() SignalBatch {
-	return SignalBatch{Signals: []any{
+func sampleBatch() client.SignalBatch {
+	return client.SignalBatch{Signals: []any{
 		map[string]any{"external_id": "x1", "label": "test"},
 	}}
 }
@@ -83,9 +84,9 @@ func TestPostSignals_Success(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		atomic.AddInt32(&hits, 1)
 		assertRequestShape(t, r)
-		w.Header().Set(HeaderContentType, ContentTypeJSON)
+		w.Header().Set(client.HeaderContentType, client.ContentTypeJSON)
 		w.WriteHeader(http.StatusOK)
-		_ = json.NewEncoder(w).Encode(IngestResult{
+		_ = json.NewEncoder(w).Encode(client.IngestResult{
 			Ingested: 1, Skipped: 0, LeadsCreated: 1, LeadsMatched: 0, Unmatched: 0,
 		})
 	}))
@@ -117,7 +118,7 @@ func TestPostSignals_RetriesOn5xxThenSucceeds(t *testing.T) {
 			return
 		}
 		w.WriteHeader(http.StatusOK)
-		_ = json.NewEncoder(w).Encode(IngestResult{Ingested: 5})
+		_ = json.NewEncoder(w).Encode(client.IngestResult{Ingested: 5})
 	}))
 	defer srv.Close()
 
@@ -137,7 +138,7 @@ func TestPostSignals_RetriesOn5xxThenSucceeds(t *testing.T) {
 func TestPostSignals_NoRetryOn4xx(t *testing.T) {
 	t.Parallel()
 	var hits int32
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		atomic.AddInt32(&hits, 1)
 		w.WriteHeader(http.StatusBadRequest)
 	}))
@@ -148,8 +149,8 @@ func TestPostSignals_NoRetryOn4xx(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
-	if !errors.Is(err, errClient) {
-		t.Errorf("expected errClient, got %v", err)
+	if !errors.Is(err, client.ErrClient) {
+		t.Errorf("expected ErrClient, got %v", err)
 	}
 	if h := atomic.LoadInt32(&hits); h != 1 {
 		t.Errorf("server hits: got %d, want 1 (no retry on 4xx)", h)
@@ -159,7 +160,7 @@ func TestPostSignals_NoRetryOn4xx(t *testing.T) {
 func TestPostSignals_RetriesExhausted(t *testing.T) {
 	t.Parallel()
 	var hits int32
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		atomic.AddInt32(&hits, 1)
 		w.WriteHeader(http.StatusServiceUnavailable)
 	}))
@@ -170,8 +171,8 @@ func TestPostSignals_RetriesExhausted(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
-	if !errors.Is(err, errServer) {
-		t.Errorf("expected errServer wrap, got %v", err)
+	if !errors.Is(err, client.ErrServer) {
+		t.Errorf("expected ErrServer wrap, got %v", err)
 	}
 	// 1 initial + 3 retries = 4 hits.
 	if h := atomic.LoadInt32(&hits); h != 4 {
@@ -182,14 +183,14 @@ func TestPostSignals_RetriesExhausted(t *testing.T) {
 func TestPostSignals_ContextCancelDuringRetrySleep(t *testing.T) {
 	t.Parallel()
 	var hits int32
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		atomic.AddInt32(&hits, 1)
 		w.WriteHeader(http.StatusInternalServerError)
 	}))
 	defer srv.Close()
 
 	// Use a slower backoff so we can race a cancel into the sleep.
-	c, err := New(Config{
+	c, err := client.New(client.Config{
 		BaseURL:    srv.URL,
 		APIKey:     testAPIKey,
 		HTTPClient: srv.Client(),
@@ -222,17 +223,16 @@ func TestNew_ValidatesRequiredFields(t *testing.T) {
 	t.Parallel()
 	cases := []struct {
 		name string
-		cfg  Config
+		cfg  client.Config
 	}{
-		{"missing baseurl", Config{APIKey: "k", Logger: infralogger.NewNop()}},
-		{"missing apikey", Config{BaseURL: "http://x", Logger: infralogger.NewNop()}},
-		{"missing logger", Config{BaseURL: "http://x", APIKey: "k"}},
+		{"missing baseurl", client.Config{APIKey: "k", Logger: infralogger.NewNop()}},
+		{"missing apikey", client.Config{BaseURL: "http://x", Logger: infralogger.NewNop()}},
+		{"missing logger", client.Config{BaseURL: "http://x", APIKey: "k"}},
 	}
 	for _, tc := range cases {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			if _, err := New(tc.cfg); err == nil {
+			if _, err := client.New(tc.cfg); err == nil {
 				t.Errorf("expected error for %s", tc.name)
 			}
 		})

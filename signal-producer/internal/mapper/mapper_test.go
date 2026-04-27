@@ -1,8 +1,10 @@
-package mapper
+package mapper_test
 
 import (
 	"strings"
 	"testing"
+
+	"github.com/jonesrussell/north-cloud/signal-producer/internal/mapper"
 )
 
 // makeBaseHit returns a deep-enough hit with all top-level required fields
@@ -28,7 +30,7 @@ func TestMapHit_RFP_Complete(t *testing.T) {
 		"closing_date":      "2026-05-15T17:00:00Z",
 	}
 
-	signal, err := MapHit(hit)
+	signal, err := mapper.MapHit(hit)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -72,7 +74,7 @@ func TestMapHit_RFP_MissingOptionalFields(t *testing.T) {
 	hit := makeBaseHit(t, "rfp", "Bare1")
 	// No "rfp" subfield at all — every optional should default to "".
 
-	signal, err := MapHit(hit)
+	signal, err := mapper.MapHit(hit)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -87,7 +89,7 @@ func TestMapHit_RFP_MissingOptionalFields(t *testing.T) {
 func TestMapHit_RFP_EmptyCategories(t *testing.T) {
 	hit := makeBaseHit(t, "rfp", "X")
 	hit["rfp"] = map[string]any{"categories": []any{}}
-	signal, err := MapHit(hit)
+	signal, err := mapper.MapHit(hit)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -105,7 +107,7 @@ func TestMapHit_NeedSignal_Complete(t *testing.T) {
 		"signal_type":       "hiring_surge",
 	}
 
-	signal, err := MapHit(hit)
+	signal, err := mapper.MapHit(hit)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -134,7 +136,7 @@ func TestMapHit_NeedSignal_MissingSignalType(t *testing.T) {
 	hit["need_signal"] = map[string]any{
 		"organization_name": "Acme",
 	}
-	_, err := MapHit(hit)
+	_, err := mapper.MapHit(hit)
 	if err == nil {
 		t.Fatal("expected error for missing signal_type, got nil")
 	}
@@ -146,7 +148,7 @@ func TestMapHit_NeedSignal_MissingSignalType(t *testing.T) {
 func TestMapHit_NeedSignal_NoSubobject(t *testing.T) {
 	hit := makeBaseHit(t, "need_signal", "X")
 	// No "need_signal" key at all.
-	_, err := MapHit(hit)
+	_, err := mapper.MapHit(hit)
 	if err == nil {
 		t.Fatal("expected error when need_signal subobject missing")
 	}
@@ -158,7 +160,7 @@ func TestMapHit_RequiredFieldErrors(t *testing.T) {
 		t.Run("missing_"+missing, func(t *testing.T) {
 			hit := makeBaseHit(t, "rfp", "id1")
 			delete(hit, missing)
-			_, err := MapHit(hit)
+			_, err := mapper.MapHit(hit)
 			if err == nil {
 				t.Fatalf("expected error when %q is missing", missing)
 			}
@@ -171,7 +173,7 @@ func TestMapHit_RequiredFieldErrors(t *testing.T) {
 
 func TestMapHit_UnsupportedContentType(t *testing.T) {
 	hit := makeBaseHit(t, "blog_post", "id1")
-	_, err := MapHit(hit)
+	_, err := mapper.MapHit(hit)
 	if err == nil {
 		t.Fatal("expected error for unsupported content_type")
 	}
@@ -186,11 +188,11 @@ func TestMapHit_PrefixDistinction(t *testing.T) {
 	needHit := makeBaseHit(t, "need_signal", "shared")
 	needHit["need_signal"] = map[string]any{"signal_type": "growth"}
 
-	rfpSignal, err := MapHit(rfpHit)
+	rfpSignal, err := mapper.MapHit(rfpHit)
 	if err != nil {
 		t.Fatalf("rfp error: %v", err)
 	}
-	needSignal, err := MapHit(needHit)
+	needSignal, err := mapper.MapHit(needHit)
 	if err != nil {
 		t.Fatalf("need_signal error: %v", err)
 	}
@@ -210,7 +212,7 @@ func TestMapHit_QualityScoreAcceptsIntAndFloat(t *testing.T) {
 	t.Run("float64", func(t *testing.T) {
 		hit := makeBaseHit(t, "rfp", "x")
 		hit["quality_score"] = float64(42)
-		s, err := MapHit(hit)
+		s, err := mapper.MapHit(hit)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -221,7 +223,7 @@ func TestMapHit_QualityScoreAcceptsIntAndFloat(t *testing.T) {
 	t.Run("int", func(t *testing.T) {
 		hit := makeBaseHit(t, "rfp", "x")
 		hit["quality_score"] = 42
-		s, err := MapHit(hit)
+		s, err := mapper.MapHit(hit)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -232,7 +234,7 @@ func TestMapHit_QualityScoreAcceptsIntAndFloat(t *testing.T) {
 	t.Run("wrong_type", func(t *testing.T) {
 		hit := makeBaseHit(t, "rfp", "x")
 		hit["quality_score"] = "42"
-		_, err := MapHit(hit)
+		_, err := mapper.MapHit(hit)
 		if err == nil {
 			t.Fatal("expected error when quality_score is string")
 		}
@@ -244,16 +246,16 @@ func TestStringFromPath(t *testing.T) {
 		"a": map[string]any{"b": "value"},
 		"c": map[string]any{"d": 123},
 	}
-	if got := stringFromPath(hit, "a", "b"); got != "value" {
+	if got := mapper.StringFromPath(hit, "a", "b"); got != "value" {
 		t.Errorf("got %q, want value", got)
 	}
-	if got := stringFromPath(hit, "missing", "b"); got != "" {
+	if got := mapper.StringFromPath(hit, "missing", "b"); got != "" {
 		t.Errorf("missing path should yield empty, got %q", got)
 	}
-	if got := stringFromPath(hit, "c", "d"); got != "" {
+	if got := mapper.StringFromPath(hit, "c", "d"); got != "" {
 		t.Errorf("wrong-type leaf should yield empty, got %q", got)
 	}
-	if got := stringFromPath(hit, "a", "b", "deeper"); got != "" {
+	if got := mapper.StringFromPath(hit, "a", "b", "deeper"); got != "" {
 		t.Errorf("over-walk should yield empty, got %q", got)
 	}
 }
@@ -267,19 +269,19 @@ func TestFirstStringInSlice(t *testing.T) {
 			"non_string": []any{42, "x"},
 		},
 	}
-	if got := firstStringInSlice(hit, "rfp", "categories"); got != "first" {
+	if got := mapper.FirstStringInSlice(hit, "rfp", "categories"); got != "first" {
 		t.Errorf("got %q, want first", got)
 	}
-	if got := firstStringInSlice(hit, "rfp", "empty"); got != "" {
+	if got := mapper.FirstStringInSlice(hit, "rfp", "empty"); got != "" {
 		t.Errorf("empty slice should yield empty, got %q", got)
 	}
-	if got := firstStringInSlice(hit, "rfp", "wrong"); got != "" {
+	if got := mapper.FirstStringInSlice(hit, "rfp", "wrong"); got != "" {
 		t.Errorf("non-slice should yield empty, got %q", got)
 	}
-	if got := firstStringInSlice(hit, "rfp", "non_string"); got != "" {
+	if got := mapper.FirstStringInSlice(hit, "rfp", "non_string"); got != "" {
 		t.Errorf("non-string head should yield empty, got %q", got)
 	}
-	if got := firstStringInSlice(hit, "missing", "categories"); got != "" {
+	if got := mapper.FirstStringInSlice(hit, "missing", "categories"); got != "" {
 		t.Errorf("missing path should yield empty, got %q", got)
 	}
 }
@@ -288,13 +290,13 @@ func TestOptionalStringFromPath(t *testing.T) {
 	hit := map[string]any{
 		"a": map[string]any{"b": "value", "empty": ""},
 	}
-	if v, ok := optionalStringFromPath(hit, "a", "b"); !ok || v != "value" {
+	if v, ok := mapper.OptionalStringFromPath(hit, "a", "b"); !ok || v != "value" {
 		t.Errorf("got (%q,%v), want (value,true)", v, ok)
 	}
-	if _, ok := optionalStringFromPath(hit, "a", "empty"); ok {
+	if _, ok := mapper.OptionalStringFromPath(hit, "a", "empty"); ok {
 		t.Error("empty string should report not-found")
 	}
-	if _, ok := optionalStringFromPath(hit, "a", "missing"); ok {
+	if _, ok := mapper.OptionalStringFromPath(hit, "a", "missing"); ok {
 		t.Error("missing leaf should report not-found")
 	}
 }
@@ -307,19 +309,19 @@ func TestIntFromPath(t *testing.T) {
 			"s": "x",
 		},
 	}
-	if got := intFromPath(hit, "a", "f"); got != 7 {
+	if got := mapper.IntFromPath(hit, "a", "f"); got != 7 {
 		t.Errorf("float64 path: got %d", got)
 	}
-	if got := intFromPath(hit, "a", "i"); got != 9 {
+	if got := mapper.IntFromPath(hit, "a", "i"); got != 9 {
 		t.Errorf("int path: got %d", got)
 	}
-	if got := intFromPath(hit, "a", "s"); got != 0 {
+	if got := mapper.IntFromPath(hit, "a", "s"); got != 0 {
 		t.Errorf("string leaf should yield 0, got %d", got)
 	}
-	if got := intFromPath(hit, "a", "missing"); got != 0 {
+	if got := mapper.IntFromPath(hit, "a", "missing"); got != 0 {
 		t.Errorf("missing leaf should yield 0, got %d", got)
 	}
-	if got := intFromPath(hit, "missing", "i"); got != 0 {
+	if got := mapper.IntFromPath(hit, "missing", "i"); got != 0 {
 		t.Errorf("missing root step should yield 0, got %d", got)
 	}
 }

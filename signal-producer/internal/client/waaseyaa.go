@@ -29,7 +29,7 @@ const (
 	SignalsEndpointPath = "/api/signals"
 
 	// HeaderAPIKey is the auth header name expected by Waaseyaa. FR-009.
-	HeaderAPIKey = "X-Api-Key"
+	HeaderAPIKey = "X-Api-Key" //nolint:gosec // header name, not a credential
 
 	// HeaderContentType is the standard MIME header.
 	HeaderContentType = "Content-Type"
@@ -49,8 +49,6 @@ const (
 )
 
 // Sentinel errors used by the retry helper to classify failures.
-//
-//nolint:revive // exported sentinel naming follows the unexported "errX" idiom intentionally
 var (
 	// errClient indicates a non-retryable 4xx response from Waaseyaa.
 	errClient = errors.New("client error: non-retryable 4xx")
@@ -166,8 +164,8 @@ func (c *Client) PostSignals(ctx context.Context, batch SignalBatch) (*IngestRes
 		result = res
 		return nil
 	}
-	if err := retry(ctx, c.backoffs, op, c.logger); err != nil {
-		return nil, err
+	if retryErr := retry(ctx, c.backoffs, op, c.logger); retryErr != nil {
+		return nil, retryErr
 	}
 	return result, nil
 }

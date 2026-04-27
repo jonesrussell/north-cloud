@@ -23,7 +23,7 @@ type retryOp func(ctx context.Context) error
 func retry(ctx context.Context, backoffs []time.Duration, op retryOp, log infralogger.Logger) error {
 	var lastErr error
 	totalAttempts := len(backoffs) + 1
-	for attempt := 0; attempt < totalAttempts; attempt++ {
+	for attempt := range totalAttempts {
 		if ctxErr := ctx.Err(); ctxErr != nil {
 			return ctxErr
 		}
