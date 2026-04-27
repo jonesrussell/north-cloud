@@ -1,0 +1,10 @@
+{
+  "created_at": "2026-04-27T05:53:24.900022+00:00",
+  "friendly_name": "signal producer pipeline",
+  "mission_id": "01KQ6QZSNBQF3VW515AKM0SQ46",
+  "mission_number": null,
+  "mission_slug": "signal-producer-pipeline-01KQ6QZS",
+  "mission_type": "software-dev",
+  "slug": "signal-producer-pipeline-01KQ6QZS",
+  "target_branch": "main"
+}
