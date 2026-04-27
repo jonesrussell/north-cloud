@@ -190,6 +190,16 @@ case "$FORMAT" in
             MATRIX_JSON="["
             FIRST=true
             for svc in $CHANGED_SERVICES_STR; do
+                # Services that ship as host binaries (not Docker images) are
+                # excluded from the build-and-push matrix. They still appear
+                # in services_list so deploy.yml's host-binary build step
+                # picks them up.
+                case "$svc" in
+                    signal-producer)
+                        continue
+                        ;;
+                esac
+
                 [ "$FIRST" = true ] && FIRST=false || MATRIX_JSON="$MATRIX_JSON,"
 
                 # Map to deploy name if different
