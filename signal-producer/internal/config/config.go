@@ -40,26 +40,26 @@ type Config struct {
 
 // WaaseyaaConfig groups receiver-side knobs.
 type WaaseyaaConfig struct {
-	URL             string `yaml:"url"               env:"WAASEYAA_URL"`
-	APIKey          string `yaml:"api_key"           env:"WAASEYAA_API_KEY"`
-	BatchSize       int    `yaml:"batch_size"        env:"WAASEYAA_BATCH_SIZE"`
-	MinQualityScore int    `yaml:"min_quality_score" env:"WAASEYAA_MIN_QUALITY_SCORE"`
+	URL             string `env:"WAASEYAA_URL"               yaml:"url"`
+	APIKey          string `env:"WAASEYAA_API_KEY"           yaml:"api_key"`
+	BatchSize       int    `env:"WAASEYAA_BATCH_SIZE"        yaml:"batch_size"`
+	MinQualityScore int    `env:"WAASEYAA_MIN_QUALITY_SCORE" yaml:"min_quality_score"`
 }
 
 // ElasticsearchConfig groups source-side knobs.
 type ElasticsearchConfig struct {
-	URL     string   `yaml:"url"     env:"ES_URL"`
-	Indexes []string `yaml:"indexes" env:"ES_INDEXES"`
+	URL     string   `env:"ES_URL"     yaml:"url"`
+	Indexes []string `env:"ES_INDEXES" yaml:"indexes"`
 }
 
 // ScheduleConfig groups timing knobs.
 type ScheduleConfig struct {
-	LookbackBuffer time.Duration `yaml:"lookback_buffer" env:"SCHEDULE_LOOKBACK_BUFFER"`
+	LookbackBuffer time.Duration `env:"SCHEDULE_LOOKBACK_BUFFER" yaml:"lookback_buffer"`
 }
 
 // CheckpointConfig groups persistence knobs.
 type CheckpointConfig struct {
-	File string `yaml:"file" env:"CHECKPOINT_FILE"`
+	File string `env:"CHECKPOINT_FILE" yaml:"file"`
 }
 
 // Load reads the YAML config at path, applies env overrides, fills defaults,
