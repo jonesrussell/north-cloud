@@ -221,6 +221,7 @@ classifier/testdata/icp_labelling_log.md
 .kittify/charter/governance.yaml
 .kittify/charter/metadata.yaml
 .kittify/charter/references.yaml
+.kittify/derived/
 .kittify/dossiers/
 .kittify/events/
 .kittify/merge-state.json
