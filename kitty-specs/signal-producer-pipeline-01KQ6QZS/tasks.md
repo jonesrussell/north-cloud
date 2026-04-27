@@ -19,10 +19,10 @@ the systemd unit + deploy pipeline.
 | T003  | Update `scripts/detect-changed-services.sh` `GO_SERVICES` array                                          | WP01  |          | [D] |
 | T004  | Add `signal-producer/` section to `docs/specs/lead-pipeline.md` for drift acceptance                     | WP01  |          | [D] |
 | T005  | Verify `task lint:signal-producer`, `task drift:check`, `task layers:check` all green                    | WP01  |          | [D] |
-| T006  | Define `Checkpoint` struct in `internal/producer/checkpoint.go`                                          | WP02  | [P]      |
-| T007  | Implement `LoadCheckpoint` (file-missing → 24h fallback, corrupt → WARN + 24h fallback)                  | WP02  | [P]      |
-| T008  | Implement `SaveCheckpoint` (atomic write via tmp + rename, mode 0640)                                    | WP02  | [P]      |
-| T009  | Unit tests in `internal/producer/checkpoint_test.go` (load, default, save+reload, atomic-write fault)    | WP02  | [P]      |
+| T006  | Define `Checkpoint` struct in `internal/producer/checkpoint.go`                                          | WP02  | [D] |
+| T007  | Implement `LoadCheckpoint` (file-missing → 24h fallback, corrupt → WARN + 24h fallback)                  | WP02  | [D] |
+| T008  | Implement `SaveCheckpoint` (atomic write via tmp + rename, mode 0640)                                    | WP02  | [D] |
+| T009  | Unit tests in `internal/producer/checkpoint_test.go` (load, default, save+reload, atomic-write fault)    | WP02  | [D] |
 | T010  | Define `Signal` struct in `internal/mapper/mapper.go` (matches contracts/signals-post.yaml)              | WP03  | [P]      |
 | T011  | Implement `MapHit` for `content_type=rfp` (prefix `nc-rfp-`, GSIN sector, expires_at)                    | WP03  | [P]      |
 | T012  | Implement `MapHit` for `content_type=need_signal` (prefix `nc-sig-`)                                     | WP03  | [P]      |
@@ -78,10 +78,10 @@ parallel lanes after WP01). Subtasks within a single WP execute sequentially.
 
 #### Included subtasks
 
-- [ ] T006 Define `Checkpoint` struct (WP02)
-- [ ] T007 Implement `LoadCheckpoint` (WP02)
-- [ ] T008 Implement `SaveCheckpoint` (WP02)
-- [ ] T009 Unit tests (WP02)
+- [x] T006 Define `Checkpoint` struct (WP02)
+- [x] T007 Implement `LoadCheckpoint` (WP02)
+- [x] T008 Implement `SaveCheckpoint` (WP02)
+- [x] T009 Unit tests (WP02)
 
 ### WP03 — ES-Hit-to-Signal Mapper
 
