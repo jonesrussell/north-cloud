@@ -33,12 +33,12 @@ the systemd unit + deploy pipeline.
 | T017  | Implement retry helper in `internal/client/retry.go` (3 retries, 1s/5s/15s backoff, 5xx + net only)      | WP04  | [D] |
 | T018  | Wire context cancellation through retries                                                                 | WP04  | [D] |
 | T019  | Unit tests in `internal/client/waaseyaa_test.go` (success, 5xx retry, 4xx no-retry, ctx cancel, header)  | WP04  | [D] |
-| T020  | Implement ES query in `internal/producer/producer.go` (range + content_type + quality_score + sort)      | WP05  |          |
-| T021  | Implement `Run(ctx)` main loop (load checkpoint, query ES, map, batch, post, advance, summary log)       | WP05  |          |
-| T022  | Implement source-down detection (3 consecutive empty runs → WARN with `signal_producer.source_down`)     | WP05  |          |
-| T023  | Wire `cmd/main.go` (config load, logger init, build deps, Run, exit code)                                | WP05  |          |
-| T024  | Integration test: real ES + httptest.Server (in `internal/producer/integration_test.go`, build tag)      | WP05  |          |
-| T025  | Unit tests for `producer.Run` with fakes for ES + client                                                 | WP05  |          |
+| T020  | Implement ES query in `internal/producer/producer.go` (range + content_type + quality_score + sort)      | WP05  |          | [D] |
+| T021  | Implement `Run(ctx)` main loop (load checkpoint, query ES, map, batch, post, advance, summary log)       | WP05  |          | [D] |
+| T022  | Implement source-down detection (3 consecutive empty runs → WARN with `signal_producer.source_down`)     | WP05  |          | [D] |
+| T023  | Wire `cmd/main.go` (config load, logger init, build deps, Run, exit code)                                | WP05  |          | [D] |
+| T024  | Integration test: real ES + httptest.Server (in `internal/producer/integration_test.go`, build tag)      | WP05  |          | [D] |
+| T025  | Unit tests for `producer.Run` with fakes for ES + client                                                 | WP05  |          | [D] |
 | T026  | Write `signal-producer.service` (Type=oneshot, User=, StateDirectory=, EnvironmentFile=)                 | WP06  |          |
 | T027  | Write `signal-producer.timer` (OnCalendar=*:0/15, Persistent=true)                                       | WP06  |          |
 | T028  | Update `scripts/deploy.sh` and GH Actions workflow to install/enable the unit                             | WP06  |          |
@@ -128,12 +128,12 @@ parallel lanes after WP01). Subtasks within a single WP execute sequentially.
 
 #### Included subtasks
 
-- [ ] T020 ES query implementation (WP05)
-- [ ] T021 `Run(ctx)` main loop (WP05)
-- [ ] T022 Source-down detection (WP05)
-- [ ] T023 `cmd/main.go` wiring (WP05)
-- [ ] T024 Integration test (WP05)
-- [ ] T025 Unit tests with fakes (WP05)
+- [x] T020 ES query implementation (WP05)
+- [x] T021 `Run(ctx)` main loop (WP05)
+- [x] T022 Source-down detection (WP05)
+- [x] T023 `cmd/main.go` wiring (WP05)
+- [x] T024 Integration test (WP05)
+- [x] T025 Unit tests with fakes (WP05)
 
 ### WP06 — Production Deployment
 
