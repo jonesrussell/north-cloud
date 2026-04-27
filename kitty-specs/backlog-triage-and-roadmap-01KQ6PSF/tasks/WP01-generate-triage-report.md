@@ -27,6 +27,8 @@ subtasks:
 - T005
 - T006
 - T007
+agent: "claude:opus-4.7:implementer:implementer"
+shell_pid: "31084"
 history:
 - event: created
   at: '2026-04-27T05:38:52Z'
@@ -293,3 +295,7 @@ spec-kitty agent action implement WP01 --agent <agent-name>
 ```
 
 Run from the project root. The lane and worktree are allocated by `lanes.json` after `finalize-tasks` completes.
+
+## Activity Log
+
+- 2026-04-27T05:43:08Z – claude:opus-4.7:implementer:implementer – shell_pid=31084 – Started implementation via action command
