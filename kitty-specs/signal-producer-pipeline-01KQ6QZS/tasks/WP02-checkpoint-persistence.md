@@ -15,6 +15,8 @@ subtasks:
 - T007
 - T008
 - T009
+agent: "claude:opus-4.7:implementer:implementer"
+shell_pid: "15216"
 history:
 - event: created
   at: '2026-04-27T05:55:00Z'
@@ -170,3 +172,7 @@ Planning base: `main`. Merge target: `main`. Lane workspace from `lanes.json`. I
 ```bash
 spec-kitty agent action implement WP02 --agent <agent-name> --mission signal-producer-pipeline-01KQ6QZS
 ```
+
+## Activity Log
+
+- 2026-04-27T06:33:01Z – claude:opus-4.7:implementer:implementer – shell_pid=15216 – Started implementation via action command
