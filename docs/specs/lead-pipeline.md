@@ -287,6 +287,13 @@ drops), `skipped_rcv` (Waaseyaa-side dedup or rejections from the
 line via `journalctl -u signal-producer` to triage every dimension of a
 run without correlating per-batch lines.
 
+### Config schema
+
+Producer config loads through `infrastructure/config/`. Struct tags are
+`env:"..." yaml:"..."` (env first, then yaml) per the workspace `tagalign`
+convention. Required env keys are `WAASEYAA_URL`, `WAASEYAA_API_KEY`, and
+`ES_URL`; the rest fall back to documented defaults.
+
 ### Out of scope
 
 The Waaseyaa `POST /api/signals` receiver, the downstream enrichment

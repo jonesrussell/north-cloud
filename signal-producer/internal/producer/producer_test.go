@@ -414,7 +414,7 @@ func TestBuildQuery_Shape(t *testing.T) {
 	}
 	s := string(bs)
 	for _, want := range []string{
-		`"crawled_at":"2026-04-27T09:55:00Z"`,
+		`"crawled_at":{"gte":"2026-04-27T09:55:00Z"}`,
 		`"content_type":["rfp","need_signal"]`,
 		`"quality_score":{"gte":40}`,
 		`"size":100`,
