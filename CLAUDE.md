@@ -284,3 +284,8 @@ North Cloud is the **content pipeline layer**. It owns crawling, classification 
 **Shared contracts:**
 - `jonesrussell/indigenous-taxonomy` — categories, regions (Go module)
 - Redis pub/sub channels follow taxonomy slugs: `indigenous:category:{slug}`, `indigenous:region:{slug}`
+
+<!-- SPECKIT START -->
+For additional context about technologies to be used, project structure,
+shell commands, and other important information, read the current plan
+<!-- SPECKIT END -->
