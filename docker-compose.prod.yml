@@ -689,6 +689,8 @@ services:
           cpus: "4"
           memory: 8G
     shm_size: 512mb
+    ports:
+      - "127.0.0.1:9200:9200"
     environment:
       xpack.security.enabled: "${ELASTICSEARCH_SECURITY_ENABLED:-false}"
       ES_JAVA_OPTS: "-Xms${ELASTICSEARCH_MIN_HEAP:-4g} -Xmx${ELASTICSEARCH_MAX_HEAP:-4g}"
