@@ -23,11 +23,11 @@ the systemd unit + deploy pipeline.
 | T007  | Implement `LoadCheckpoint` (file-missing → 24h fallback, corrupt → WARN + 24h fallback)                  | WP02  | [D] |
 | T008  | Implement `SaveCheckpoint` (atomic write via tmp + rename, mode 0640)                                    | WP02  | [D] |
 | T009  | Unit tests in `internal/producer/checkpoint_test.go` (load, default, save+reload, atomic-write fault)    | WP02  | [D] |
-| T010  | Define `Signal` struct in `internal/mapper/mapper.go` (matches contracts/signals-post.yaml)              | WP03  | [P]      |
-| T011  | Implement `MapHit` for `content_type=rfp` (prefix `nc-rfp-`, GSIN sector, expires_at)                    | WP03  | [P]      |
-| T012  | Implement `MapHit` for `content_type=need_signal` (prefix `nc-sig-`)                                     | WP03  | [P]      |
-| T013  | Tolerance for missing optional fields (province, sector → empty string)                                  | WP03  | [P]      |
-| T014  | Unit tests in `internal/mapper/mapper_test.go` (both types, missing fields, prefix collision)            | WP03  | [P]      |
+| T010  | Define `Signal` struct in `internal/mapper/mapper.go` (matches contracts/signals-post.yaml)              | WP03  | [D] |
+| T011  | Implement `MapHit` for `content_type=rfp` (prefix `nc-rfp-`, GSIN sector, expires_at)                    | WP03  | [D] |
+| T012  | Implement `MapHit` for `content_type=need_signal` (prefix `nc-sig-`)                                     | WP03  | [D] |
+| T013  | Tolerance for missing optional fields (province, sector → empty string)                                  | WP03  | [D] |
+| T014  | Unit tests in `internal/mapper/mapper_test.go` (both types, missing fields, prefix collision)            | WP03  | [D] |
 | T015  | Define `WaaseyaaClient` interface + `IngestResult` struct in `internal/client/waaseyaa.go`               | WP04  | [P]      |
 | T016  | Implement `PostSignals` (X-Api-Key header, JSON marshal, POST, response parse)                           | WP04  | [P]      |
 | T017  | Implement retry helper in `internal/client/retry.go` (3 retries, 1s/5s/15s backoff, 5xx + net only)      | WP04  | [P]      |
@@ -94,11 +94,11 @@ parallel lanes after WP01). Subtasks within a single WP execute sequentially.
 
 #### Included subtasks
 
-- [ ] T010 Define `Signal` struct (WP03)
-- [ ] T011 Map `rfp` hits (WP03)
-- [ ] T012 Map `need_signal` hits (WP03)
-- [ ] T013 Tolerance for missing optional fields (WP03)
-- [ ] T014 Unit tests (WP03)
+- [x] T010 Define `Signal` struct (WP03)
+- [x] T011 Map `rfp` hits (WP03)
+- [x] T012 Map `need_signal` hits (WP03)
+- [x] T013 Tolerance for missing optional fields (WP03)
+- [x] T014 Unit tests (WP03)
 
 ### WP04 — Waaseyaa HTTP Client
 
