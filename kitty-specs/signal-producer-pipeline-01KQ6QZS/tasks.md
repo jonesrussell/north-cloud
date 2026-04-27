@@ -14,11 +14,11 @@ the systemd unit + deploy pipeline.
 
 | ID    | Description                                                                                              | WP    | Parallel |
 | ----- | -------------------------------------------------------------------------------------------------------- | ----- | -------- |
-| T001  | Create `signal-producer/` directory tree, `go.mod`, `Taskfile.yml`, `.layers`, `CLAUDE.md`, `config.yml.example` | WP01  |          |
-| T002  | Add root `Taskfile.yml` delegations (`build`, `test`, `lint`, `vuln`)                                    | WP01  |          |
-| T003  | Update `scripts/detect-changed-services.sh` `GO_SERVICES` array                                          | WP01  |          |
-| T004  | Add `signal-producer/` section to `docs/specs/lead-pipeline.md` for drift acceptance                     | WP01  |          |
-| T005  | Verify `task lint:signal-producer`, `task drift:check`, `task layers:check` all green                    | WP01  |          |
+| T001  | Create `signal-producer/` directory tree, `go.mod`, `Taskfile.yml`, `.layers`, `CLAUDE.md`, `config.yml.example` | WP01  |          | [D] |
+| T002  | Add root `Taskfile.yml` delegations (`build`, `test`, `lint`, `vuln`)                                    | WP01  |          | [D] |
+| T003  | Update `scripts/detect-changed-services.sh` `GO_SERVICES` array                                          | WP01  |          | [D] |
+| T004  | Add `signal-producer/` section to `docs/specs/lead-pipeline.md` for drift acceptance                     | WP01  |          | [D] |
+| T005  | Verify `task lint:signal-producer`, `task drift:check`, `task layers:check` all green                    | WP01  |          | [D] |
 | T006  | Define `Checkpoint` struct in `internal/producer/checkpoint.go`                                          | WP02  | [P]      |
 | T007  | Implement `LoadCheckpoint` (file-missing → 24h fallback, corrupt → WARN + 24h fallback)                  | WP02  | [P]      |
 | T008  | Implement `SaveCheckpoint` (atomic write via tmp + rename, mode 0640)                                    | WP02  | [P]      |
@@ -61,11 +61,11 @@ parallel lanes after WP01). Subtasks within a single WP execute sequentially.
 
 #### Included subtasks
 
-- [ ] T001 Create `signal-producer/` directory tree (WP01)
-- [ ] T002 Root `Taskfile.yml` delegations (WP01)
-- [ ] T003 Update `scripts/detect-changed-services.sh` (WP01)
-- [ ] T004 Spec section in `docs/specs/lead-pipeline.md` (WP01)
-- [ ] T005 Verify all gates green (WP01)
+- [x] T001 Create `signal-producer/` directory tree (WP01)
+- [x] T002 Root `Taskfile.yml` delegations (WP01)
+- [x] T003 Update `scripts/detect-changed-services.sh` (WP01)
+- [x] T004 Spec section in `docs/specs/lead-pipeline.md` (WP01)
+- [x] T005 Verify all gates green (WP01)
 
 ### WP02 — Checkpoint Persistence
 
