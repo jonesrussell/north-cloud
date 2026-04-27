@@ -16,6 +16,8 @@ subtasks:
 - T028
 - T029
 - T030
+agent: "claude:opus-4.7:implementer:implementer"
+shell_pid: "22524"
 history:
 - event: created
   at: '2026-04-27T05:55:00Z'
@@ -289,3 +291,7 @@ This verification is the mission's exit criterion (Success Criterion 1).
 ```bash
 spec-kitty agent action implement WP06 --agent <agent-name> --mission signal-producer-pipeline-01KQ6QZS
 ```
+
+## Activity Log
+
+- 2026-04-27T07:24:10Z – claude:opus-4.7:implementer:implementer – shell_pid=22524 – Started implementation via action command
