@@ -274,6 +274,15 @@ docker-compose service entry. Per `CLAUDE.md` "Oneshot Docker services": uses
 `restart: "no"`, host-mounted checkpoint volume owned by the container's
 non-root uid, and is added to the deploy health-check skip list.
 
+### Run summary log
+
+Each completed cycle emits a single `run_summary` JSON log line carrying
+the per-run counters: `total_hits`, `total_signals`, `skipped` (mapper-side
+drops), `skipped_rcv` (Waaseyaa-side dedup or rejections from the
+`IngestResult` response), `batches`, and `ingested`. Operators read this
+line via `journalctl -u signal-producer` to triage every dimension of a
+run without correlating per-batch lines.
+
 ### Out of scope
 
 The Waaseyaa `POST /api/signals` receiver, the downstream enrichment
