@@ -40,7 +40,7 @@ done
 
 # Service directories (canonical list)
 # Note: 'search' dir maps to 'search-service' container in deploy
-GO_SERVICES=(ai-observer auth classifier click-tracker crawler index-manager mcp-north-cloud pipeline publisher rfp-ingestor search signal-crawler source-manager nc-http-proxy)
+GO_SERVICES=(ai-observer auth classifier click-tracker crawler index-manager mcp-north-cloud pipeline publisher rfp-ingestor search signal-crawler signal-producer source-manager nc-http-proxy)
 FRONTEND_SERVICES=(dashboard search-frontend)
 ML_SIDECARS=(crime-ml mining-ml coforge-ml entertainment-ml indigenous-ml)
 OTHER_SERVICES=("${ML_SIDECARS[@]}" playwright-renderer)

@@ -1,0 +1,15 @@
+# signal-producer — Layer Definitions
+#
+# Downward-only DAG:
+#   cmd -> producer -> {mapper, client}
+# mapper and client are independent leaves; they MUST NOT import each other.
+
+# L0: Foundation — leaves with no internal imports
+0 client
+0 mapper
+
+# L1: Orchestration
+1 producer
+
+# L2: Entry point
+2 cmd

@@ -185,6 +185,25 @@ jobs:
           fi
           echo "No duplicate migration prefixes found."
 
+      # signal-producer runs as a host systemd timer (not docker-compose),
+      # so the deploy script needs the raw Linux binary in the tarball.
+      - name: Build signal-producer host binary
+        if: contains(needs.detect-changes.outputs.services_list, 'signal-producer') || inputs.force_rebuild_all == true
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: signal-producer/go.mod
+          cache: false
+      - name: Compile signal-producer
+        if: contains(needs.detect-changes.outputs.services_list, 'signal-producer') || inputs.force_rebuild_all == true
+        env:
+          CGO_ENABLED: "0"
+          GOOS: linux
+          GOARCH: amd64
+        run: |
+          cd signal-producer
+          go build -trimpath -ldflags="-s -w" -o signal-producer ./cmd
+          ls -lh signal-producer
+
       - name: Sync files to server
         env:
           SSH_PORT: ${{ secrets.DEPLOY_SSH_PORT || 22 }}
@@ -197,6 +216,8 @@ jobs:
             scripts/deploy.sh \
             infrastructure/ \
             */migrations/ \
+            signal-producer/deploy/ \
+            $( [ -f signal-producer/signal-producer ] && echo signal-producer/signal-producer ) \
             --exclude='*.md' \
             --exclude='*.txt' \
             2>/dev/null || true

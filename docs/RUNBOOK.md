@@ -56,6 +56,137 @@ journalctl -u signal-crawler.service -f
 
 ---
 
+## Signal Producer
+
+The `signal-producer` is a host systemd `Type=oneshot` unit that fires every
+15 minutes (`OnCalendar=*:0/15`). Each run reads classified-content hits
+since the last successful checkpoint, maps them to the Waaseyaa signal
+format, and POSTs them to `https://northops.ca/api/signals`. Unit files
+live in `signal-producer/deploy/`; checkpoint state lives at
+`/var/lib/signal-producer/checkpoint.json`; secrets at
+`/etc/signal-producer/env` (root:root, 0600).
+
+- **Production install is Ansible-managed.** Binary, systemd unit + timer,
+  user, and env file are deployed via the `north-cloud` role in
+  [`jonesrussell/northcloud-ansible`](https://github.com/jonesrussell/northcloud-ansible).
+  The smoke-test commands below assume Ansible has run successfully. If
+  `systemctl status signal-producer.timer` says `Loaded: not-found`, the
+  Ansible run hasn't happened — apply the playbook before troubleshooting
+  further.
+
+### First-run smoke test
+
+After a deploy that touched signal-producer, run on the VPS:
+
+```bash
+ssh prod
+sudo systemctl status signal-producer.timer
+sudo systemctl list-timers | grep signal-producer
+# Wait up to 15 min for the first fire, then:
+sudo journalctl -u signal-producer --since "20 minutes ago" | grep run_summary
+```
+
+Expect at least one `run_summary` line within 30 minutes. If the first
+run failed because the env file was freshly seeded from `env.example`,
+populate `WAASEYAA_API_KEY` from 1Password and trigger a manual run:
+
+```bash
+sudo $EDITOR /etc/signal-producer/env   # paste the real API key
+sudo systemctl start signal-producer.service
+sudo journalctl -u signal-producer -n 50 --no-pager
+```
+
+### Source-down triage
+
+The producer emits a single WARN with code `signal_producer.source_down`
+after three consecutive runs return `ingested == 0`. If you wired this to
+an alerter (see `signal-producer/quickstart.md`), you'll see the alert
+fire. Triage:
+
+```bash
+# Was the alert raised? (filter the last 24h)
+sudo journalctl -u signal-producer --since "24 hours ago" \
+  | grep '"code":"signal_producer.source_down"'
+
+# What were the recent run summaries? Look for total_signals=0 streaks.
+sudo journalctl -u signal-producer --since "24 hours ago" \
+  | grep '"event":"run_summary"'
+
+# Check whether ES has anything new in the producer's window.
+curl -s "http://localhost:9200/*_classified_content/_count?q=*" | jq .
+```
+
+If `total_signals=0` for hours but the upstream classified indexes are
+growing, the producer's checkpoint may be ahead of reality — see the
+force-rewind recipe below. If the upstream indexes themselves are flat,
+the issue is in the content pipeline (crawler / classifier), not the
+producer.
+
+### Force a checkpoint rewind
+
+Use this when Waaseyaa lost data and asked for a replay, or when
+diagnosing a source-down false positive. Waaseyaa-side dedup via
+`external_id` is the backstop against duplicate leads, but verify with
+the Waaseyaa team before rewinding more than a few hours.
+
+```bash
+sudo systemctl stop signal-producer.timer
+sudo -u signal-producer python3 -c "
+import json, datetime
+path = '/var/lib/signal-producer/checkpoint.json'
+data = json.load(open(path))
+new_ts = (datetime.datetime.fromisoformat(data['last_successful_run'].rstrip('Z')) - datetime.timedelta(hours=1)).strftime('%Y-%m-%dT%H:%M:%SZ')
+data['last_successful_run'] = new_ts
+json.dump(data, open(path, 'w'))
+"
+sudo systemctl start signal-producer.timer
+# Force a fire now rather than waiting for the next 15-min boundary:
+sudo systemctl start signal-producer.service
+```
+
+Adjust the `timedelta(hours=1)` to taste. The next run reprocesses the
+rewound window; Waaseyaa-side dedup keyed on `external_id` prevents
+duplicate leads.
+
+### Failed-run triage
+
+```bash
+sudo systemctl status signal-producer.service
+sudo journalctl -u signal-producer -n 100 --no-pager
+sudo journalctl -u signal-producer.service -p err --since "7 days ago"
+```
+
+Common error patterns:
+
+| Symptom (in journald)                                            | Cause                                            | Fix                                                                                          |
+| ---------------------------------------------------------------- | ------------------------------------------------ | -------------------------------------------------------------------------------------------- |
+| `error="config: WAASEYAA_API_KEY missing"`                       | `EnvironmentFile=` did not load                  | `ls -l /etc/signal-producer/env` — must be `root:root 0600` and contain `WAASEYAA_API_KEY=`. |
+| HTTP 401 from Waaseyaa                                           | API key invalid or rotated upstream              | Rotate via 1Password; see "Rotating the API key" below.                                      |
+| HTTP 5xx after all retries                                       | Waaseyaa is down                                 | Wait one timer cycle (15 min); the next fire retries from the same checkpoint.               |
+| `error="checkpoint: write failed: permission denied"`            | `/var/lib/signal-producer/` ownership wrong      | `sudo chown -R signal-producer:signal-producer /var/lib/signal-producer/`.                   |
+| `signal_producer.source_down` repeating for hours                | Upstream classifier / crawler not producing hits | Investigate the content pipeline, not the producer. Start with the crawler dashboards.       |
+
+A failed run leaves the checkpoint untouched, so the next 15-min fire
+retries automatically. No manual intervention is needed unless the
+failure is persistent.
+
+### Rotating the API key
+
+```bash
+sudo systemctl stop signal-producer.timer
+sudo $EDITOR /etc/signal-producer/env       # paste new WAASEYAA_API_KEY
+sudo systemctl daemon-reload                # picks up env file changes
+sudo systemctl start signal-producer.timer
+sudo systemctl start signal-producer.service   # force one immediate run
+sudo journalctl -u signal-producer -n 30 --no-pager   # verify success
+```
+
+Expect a `run_summary` line with `errors=0`. If the new key is bad
+you'll see HTTP 401 in the journal — fix the env file and rerun the
+last two commands.
+
+---
+
 ## Rollback Procedures
 
 ### Automatic rollback (built into deploy.sh)

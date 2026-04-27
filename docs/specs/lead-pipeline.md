@@ -234,6 +234,55 @@ See `signal-crawler/MIGRATION.md` for the successor direction (written under #64
 
 ---
 
+## Signal Producer
+
+`signal-producer/` is the canonical successor to `signal-crawler/` for
+ES-derived signals. It is a stateless one-shot Go binary that scans
+classified content already in Elasticsearch, maps qualifying hits to the
+Waaseyaa signal schema, and POSTs them to the Waaseyaa receiver. External
+adapters (HN, funding portals, jobs) remain in `signal-crawler/` until
+that service's `MIGRATION.md` retires each one.
+
+Full mission spec:
+[`kitty-specs/signal-producer-pipeline-01KQ6QZS/spec.md`](../../kitty-specs/signal-producer-pipeline-01KQ6QZS/spec.md).
+Wire contract: [`contracts/signals-post.yaml`](../../kitty-specs/signal-producer-pipeline-01KQ6QZS/contracts/signals-post.yaml).
+
+### Scope
+
+Drains `*_classified_content` for documents with `quality_score >= 40` and
+`content_type in {rfp, need_signal}`, advancing a single watermark
+(`last_successful_run`) on each fully successful cycle. The producer never
+writes to ES and never owns durable state beyond the checkpoint file.
+
+### Internal packages
+
+| Package              | Layer | Responsibility                                                                                       |
+| -------------------- | ----- | ---------------------------------------------------------------------------------------------------- |
+| `internal/client`    | L0    | ES read client (search-after, scroll-free) and Waaseyaa POST client. Pure I/O; no business rules.    |
+| `internal/mapper`    | L0    | `ESHit -> Signal` translation for both `rfp` and `need_signal` shapes. Pure functions; no I/O.       |
+| `internal/producer`  | L1    | Orchestrator: load checkpoint -> query ES -> map -> POST -> advance checkpoint atomically.          |
+| `cmd/`               | L2    | Thin entry point: load config (incl. `os.Getenv` exception per C-002), wire deps, run one cycle.    |
+
+`mapper` and `client` are independent leaves and MUST NOT import each other.
+The DAG is enforced by `signal-producer/.layers` and `task layers:check`.
+
+### Deployment posture
+
+One-shot Docker container managed by an Ansible-installed systemd timer
+(same pattern as `signal-crawler`). No long-running process, no
+docker-compose service entry. Per `CLAUDE.md` "Oneshot Docker services": uses
+`restart: "no"`, host-mounted checkpoint volume owned by the container's
+non-root uid, and is added to the deploy health-check skip list.
+
+### Out of scope
+
+The Waaseyaa `POST /api/signals` receiver, the downstream enrichment
+service, and `signal-crawler`'s remaining external-source adapters all sit
+outside this service. Changes to those landing zones do not flow through
+`signal-producer/`.
+
+---
+
 ## Cross-service boundaries
 
 - **North Cloud owns** the signal schema, the producer catalogue, the threshold gate, the dedup keys, and classifier-side enrichments.

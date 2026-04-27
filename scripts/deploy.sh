@@ -580,6 +580,9 @@ for svc in $SERVICES_TO_CHECK; do
     signal-crawler)
       echo -e "  Skipping $svc (oneshot service, no health endpoint)"
       ;;
+    signal-producer)
+      echo -e "  Skipping $svc (host systemd timer, no HTTP endpoint)"
+      ;;
     # northcloud-search-web and dashboard don't have health endpoints (static nginx/waaseyaa)
   esac
 done

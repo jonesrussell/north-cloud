@@ -1,0 +1,20 @@
+[Unit]
+Description=North Cloud Signal Producer Timer
+
+# Notes:
+# - OnCalendar=*:0/15 fires at HH:00, HH:15, HH:30, HH:45 (FR-017).
+# - Persistent=true runs a catch-up on boot if a fire was missed while the
+#   host was down (recovery scenario in spec.md).
+# - AccuracySec=30s bounds drift; the producer is fast enough that this is
+#   generous.
+# - Type=oneshot in the .service file already prevents overlapping fires:
+#   systemd refuses to start a second instance while the first is active.
+
+[Timer]
+OnCalendar=*:0/15
+Persistent=true
+AccuracySec=30s
+Unit=signal-producer.service
+
+[Install]
+WantedBy=timers.target

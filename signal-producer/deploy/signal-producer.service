@@ -1,0 +1,21 @@
+[Unit]
+Description=North Cloud Signal Producer
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=signal-producer
+Group=signal-producer
+StateDirectory=signal-producer
+StateDirectoryMode=0750
+EnvironmentFile=/etc/signal-producer/env
+ExecStart=/usr/local/bin/signal-producer
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=signal-producer
+# Defensive timeout so a stuck run doesn't block the next timer fire.
+TimeoutStartSec=10m
+
+[Install]
+WantedBy=multi-user.target

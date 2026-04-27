@@ -1,0 +1,23 @@
+# signal-producer configuration example.
+# Copy to config.yml and fill in real values, or rely on env vars.
+# See kitty-specs/signal-producer-pipeline-01KQ6QZS/data-model.md for shape details.
+
+waaseyaa:
+  url: "${WAASEYAA_URL}"
+  api_key: "${WAASEYAA_API_KEY}"
+  batch_size: 50
+  min_quality_score: 40
+
+elasticsearch:
+  url: "${ES_URL}"
+  indexes:
+    - "*_classified_content"
+
+schedule:
+  # Lookback buffer subtracted from the checkpoint timestamp on each run
+  # to forgive small clock skew between producer and ES.
+  lookback_buffer: "5m"
+
+checkpoint:
+  # Path to the checkpoint file (mode 0640, atomically rewritten on success).
+  file: "/var/lib/signal-producer/checkpoint.json"
