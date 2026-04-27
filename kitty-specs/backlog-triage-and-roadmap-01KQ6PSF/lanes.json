@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "mission_slug": "backlog-triage-and-roadmap-01KQ6PSF",
+  "mission_id": "01KQ6PSF33WBN4QX3V0STTC8VT",
+  "mission_branch": "kitty/mission-backlog-triage-and-roadmap-01KQ6PSF",
+  "target_branch": "main",
+  "lanes": [
+    {
+      "lane_id": "lane-planning",
+      "wp_ids": [
+        "WP01"
+      ],
+      "write_scope": [
+        "kitty-specs/backlog-triage-and-roadmap-01KQ6PSF/review-notes.md",
+        "kitty-specs/backlog-triage-and-roadmap-01KQ6PSF/snapshot.json",
+        "kitty-specs/backlog-triage-and-roadmap-01KQ6PSF/triage-report.md"
+      ],
+      "predicted_surfaces": [
+        "planning"
+      ],
+      "depends_on_lanes": [],
+      "parallel_group": 0
+    }
+  ],
+  "computed_at": "2026-04-27T05:41:42.431109+00:00",
+  "computed_from": "dependency_graph+ownership",
+  "planning_artifact_wps": [
+    "WP01"
+  ]
+}
