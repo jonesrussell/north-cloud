@@ -16,7 +16,8 @@ subtasks:
 - T003
 - T004
 - T005
-shell_pid: '89496'
+shell_pid: "89496"
+agent: "claude:opus-4.7:implementer:implementer"
 history:
 - event: created
   at: '2026-04-27T05:55:00Z'
@@ -247,3 +248,7 @@ When reviewing this WP, focus on:
 ```bash
 spec-kitty agent action implement WP01 --agent <agent-name> --mission signal-producer-pipeline-01KQ6QZS
 ```
+
+## Activity Log
+
+- 2026-04-27T06:22:43Z – claude:opus-4.7:implementer:implementer – shell_pid=89496 – Assigned agent via action command
