@@ -1,10 +1,12 @@
 {
   "created_at": "2026-04-27T05:32:28.891795+00:00",
-  "friendly_name": "backlog triage and roadmap",
+  "friendly_name": "Backlog Triage and Roadmap",
   "mission_id": "01KQ6PSF33WBN4QX3V0STTC8VT",
   "mission_number": null,
   "mission_slug": "backlog-triage-and-roadmap-01KQ6PSF",
   "mission_type": "software-dev",
   "slug": "backlog-triage-and-roadmap-01KQ6PSF",
-  "target_branch": "main"
+  "target_branch": "main",
+  "vcs": "git",
+  "source_description": "Triage all open GitHub issues across the three active milestones, deprecate or merge stale items, and produce a prioritized survivor list with mission recommendations. Planning-only deliverable: a markdown triage report committed to the repo. Drives the sequencing of subsequent Spec Kitty missions."
 }
