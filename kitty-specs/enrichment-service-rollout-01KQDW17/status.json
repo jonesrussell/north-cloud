@@ -1,7 +1,7 @@
 {
-  "event_count": 15,
-  "last_event_id": "01KQDXSKQNCEGNCEX8T14DRHRX",
-  "materialized_at": "2026-04-30T00:49:34.453355+00:00",
+  "event_count": 17,
+  "last_event_id": "01KQDXWYM304QXA580KJQZ1SJN",
+  "materialized_at": "2026-04-30T00:51:23.907252+00:00",
   "mission_number": "",
   "mission_slug": "enrichment-service-rollout-01KQDW17",
   "mission_type": "software-dev",
@@ -12,9 +12,9 @@
     "claimed": 0,
     "done": 0,
     "for_review": 0,
-    "in_progress": 0,
+    "in_progress": 1,
     "in_review": 0,
-    "planned": 3
+    "planned": 2
   },
   "work_packages": {
     "WP01": {
@@ -32,11 +32,11 @@
       "last_transition_at": "2026-04-30T00:49:34.453355+00:00"
     },
     "WP03": {
-      "actor": "finalize-tasks",
+      "actor": "claude:gpt-5:implementer:implementer",
       "force_count": 1,
-      "lane": "planned",
-      "last_event_id": "01KQDWM9Q1MF26A3DJBZ8FR0YC",
-      "last_transition_at": "2026-04-30T00:29:11.777113+00:00"
+      "lane": "in_progress",
+      "last_event_id": "01KQDXWYM304QXA580KJQZ1SJN",
+      "last_transition_at": "2026-04-30T00:51:23.907252+00:00"
     },
     "WP04": {
       "actor": "finalize-tasks",

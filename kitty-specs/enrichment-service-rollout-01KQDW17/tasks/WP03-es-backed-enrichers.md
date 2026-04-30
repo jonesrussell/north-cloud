@@ -18,6 +18,8 @@ subtasks:
 - T016
 - T017
 - T018
+agent: "claude:gpt-5:implementer:implementer"
+shell_pid: "4132"
 history:
 - timestamp: '2026-04-30T00:00:00Z'
   agent: claude
@@ -86,3 +88,7 @@ Document if integration checks requiring real Elasticsearch cannot run locally.
 ## Reviewer Guidance
 
 Confirm this WP does not add new enrichment types and does not import code from sibling services.
+
+## Activity Log
+
+- 2026-04-30T00:51:23Z – claude:gpt-5:implementer:implementer – shell_pid=4132 – Started implementation via action command
