@@ -1,0 +1,10 @@
+{
+  "created_at": "2026-04-30T21:39:01.413411+00:00",
+  "friendly_name": "audit dead code removal",
+  "mission_id": "01KQG57ZA5J21PAR4E5SJB6PBM",
+  "mission_number": null,
+  "mission_slug": "audit-dead-code-removal-01KQG57Z",
+  "mission_type": "software-dev",
+  "slug": "audit-dead-code-removal-01KQG57Z",
+  "target_branch": "feat/mission-a-dead-code-removal"
+}
