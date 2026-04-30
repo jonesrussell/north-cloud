@@ -1,0 +1,59 @@
+{
+  "mission_slug": "enrichment-service-rollout-01KQDW17",
+  "mission_number": "2",
+  "mission_type": "software-dev",
+  "overall_verdict": "pass",
+  "criteria": [
+    {
+      "criterion_id": "AC-001",
+      "description": "Enrichment service builds successfully from the root Taskfile integration.",
+      "proof_type": "automated_test",
+      "evidence": "task enrichment:build -f passed on main after mission merge.",
+      "pass_fail": "pass",
+      "verified_by": "claude",
+      "verified_at": "2026-04-30T12:21:00Z",
+      "notes": "Build produced enrichment/bin/enrichment; generated artifact was removed after validation."
+    },
+    {
+      "criterion_id": "AC-002",
+      "description": "Service unit tests and race tests pass for validation, callback retry policy, enrichers, and async orchestration.",
+      "proof_type": "automated_test",
+      "evidence": "task enrichment:test -f and task enrichment:test:race -f passed on main after mission merge.",
+      "pass_fail": "pass",
+      "verified_by": "claude",
+      "verified_at": "2026-04-30T12:21:00Z",
+      "notes": "Covers request validation, 202 response, callback behavior, unknown-type skip, ES enricher behavior with fakes, and runner error isolation."
+    },
+    {
+      "criterion_id": "AC-003",
+      "description": "Deployment artifacts document systemd, port 8095, journald logs, restart-on-failure, env templating, and Ansible companion work.",
+      "proof_type": "code_review",
+      "evidence": "Reviewed enrichment/deploy/README.md, enrichment/deploy/enrichment.service, enrichment/deploy/env.example, enrichment/docs/deployment.md, and docs/enrichment-service-deployment.md.",
+      "pass_fail": "pass",
+      "verified_by": "claude",
+      "verified_at": "2026-04-30T12:21:00Z",
+      "notes": "No real secrets are committed; callback URL and callback API key remain request-local fields."
+    },
+    {
+      "criterion_id": "AC-004",
+      "description": "Changed-service vulnerability check integration includes enrichment.",
+      "proof_type": "automated_test",
+      "evidence": "task vuln:changed --dry shows enrichment in GO_SERVICES and would dispatch task vuln:enrichment when detected.",
+      "pass_fail": "pass",
+      "verified_by": "claude",
+      "verified_at": "2026-04-30T12:43:00Z",
+      "notes": "Resolved the only mission-review drift finding."
+    }
+  ],
+  "negative_invariants": [
+    {
+      "invariant_id": "NI-001",
+      "description": "Do not modify Waaseyaa as part of this north-cloud mission.",
+      "verification_method": "custom_command",
+      "verification_command": "git diff --name-only d8ecaa0b..HEAD -- | grep -i waaseyaa",
+      "result": "confirmed_absent",
+      "evidence": "Mission diff is limited to north-cloud enrichment service, Taskfile, docs, and mission artifacts."
+    }
+  ]
+}
+
