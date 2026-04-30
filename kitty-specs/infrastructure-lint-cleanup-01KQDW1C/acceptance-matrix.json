@@ -1,0 +1,58 @@
+{
+  "mission_slug": "infrastructure-lint-cleanup-01KQDW1C",
+  "mission_number": "3",
+  "mission_type": "software-dev",
+  "overall_verdict": "pass_with_notes",
+  "criteria": [
+    {
+      "criterion_id": "AC-001",
+      "description": "Infrastructure lint reports zero issues with the repository golangci-lint configuration.",
+      "proof_type": "automated_test",
+      "evidence": "From infrastructure/: GOWORK=off golangci-lint run --config ../.golangci.yml ./... returned 0 issues.",
+      "pass_fail": "pass",
+      "verified_by": "claude",
+      "verified_at": "2026-04-30T14:09:32-04:00",
+      "notes": "The pinned golangci-lint v2.10.1 was installed to C:\\Users\\jones\\go\\bin for validation."
+    },
+    {
+      "criterion_id": "AC-002",
+      "description": "Infrastructure tests compile and run where local dependencies are available.",
+      "proof_type": "automated_test",
+      "evidence": "From infrastructure/: GOWORK=off go test ./... ran all packages; all non-Redis packages passed, while redis tests failed because no Redis service was listening on localhost:6379.",
+      "pass_fail": "pass_with_notes",
+      "verified_by": "claude",
+      "verified_at": "2026-04-30T14:09:35-04:00",
+      "notes": "The remaining test failure is an environment dependency, not a compile or lint failure introduced by this mission."
+    },
+    {
+      "criterion_id": "AC-003",
+      "description": "Profiling helpers no longer perform direct profiling environment reads and pprof has explicit server timeouts.",
+      "proof_type": "code_review",
+      "evidence": "Reviewed infrastructure/profiling/pprof.go, infrastructure/profiling/pyroscope.go, and infrastructure/config/loader.go after merge.",
+      "pass_fail": "pass",
+      "verified_by": "claude",
+      "verified_at": "2026-04-30T14:09:35-04:00",
+      "notes": "Existing StartPprofServer and StartPyroscope APIs remain source-compatible."
+    },
+    {
+      "criterion_id": "AC-004",
+      "description": "Infrastructure tests use external _test packages where required.",
+      "proof_type": "automated_test",
+      "evidence": "rg -n \"^package .+$\" infrastructure -g \"*_test.go\" shows all infrastructure tests use *_test packages.",
+      "pass_fail": "pass",
+      "verified_by": "claude",
+      "verified_at": "2026-04-30T14:09:35-04:00",
+      "notes": "Private-helper tests in elasticsearch were rewritten through public NewClient behavior."
+    }
+  ],
+  "negative_invariants": [
+    {
+      "invariant_id": "NI-001",
+      "description": "Do not change lint policy to make issue #646 pass.",
+      "verification_method": "git_diff_review",
+      "verification_command": "git diff 20bf6739..HEAD -- .golangci.yml infrastructure/.golangci.yml",
+      "result": "confirmed_absent",
+      "evidence": "No lint policy files were changed after the mission merge."
+    }
+  ]
+}
