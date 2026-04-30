@@ -16,6 +16,8 @@ subtasks:
 - T010
 - T011
 - T012
+agent: "claude:gpt-5:implementer:implementer"
+shell_pid: "28104"
 history:
 - timestamp: '2026-04-30T00:00:00Z'
   agent: claude
@@ -81,3 +83,7 @@ Document skipped lint/vuln checks if local tools are unavailable.
 ## Reviewer Guidance
 
 Confirm this WP does not change Waaseyaa and does not introduce persistent storage for callback secrets or payloads.
+
+## Activity Log
+
+- 2026-04-30T00:37:50Z – claude:gpt-5:implementer:implementer – shell_pid=28104 – Started implementation via action command
