@@ -2,26 +2,30 @@
 work_package_id: WP03
 title: Test Package Hygiene
 dependencies:
-  - WP01
+- WP01
 requirement_refs:
-  - FR-003
-  - FR-005
-  - C-001
-  - C-003
+- FR-003
+- FR-005
+- C-001
+- C-003
+planning_base_branch: main
+merge_target_branch: main
+branch_strategy: Planning artifacts for this feature were generated on main. During /spec-kitty.implement this WP may branch from a dependency-specific base, but completed changes must merge back into main unless the human explicitly redirects the landing branch.
 subtasks:
-  - T011
-  - T012
-  - T013
-  - T014
+- T011
+- T012
+- T013
+- T014
+history:
+- timestamp: '2026-04-30T12:55:00Z'
+  agent: claude
+  action: created
+  note: Initial WP prompt generated from infrastructure lint cleanup mission.
 authoritative_surface: infrastructure/
 execution_mode: code_change
 owned_files:
-  - infrastructure/**/*_test.go
-history:
-  - timestamp: "2026-04-30T12:55:00Z"
-    agent: claude
-    action: created
-    note: Initial WP prompt generated from infrastructure lint cleanup mission.
+- infrastructure/**/*_test.go
+tags: []
 ---
 
 # WP03 - Test Package Hygiene

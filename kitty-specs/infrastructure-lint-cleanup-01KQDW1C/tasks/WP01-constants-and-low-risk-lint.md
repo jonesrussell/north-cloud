@@ -3,30 +3,34 @@ work_package_id: WP01
 title: Constants and Low-Risk Lint
 dependencies: []
 requirement_refs:
-  - FR-001
-  - FR-005
-  - C-001
-  - C-002
-  - C-003
+- FR-001
+- FR-005
+- C-001
+- C-002
+- C-003
+planning_base_branch: main
+merge_target_branch: main
+branch_strategy: Planning artifacts for this feature were generated on main. During /spec-kitty.implement this WP may branch from a dependency-specific base, but completed changes must merge back into main unless the human explicitly redirects the landing branch.
 subtasks:
-  - T001
-  - T002
-  - T003
-  - T004
-  - T005
+- T001
+- T002
+- T003
+- T004
+- T005
+history:
+- timestamp: '2026-04-30T12:55:00Z'
+  agent: claude
+  action: created
+  note: Initial WP prompt generated from infrastructure lint cleanup mission.
 authoritative_surface: infrastructure/retry/
 execution_mode: code_change
 owned_files:
-  - infrastructure/config/types.go
-  - infrastructure/monitoring/health_handler.go
-  - infrastructure/monitoring/memory_monitor.go
-  - infrastructure/retry/retry.go
-  - infrastructure/sse/options.go
-history:
-  - timestamp: "2026-04-30T12:55:00Z"
-    agent: claude
-    action: created
-    note: Initial WP prompt generated from infrastructure lint cleanup mission.
+- infrastructure/config/types.go
+- infrastructure/monitoring/health_handler.go
+- infrastructure/monitoring/memory_monitor.go
+- infrastructure/retry/retry.go
+- infrastructure/sse/options.go
+tags: []
 ---
 
 # WP01 - Constants and Low-Risk Lint

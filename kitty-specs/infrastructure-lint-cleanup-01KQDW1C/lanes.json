@@ -1,0 +1,78 @@
+{
+  "version": 1,
+  "mission_slug": "infrastructure-lint-cleanup-01KQDW1C",
+  "mission_id": "01KQDW1CDQE1YMTENZZSJY0E1D",
+  "mission_branch": "kitty/mission-infrastructure-lint-cleanup-01KQDW1C",
+  "target_branch": "main",
+  "lanes": [
+    {
+      "lane_id": "lane-a",
+      "wp_ids": [
+        "WP01",
+        "WP02",
+        "WP03",
+        "WP04"
+      ],
+      "write_scope": [
+        "infrastructure/**/*_test.go",
+        "infrastructure/config/loader.go",
+        "infrastructure/config/types.go",
+        "infrastructure/config/validate.go",
+        "infrastructure/gin/builder.go",
+        "infrastructure/gin/config.go",
+        "infrastructure/gin/health.go",
+        "infrastructure/gin/internal_auth.go",
+        "infrastructure/gin/metrics.go",
+        "infrastructure/gin/middleware.go",
+        "infrastructure/gin/server.go",
+        "infrastructure/http/client.go",
+        "infrastructure/monitoring/health_handler.go",
+        "infrastructure/monitoring/memory_monitor.go",
+        "infrastructure/profiling/pprof.go",
+        "infrastructure/profiling/pyroscope.go",
+        "infrastructure/retry/retry.go",
+        "infrastructure/sse/broker.go",
+        "infrastructure/sse/client.go",
+        "infrastructure/sse/middleware.go",
+        "infrastructure/sse/options.go",
+        "infrastructure/sse/types.go"
+      ],
+      "predicted_surfaces": [
+        "api",
+        "legacy-cleanup"
+      ],
+      "depends_on_lanes": [],
+      "parallel_group": 0
+    }
+  ],
+  "computed_at": "2026-04-30T13:00:10.126917+00:00",
+  "computed_from": "dependency_graph+ownership",
+  "planning_artifact_wps": [],
+  "collapse_report": {
+    "events": [
+      {
+        "wp_a": "WP02",
+        "wp_b": "WP01",
+        "rule": "dependency",
+        "evidence": "WP02 depends on WP01"
+      },
+      {
+        "wp_a": "WP03",
+        "wp_b": "WP01",
+        "rule": "dependency",
+        "evidence": "WP03 depends on WP01"
+      },
+      {
+        "wp_a": "WP04",
+        "wp_b": "WP02",
+        "rule": "dependency",
+        "evidence": "WP04 depends on WP02"
+      }
+    ],
+    "total_merges": 3,
+    "independent_wps_collapsed": 0,
+    "by_rule": {
+      "dependency": 3
+    }
+  }
+}

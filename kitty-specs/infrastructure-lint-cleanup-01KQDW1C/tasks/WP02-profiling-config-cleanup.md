@@ -2,32 +2,36 @@
 work_package_id: WP02
 title: Profiling Config Cleanup
 dependencies:
-  - WP01
+- WP01
 requirement_refs:
-  - FR-002
-  - FR-004
-  - FR-006
-  - C-001
-  - C-002
-  - C-004
+- FR-002
+- FR-004
+- FR-006
+- C-001
+- C-002
+- C-004
+planning_base_branch: main
+merge_target_branch: main
+branch_strategy: Planning artifacts for this feature were generated on main. During /spec-kitty.implement this WP may branch from a dependency-specific base, but completed changes must merge back into main unless the human explicitly redirects the landing branch.
 subtasks:
-  - T006
-  - T007
-  - T008
-  - T009
-  - T010
+- T006
+- T007
+- T008
+- T009
+- T010
+history:
+- timestamp: '2026-04-30T12:55:00Z'
+  agent: claude
+  action: created
+  note: Initial WP prompt generated from infrastructure lint cleanup mission.
 authoritative_surface: infrastructure/profiling/
 execution_mode: code_change
 owned_files:
-  - infrastructure/config/loader.go
-  - infrastructure/config/validate.go
-  - infrastructure/profiling/pprof.go
-  - infrastructure/profiling/pyroscope.go
-history:
-  - timestamp: "2026-04-30T12:55:00Z"
-    agent: claude
-    action: created
-    note: Initial WP prompt generated from infrastructure lint cleanup mission.
+- infrastructure/config/loader.go
+- infrastructure/config/validate.go
+- infrastructure/profiling/pprof.go
+- infrastructure/profiling/pyroscope.go
+tags: []
 ---
 
 # WP02 - Profiling Config Cleanup

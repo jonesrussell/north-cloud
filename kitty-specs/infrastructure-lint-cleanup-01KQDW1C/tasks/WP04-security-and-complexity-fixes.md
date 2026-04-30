@@ -2,43 +2,47 @@
 work_package_id: WP04
 title: Security and Complexity Fixes
 dependencies:
-  - WP02
-  - WP03
+- WP02
+- WP03
 requirement_refs:
-  - FR-004
-  - FR-005
-  - FR-006
-  - C-001
-  - C-002
-  - C-003
-  - C-004
+- FR-004
+- FR-005
+- FR-006
+- C-001
+- C-002
+- C-003
+- C-004
+planning_base_branch: main
+merge_target_branch: main
+branch_strategy: Planning artifacts for this feature were generated on main. During /spec-kitty.implement this WP may branch from a dependency-specific base, but completed changes must merge back into main unless the human explicitly redirects the landing branch.
 subtasks:
-  - T015
-  - T016
-  - T017
-  - T018
-  - T019
-  - T020
+- T015
+- T016
+- T017
+- T018
+- T019
+- T020
+history:
+- timestamp: '2026-04-30T12:55:00Z'
+  agent: claude
+  action: created
+  note: Initial WP prompt generated from infrastructure lint cleanup mission.
 authoritative_surface: infrastructure/sse/
 execution_mode: code_change
 owned_files:
-  - infrastructure/sse/broker.go
-  - infrastructure/sse/client.go
-  - infrastructure/sse/middleware.go
-  - infrastructure/sse/types.go
-  - infrastructure/http/client.go
-  - infrastructure/gin/builder.go
-  - infrastructure/gin/config.go
-  - infrastructure/gin/health.go
-  - infrastructure/gin/internal_auth.go
-  - infrastructure/gin/metrics.go
-  - infrastructure/gin/middleware.go
-  - infrastructure/gin/server.go
-history:
-  - timestamp: "2026-04-30T12:55:00Z"
-    agent: claude
-    action: created
-    note: Initial WP prompt generated from infrastructure lint cleanup mission.
+- infrastructure/sse/broker.go
+- infrastructure/sse/client.go
+- infrastructure/sse/middleware.go
+- infrastructure/sse/types.go
+- infrastructure/http/client.go
+- infrastructure/gin/builder.go
+- infrastructure/gin/config.go
+- infrastructure/gin/health.go
+- infrastructure/gin/internal_auth.go
+- infrastructure/gin/metrics.go
+- infrastructure/gin/middleware.go
+- infrastructure/gin/server.go
+tags: []
 ---
 
 # WP04 - Security and Complexity Fixes
