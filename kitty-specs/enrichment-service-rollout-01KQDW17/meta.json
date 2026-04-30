@@ -6,5 +6,6 @@
   "mission_slug": "enrichment-service-rollout-01KQDW17",
   "mission_type": "software-dev",
   "slug": "enrichment-service-rollout-01KQDW17",
+  "source_description": "Build and deploy the enrichment/ Go service covering issues #596, #598, #597, and #600: HTTP enrichment request intake, async enricher fan-out, Waaseyaa callback client, company_intel/tech_stack/hiring enrichers, and production systemd deployment.",
   "target_branch": "main"
 }

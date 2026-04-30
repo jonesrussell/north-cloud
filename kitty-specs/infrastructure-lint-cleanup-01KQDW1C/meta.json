@@ -6,5 +6,6 @@
   "mission_slug": "infrastructure-lint-cleanup-01KQDW1C",
   "mission_type": "software-dev",
   "slug": "infrastructure-lint-cleanup-01KQDW1C",
+  "source_description": "Resolve issue #646 by cleaning up pre-existing golangci-lint violations in infrastructure/: magic numbers, profiling env/config cleanup, test-package hygiene, gosec/security fixes, and complexity/style findings until infrastructure lint passes.",
   "target_branch": "main"
 }
