@@ -1,7 +1,7 @@
 {
-  "event_count": 16,
-  "last_event_id": "01KQF8PQVR2X7Y17E4H4W8359A",
-  "materialized_at": "2026-04-30T13:19:29.144891+00:00",
+  "event_count": 17,
+  "last_event_id": "01KQF8QAMV2ERV2GFN8XEF068D",
+  "materialized_at": "2026-04-30T13:19:48.379036+00:00",
   "mission_number": "",
   "mission_slug": "infrastructure-lint-cleanup-01KQDW1C",
   "mission_type": "software-dev",
@@ -11,18 +11,18 @@
     "canceled": 0,
     "claimed": 0,
     "done": 0,
-    "for_review": 4,
+    "for_review": 3,
     "in_progress": 0,
-    "in_review": 0,
+    "in_review": 1,
     "planned": 0
   },
   "work_packages": {
     "WP01": {
-      "actor": "user",
+      "actor": "claude:gpt-5:reviewer:reviewer",
       "force_count": 1,
-      "lane": "for_review",
-      "last_event_id": "01KQF7Y2X4KPZVEJ6NYKKGS14P",
-      "last_transition_at": "2026-04-30T13:06:01.252921+00:00"
+      "lane": "in_review",
+      "last_event_id": "01KQF8QAMV2ERV2GFN8XEF068D",
+      "last_transition_at": "2026-04-30T13:19:48.379036+00:00"
     },
     "WP02": {
       "actor": "user",
