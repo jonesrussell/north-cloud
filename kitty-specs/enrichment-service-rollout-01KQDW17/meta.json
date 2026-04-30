@@ -1,0 +1,10 @@
+{
+  "created_at": "2026-04-30T00:18:47.104487+00:00",
+  "friendly_name": "enrichment service rollout",
+  "mission_id": "01KQDW17F6YAE4GMD71NBZMXTG",
+  "mission_number": null,
+  "mission_slug": "enrichment-service-rollout-01KQDW17",
+  "mission_type": "software-dev",
+  "slug": "enrichment-service-rollout-01KQDW17",
+  "target_branch": "main"
+}
