@@ -6,5 +6,5 @@
   "mission_slug": "audit-dead-code-removal-01KQG57Z",
   "mission_type": "software-dev",
   "slug": "audit-dead-code-removal-01KQG57Z",
-  "target_branch": "feat/mission-a-dead-code-removal"
+  "target_branch": "main"
 }
