@@ -29,6 +29,10 @@ includes:
     taskfile: ./dashboard/Taskfile.yml
     dir: ./dashboard
 
+  enrichment:
+    taskfile: ./enrichment/Taskfile.yml
+    dir: ./enrichment
+
   index-manager:
     taskfile: ./index-manager/Taskfile.yml
     dir: ./index-manager
@@ -152,6 +156,7 @@ tasks:
       - task classifier:test -f
       - task crawler:test -f
       - task dashboard:test -f
+      - task enrichment:test -f
       - task index-manager:test -f
       - task mcp-north-cloud:test -f
       - task nc-http-proxy:test -f
@@ -165,6 +170,7 @@ tasks:
       - task auth:vuln -f
       - task classifier:vuln -f
       - task crawler:vuln -f
+      - task enrichment:vuln -f
       - task index-manager:vuln -f
       - task mcp-north-cloud:vuln -f
       - task nc-http-proxy:vuln -f
@@ -240,6 +246,7 @@ tasks:
       - task: lint:click-tracker
       - task: lint:crawler
       - task: lint:dashboard
+      - task: lint:enrichment
       - task: lint:index-manager
       - task: lint:mcp-north-cloud
       - task: lint:nc-http-proxy
@@ -262,6 +269,7 @@ tasks:
       - task: lint:click-tracker:force
       - task: lint:crawler:force
       - task: lint:dashboard:force
+      - task: lint:enrichment:force
       - task: lint:index-manager:force
       - task: lint:mcp-north-cloud:force
       - task: lint:nc-http-proxy:force
@@ -304,6 +312,11 @@ tasks:
     desc: "Run dashboard linter (ignore cache)"
     cmds:
       - task dashboard:lint -f
+
+  lint:enrichment:force:
+    desc: "Run enrichment linter (ignore cache)"
+    cmds:
+      - task enrichment:lint:no-cache -f
 
   lint:index-manager:force:
     desc: "Run index-manager linter (ignore cache)"
@@ -374,6 +387,7 @@ tasks:
       - task: lint:click-tracker
       - task: lint:crawler
       - task: lint:dashboard
+      - task: lint:enrichment
       - task: lint:index-manager
       - task: lint:mcp-north-cloud
       - task: lint:nc-http-proxy
@@ -416,6 +430,11 @@ tasks:
     desc: "Run linter for dashboard service"
     cmds:
       - task dashboard:lint
+
+  lint:enrichment:
+    desc: "Run linter for enrichment service"
+    cmds:
+      - task enrichment:lint
 
   lint:index-manager:
     desc: "Run linter for index-manager service"
@@ -521,6 +540,7 @@ tasks:
       - task classifier:vendor
       - task click-tracker:vendor
       - task crawler:vendor
+      - task enrichment:vendor
       - task index-manager:vendor
       - task mcp-north-cloud:vendor
       - task nc-http-proxy:vendor
@@ -543,6 +563,7 @@ tasks:
       - task auth:vuln
       - task classifier:vuln
       - task crawler:vuln
+      - task enrichment:vuln
       - task index-manager:vuln
       - task mcp-north-cloud:vuln
       - task nc-http-proxy:vuln
@@ -571,6 +592,11 @@ tasks:
     desc: "Run vulnerability check for crawler service"
     cmds:
       - task crawler:vuln
+
+  vuln:enrichment:
+    desc: "Run vulnerability check for enrichment service"
+    cmds:
+      - task enrichment:vuln
 
   vuln:index-manager:
     desc: "Run vulnerability check for index-manager service"
@@ -626,6 +652,7 @@ tasks:
       - task: test:click-tracker
       - task: test:crawler
       - task: test:dashboard
+      - task: test:enrichment
       - task: test:index-manager
       - task: test:mcp-north-cloud
       - task: test:nc-http-proxy
@@ -649,6 +676,7 @@ tasks:
       - task: test:click-tracker
       - task: test:crawler
       - task: test:dashboard
+      - task: test:enrichment
       - task: test:index-manager
       - task: test:mcp-north-cloud
       - task: test:nc-http-proxy
@@ -689,6 +717,11 @@ tasks:
     desc: "Run tests for dashboard service"
     cmds:
       - task dashboard:test
+
+  test:enrichment:
+    desc: "Run tests for enrichment service"
+    cmds:
+      - task enrichment:test
 
   test:index-manager:
     desc: "Run tests for index-manager service"
@@ -790,6 +823,7 @@ tasks:
       - task: test:race:click-tracker
       - task: test:race:crawler
       - task: test:race:dashboard
+      - task: test:race:enrichment
       - task: test:race:index-manager
       - task: test:race:mcp-north-cloud
       - task: test:race:nc-http-proxy
@@ -808,6 +842,7 @@ tasks:
       - task: test:race:click-tracker
       - task: test:race:crawler
       - task: test:race:dashboard
+      - task: test:race:enrichment
       - task: test:race:index-manager
       - task: test:race:mcp-north-cloud
       - task: test:race:nc-http-proxy
@@ -846,6 +881,11 @@ tasks:
     desc: "Run tests with race detector for dashboard service"
     cmds:
       - task dashboard:test:race
+
+  test:race:enrichment:
+    desc: "Run tests with race detector for enrichment service"
+    cmds:
+      - task enrichment:test:race
 
   test:race:index-manager:
     desc: "Run tests with race detector for index-manager service"
@@ -896,6 +936,7 @@ tasks:
       - task: test:cover:click-tracker
       - task: test:cover:crawler
       - task: test:cover:dashboard
+      - task: test:cover:enrichment
       - task: test:cover:index-manager
       - task: test:cover:mcp-north-cloud
       - task: test:cover:nc-http-proxy
@@ -914,6 +955,7 @@ tasks:
       - task: test:cover:click-tracker
       - task: test:cover:crawler
       - task: test:cover:dashboard
+      - task: test:cover:enrichment
       - task: test:cover:index-manager
       - task: test:cover:mcp-north-cloud
       - task: test:cover:nc-http-proxy
@@ -952,6 +994,11 @@ tasks:
     desc: "Run tests with coverage for dashboard service"
     cmds:
       - task dashboard:test:coverage
+
+  test:cover:enrichment:
+    desc: "Run tests with coverage for enrichment service"
+    cmds:
+      - task enrichment:test:coverage
 
   test:cover:index-manager:
     desc: "Run tests with coverage for index-manager service"

@@ -1,0 +1,21 @@
+[Unit]
+Description=North Cloud Enrichment Service
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=enrichment
+Group=enrichment
+EnvironmentFile=/etc/enrichment/env
+ExecStart=/usr/local/bin/enrichment
+Restart=on-failure
+RestartSec=5s
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=enrichment
+TimeoutStopSec=15s
+
+[Install]
+WantedBy=multi-user.target
+
