@@ -16,6 +16,8 @@ subtasks:
 - T026
 - T027
 - T028
+agent: "claude:gpt-5:implementer:implementer"
+shell_pid: "4592"
 history:
 - timestamp: '2026-04-30T00:00:00Z'
   agent: claude
@@ -87,3 +89,7 @@ If `ansible`, `docker`, or `golangci-lint` are missing, record that limitation a
 ## Reviewer Guidance
 
 Confirm this WP does not modify Waaseyaa and does not commit secrets. Check whether companion Ansible work is represented truthfully.
+
+## Activity Log
+
+- 2026-04-30T01:05:17Z – claude:gpt-5:implementer:implementer – shell_pid=4592 – Started implementation via action command
