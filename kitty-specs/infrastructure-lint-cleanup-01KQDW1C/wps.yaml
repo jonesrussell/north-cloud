@@ -3,8 +3,10 @@ work_packages:
     title: "Constants and Low-Risk Lint"
     dependencies: []
     owned_files:
-      - "infrastructure/monitoring/**"
-      - "infrastructure/retry/**"
+      - "infrastructure/config/types.go"
+      - "infrastructure/monitoring/health_handler.go"
+      - "infrastructure/monitoring/memory_monitor.go"
+      - "infrastructure/retry/retry.go"
       - "infrastructure/sse/options.go"
     requirement_refs:
       - FR-001
@@ -18,17 +20,17 @@ work_packages:
       - T003
       - T004
       - T005
+    prompt_file: "tasks/WP01-constants-and-low-risk-lint.md"
 
   - id: WP02
     title: "Profiling Config Cleanup"
     dependencies:
       - WP01
     owned_files:
-      - "infrastructure/profiling/**"
-      - "infrastructure/config/**"
-      - "**/*profiling*"
-      - "**/*pprof*"
-      - "**/*pyroscope*"
+      - "infrastructure/config/loader.go"
+      - "infrastructure/config/validate.go"
+      - "infrastructure/profiling/pprof.go"
+      - "infrastructure/profiling/pyroscope.go"
     requirement_refs:
       - FR-002
       - FR-004
@@ -42,6 +44,7 @@ work_packages:
       - T008
       - T009
       - T010
+    prompt_file: "tasks/WP02-profiling-config-cleanup.md"
 
   - id: WP03
     title: "Test Package Hygiene"
@@ -59,6 +62,7 @@ work_packages:
       - T012
       - T013
       - T014
+    prompt_file: "tasks/WP03-test-package-hygiene.md"
 
   - id: WP04
     title: "Security and Complexity Fixes"
@@ -70,8 +74,14 @@ work_packages:
       - "infrastructure/sse/client.go"
       - "infrastructure/sse/middleware.go"
       - "infrastructure/sse/types.go"
-      - "infrastructure/http/**"
-      - "infrastructure/gin/**"
+      - "infrastructure/http/client.go"
+      - "infrastructure/gin/builder.go"
+      - "infrastructure/gin/config.go"
+      - "infrastructure/gin/health.go"
+      - "infrastructure/gin/internal_auth.go"
+      - "infrastructure/gin/metrics.go"
+      - "infrastructure/gin/middleware.go"
+      - "infrastructure/gin/server.go"
     requirement_refs:
       - FR-004
       - FR-005
@@ -87,3 +97,4 @@ work_packages:
       - T018
       - T019
       - T020
+    prompt_file: "tasks/WP04-security-and-complexity-fixes.md"
