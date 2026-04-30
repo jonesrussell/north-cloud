@@ -3,9 +3,9 @@
 # DO NOT EDIT MANUALLY
 
 spec_kitty:
-  version: 3.1.6
+  version: 3.1.7
   initialized_at: '2026-04-27T01:14:24.913493'
-  last_upgraded_at: null
+  last_upgraded_at: '2026-04-29T20:25:02.386490'
 environment:
   python_version: 3.14.4
   platform: win32
