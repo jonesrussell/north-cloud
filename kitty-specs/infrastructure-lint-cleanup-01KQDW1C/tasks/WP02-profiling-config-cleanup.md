@@ -19,6 +19,8 @@ subtasks:
 - T008
 - T009
 - T010
+agent: "claude:gpt-5:implementer:implementer"
+shell_pid: "37088"
 history:
 - timestamp: '2026-04-30T12:55:00Z'
   agent: claude
@@ -106,3 +108,7 @@ tests too.
 
 Check that config defaults match prior runtime behavior and that no profiling
 secret/config value is logged unexpectedly.
+
+## Activity Log
+
+- 2026-04-30T13:06:40Z – claude:gpt-5:implementer:implementer – shell_pid=37088 – Started implementation via action command
