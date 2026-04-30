@@ -19,6 +19,8 @@ subtasks:
 - T021
 - T022
 - T023
+agent: "claude:gpt-5:implementer:implementer"
+shell_pid: "18684"
 history:
 - timestamp: '2026-04-30T00:00:00Z'
   agent: claude
@@ -84,3 +86,7 @@ Run the root service Task targets added in WP01 when available.
 ## Reviewer Guidance
 
 Confirm all newly defined orchestration code is reachable from the live HTTP path and not only from tests.
+
+## Activity Log
+
+- 2026-04-30T00:56:28Z – claude:gpt-5:implementer:implementer – shell_pid=18684 – Started implementation via action command
