@@ -20,7 +20,8 @@ subtasks:
 - T003
 - T004
 - T005
-shell_pid: '8900'
+shell_pid: "8900"
+agent: "claude:gpt-5:implementer:implementer"
 history:
 - timestamp: '2026-04-30T12:55:00Z'
   agent: claude
@@ -112,3 +113,7 @@ If `golangci-lint` is unavailable, record that limitation and run `go test`.
 
 Check that values are unchanged and constants are not exported unless a package
 consumer needs them.
+
+## Activity Log
+
+- 2026-04-30T13:00:36Z – claude:gpt-5:implementer:implementer – shell_pid=8900 – Assigned agent via action command
