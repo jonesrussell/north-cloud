@@ -1,0 +1,4 @@
+id,type,path,description
+S-001,mission-artifact,kitty-specs/enrichment-service-rollout-01KQDW17/spec.md,Functional requirements constraints and success criteria
+S-002,mission-artifact,kitty-specs/enrichment-service-rollout-01KQDW17/plan.md,Architecture and work package sequencing
+S-003,local-observation,tool-probe-2026-04-29,Availability check for go task golangci-lint docker and ansible

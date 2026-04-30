@@ -1,0 +1,113 @@
+work_packages:
+  - id: WP01
+    title: "Service Scaffold and API Contract"
+    dependencies: []
+    owned_files:
+      - "enrichment/cmd/**"
+      - "enrichment/internal/api/**"
+      - "enrichment/internal/config/**"
+      - "enrichment/internal/server/**"
+      - "enrichment/CLAUDE.md"
+      - "enrichment/Taskfile.yml"
+      - "enrichment/go.mod"
+      - "enrichment/go.sum"
+      - "Taskfile.yml"
+    requirement_refs:
+      - FR-001
+      - FR-002
+      - FR-003
+      - FR-007
+      - FR-008
+      - C-001
+      - C-003
+      - C-004
+    subtasks:
+      - T001
+      - T002
+      - T003
+      - T004
+      - T005
+      - T006
+      - T007
+    prompt_file: "tasks/WP01-service-scaffold-and-api-contract.md"
+
+  - id: WP02
+    title: "Callback Client"
+    dependencies:
+      - WP01
+    owned_files:
+      - "enrichment/internal/callback/**"
+    requirement_refs:
+      - FR-005
+      - C-001
+      - C-004
+    subtasks:
+      - T008
+      - T009
+      - T010
+      - T011
+      - T012
+    prompt_file: "tasks/WP02-callback-client.md"
+
+  - id: WP03
+    title: "ES-Backed Enrichers"
+    dependencies:
+      - WP01
+    owned_files:
+      - "enrichment/internal/enricher/**"
+    requirement_refs:
+      - FR-004
+      - FR-006
+      - C-002
+      - C-003
+    subtasks:
+      - T013
+      - T014
+      - T015
+      - T016
+      - T017
+      - T018
+    prompt_file: "tasks/WP03-es-backed-enrichers.md"
+
+  - id: WP04
+    title: "Async Enrichment Orchestration"
+    dependencies:
+      - WP02
+      - WP03
+    owned_files:
+      - "enrichment/internal/orchestration/**"
+    requirement_refs:
+      - FR-003
+      - FR-004
+      - FR-005
+      - C-001
+      - C-004
+    subtasks:
+      - T019
+      - T020
+      - T021
+      - T022
+      - T023
+    prompt_file: "tasks/WP04-async-enrichment-orchestration.md"
+
+  - id: WP05
+    title: "Production Deployment"
+    dependencies:
+      - WP04
+    owned_files:
+      - "enrichment/deploy/**"
+      - "enrichment/docs/**"
+      - "docs/**/enrichment*"
+      - "docker-compose*.yml"
+      - ".env.example"
+    requirement_refs:
+      - FR-008
+      - FR-009
+      - C-005
+    subtasks:
+      - T024
+      - T025
+      - T026
+      - T027
+      - T028
+    prompt_file: "tasks/WP05-production-deployment.md"

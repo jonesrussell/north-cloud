@@ -1,0 +1,7 @@
+id,source_id,claim,artifact,notes
+E-001,S-001,The mission requires a new top-level enrichment Go module,spec.md,FR-001
+E-002,S-001,The HTTP API must validate Waaseyaa request payloads and return 202 after validation,spec.md,FR-002 and FR-003
+E-003,S-001,Only company_intel tech_stack and hiring enrichment types are in scope,spec.md,FR-004 and C-002
+E-004,S-001,Callback delivery must use X-Api-Key JSON retry on transient failures and no retry on 4xx,spec.md,FR-005
+E-005,S-002,Architecture splits HTTP callback and enricher responsibilities by internal package,plan.md,Architecture section
+E-006,S-003,Local machine has Go and Task but lacks golangci-lint Docker and Ansible,tool-probe,Validation constraint for local execution
