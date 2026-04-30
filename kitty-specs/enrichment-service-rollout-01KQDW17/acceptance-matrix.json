@@ -50,10 +50,9 @@
       "invariant_id": "NI-001",
       "description": "Do not modify Waaseyaa as part of this north-cloud mission.",
       "verification_method": "custom_command",
-      "verification_command": "git diff --name-only d8ecaa0b..HEAD -- | grep -i waaseyaa",
-      "result": "confirmed_absent",
-      "evidence": "Mission diff is limited to north-cloud enrichment service, Taskfile, docs, and mission artifacts."
+      "verification_command": "powershell -NoProfile -Command \"$matches = git diff --name-only d8ecaa0b..HEAD -- | Select-String -Pattern 'waaseyaa' -CaseSensitive:$false; if ($matches) { exit 1 } else { exit 0 }\"",
+      "result": "pending",
+      "evidence": "Windows-compatible absence check; Spec Kitty will update this result during acceptance."
     }
   ]
 }
-
