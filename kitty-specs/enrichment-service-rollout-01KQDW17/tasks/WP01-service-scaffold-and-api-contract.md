@@ -25,7 +25,8 @@ subtasks:
 - T005
 - T006
 - T007
-shell_pid: '8596'
+shell_pid: "8596"
+agent: "claude:gpt-5:implementer:implementer"
 history:
 - timestamp: '2026-04-30T00:00:00Z'
   agent: claude
@@ -122,3 +123,7 @@ Record any skipped lint/vuln checks caused by missing local tools.
 ## Reviewer Guidance
 
 Confirm this WP stays within scaffold/API scope. Callback retry behavior, Elasticsearch queries, and production deployment belong to later WPs.
+
+## Activity Log
+
+- 2026-04-30T00:29:55Z – claude:gpt-5:implementer:implementer – shell_pid=8596 – Assigned agent via action command
