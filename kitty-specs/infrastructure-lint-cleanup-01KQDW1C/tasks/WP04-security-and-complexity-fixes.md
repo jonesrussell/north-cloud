@@ -22,6 +22,8 @@ subtasks:
 - T018
 - T019
 - T020
+agent: "claude:gpt-5:implementer:implementer"
+shell_pid: "31168"
 history:
 - timestamp: '2026-04-30T12:55:00Z'
   agent: claude
@@ -119,3 +121,7 @@ GOWORK=off golangci-lint run --config ../.golangci.yml ./...
 
 Pay close attention to concurrency behavior in SSE and to any `nolint`
 comments. They must be narrow and justified.
+
+## Activity Log
+
+- 2026-04-30T13:16:57Z – claude:gpt-5:implementer:implementer – shell_pid=31168 – Started implementation via action command
