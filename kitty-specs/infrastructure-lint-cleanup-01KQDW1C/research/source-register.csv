@@ -1,0 +1,6 @@
+id,type,path_or_command,notes
+S001,command,"cd infrastructure; GOWORK=off go test ./...","Baseline test command from mission validation section."
+S002,repo-config,".tool-versions; Taskfile.yml install:tools","Tooling source for golangci-lint 2.10.1 and related Go tools."
+S003,source,"infrastructure/profiling/pprof.go; infrastructure/profiling/pyroscope.go","Profiling env/config cleanup and gosec timeout targets."
+S004,source,"infrastructure/sse/broker.go","SSE broker context/cancel leak target from mission scope."
+S005,source,"infrastructure/retry; infrastructure/config; infrastructure/sse","Likely low-risk constants and magic-number cleanup surfaces."

@@ -1,0 +1,6 @@
+id,source_id,finding,artifact,command,result
+E001,S001,"Infrastructure tests currently require go.mod tidy before package tests run","infrastructure/go.mod","cd infrastructure; GOWORK=off go test ./...","blocked: go.mod updates needed; run go mod tidy"
+E002,S002,"golangci-lint is not installed on PATH in the local environment",".tool-versions; Taskfile.yml","Get-Command golangci-lint","blocked: missing tool"
+E003,S003,"Profiling packages read env directly and pprof starts without explicit server timeouts","infrastructure/profiling/pprof.go; infrastructure/profiling/pyroscope.go","rg os.Getenv infrastructure/profiling","direct env reads found"
+E004,S004,"SSE broker owns context/cancel lifecycle called out by #646","infrastructure/sse/broker.go","rg context infrastructure/sse/broker.go","broker context/cancel paths found"
+E005,S005,"Likely magic-number cleanup surfaces include retry/config/sse durations and limits","infrastructure/retry; infrastructure/config; infrastructure/sse","rg time.Second infrastructure/retry infrastructure/config infrastructure/sse","duration/count literals found"
