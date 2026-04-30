@@ -55,10 +55,21 @@ func NewBroker(logger infralogger.Logger, opts ...BrokerOption) Broker {
 
 // Start begins processing events.
 func (b *broker) Start(ctx context.Context) error {
-	b.ctx, b.cancel = context.WithCancel(ctx)
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	b.mu.Lock()
+	if b.cancel != nil {
+		b.cancel()
+	}
+	runCtx, cancel := context.WithCancel(ctx)
+	b.ctx = runCtx
+	b.cancel = cancel
+	b.mu.Unlock()
 
 	b.wg.Add(1)
-	go b.broadcastLoop()
+	go b.broadcastLoop(runCtx)
 
 	b.logger.Info("SSE broker started",
 		infralogger.Int("event_buffer_size", b.eventBufferSize),
@@ -72,8 +83,14 @@ func (b *broker) Start(ctx context.Context) error {
 
 // Stop gracefully shuts down the broker.
 func (b *broker) Stop() error {
-	if b.cancel != nil {
-		b.cancel()
+	b.mu.Lock()
+	cancel := b.cancel
+	b.cancel = nil
+	b.ctx = nil
+	b.mu.Unlock()
+
+	if cancel != nil {
+		cancel()
 	}
 
 	// Wait for broadcast loop to finish with timeout
@@ -162,14 +179,14 @@ func (b *broker) ClientCount() int {
 }
 
 // broadcastLoop distributes events to all clients.
-func (b *broker) broadcastLoop() {
+func (b *broker) broadcastLoop(ctx context.Context) {
 	defer b.wg.Done()
 
 	for {
 		select {
 		case event := <-b.publish:
 			b.broadcast(event)
-		case <-b.ctx.Done():
+		case <-ctx.Done():
 			b.disconnectAllClients()
 			return
 		}

@@ -16,6 +16,13 @@ var (
 	ErrContextCancelled = errors.New("context cancelled during retry")
 )
 
+const (
+	defaultMaxAttempts  = 3
+	defaultInitialDelay = 100 * time.Millisecond
+	defaultMaxDelay     = 30 * time.Second
+	defaultMultiplier   = 2.0
+)
+
 // Config configures retry behavior
 type Config struct {
 	// MaxAttempts is the maximum number of retry attempts (including initial attempt)
@@ -33,10 +40,10 @@ type Config struct {
 // DefaultConfig returns a default retry configuration
 func DefaultConfig() Config {
 	return Config{
-		MaxAttempts:  3,
-		InitialDelay: 100 * time.Millisecond,
-		MaxDelay:     30 * time.Second,
-		Multiplier:   2.0,
+		MaxAttempts:  defaultMaxAttempts,
+		InitialDelay: defaultInitialDelay,
+		MaxDelay:     defaultMaxDelay,
+		Multiplier:   defaultMultiplier,
 		IsRetryable:  DefaultIsRetryable,
 	}
 }
@@ -105,16 +112,16 @@ func toLower(s string) string {
 // Retry executes a function with retry logic and exponential backoff
 func Retry(ctx context.Context, config Config, fn func() error) error {
 	if config.MaxAttempts <= 0 {
-		config.MaxAttempts = 3
+		config.MaxAttempts = defaultMaxAttempts
 	}
 	if config.InitialDelay <= 0 {
-		config.InitialDelay = 100 * time.Millisecond
+		config.InitialDelay = defaultInitialDelay
 	}
 	if config.MaxDelay <= 0 {
-		config.MaxDelay = 30 * time.Second
+		config.MaxDelay = defaultMaxDelay
 	}
 	if config.Multiplier <= 0 {
-		config.Multiplier = 2.0
+		config.Multiplier = defaultMultiplier
 	}
 	if config.IsRetryable == nil {
 		config.IsRetryable = DefaultIsRetryable

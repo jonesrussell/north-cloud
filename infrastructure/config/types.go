@@ -5,6 +5,28 @@ import (
 	"time"
 )
 
+const (
+	defaultServerPort         = 8080
+	defaultServerReadTimeout  = 30 * time.Second
+	defaultServerWriteTimeout = 30 * time.Second
+	defaultServerIdleTimeout  = 60 * time.Second
+
+	defaultDatabasePort            = 5432
+	defaultDatabaseSSLMode         = "disable"
+	defaultDatabaseMaxConnections  = 25
+	defaultDatabaseMaxIdleConns    = 5
+	defaultDatabaseConnMaxLifetime = 5 * time.Minute
+
+	defaultElasticsearchURL        = "http://localhost:9200"
+	defaultElasticsearchMaxRetries = 3
+	defaultElasticsearchTimeout    = 30 * time.Second
+
+	defaultRedisURL = "localhost:6379"
+
+	defaultLogLevel  = "info"
+	defaultLogFormat = "json"
+)
+
 // ServerConfig holds HTTP server configuration.
 type ServerConfig struct {
 	Host         string        `yaml:"host"`
@@ -25,16 +47,16 @@ func (c *ServerConfig) Address() string {
 // SetDefaults applies default values for ServerConfig.
 func (c *ServerConfig) SetDefaults() {
 	if c.Port == 0 {
-		c.Port = 8080
+		c.Port = defaultServerPort
 	}
 	if c.ReadTimeout == 0 {
-		c.ReadTimeout = 30 * time.Second
+		c.ReadTimeout = defaultServerReadTimeout
 	}
 	if c.WriteTimeout == 0 {
-		c.WriteTimeout = 30 * time.Second
+		c.WriteTimeout = defaultServerWriteTimeout
 	}
 	if c.IdleTimeout == 0 {
-		c.IdleTimeout = 60 * time.Second
+		c.IdleTimeout = defaultServerIdleTimeout
 	}
 }
 
@@ -64,19 +86,19 @@ func (c *DatabaseConfig) DSN() string {
 // SetDefaults applies default values for DatabaseConfig.
 func (c *DatabaseConfig) SetDefaults() {
 	if c.Port == 0 {
-		c.Port = 5432
+		c.Port = defaultDatabasePort
 	}
 	if c.SSLMode == "" {
-		c.SSLMode = "disable"
+		c.SSLMode = defaultDatabaseSSLMode
 	}
 	if c.MaxConnections == 0 {
-		c.MaxConnections = 25
+		c.MaxConnections = defaultDatabaseMaxConnections
 	}
 	if c.MaxIdleConns == 0 {
-		c.MaxIdleConns = 5
+		c.MaxIdleConns = defaultDatabaseMaxIdleConns
 	}
 	if c.ConnMaxLifetime == 0 {
-		c.ConnMaxLifetime = 5 * time.Minute
+		c.ConnMaxLifetime = defaultDatabaseConnMaxLifetime
 	}
 }
 
@@ -92,13 +114,13 @@ type ElasticsearchConfig struct {
 // SetDefaults applies default values for ElasticsearchConfig.
 func (c *ElasticsearchConfig) SetDefaults() {
 	if c.URL == "" {
-		c.URL = "http://localhost:9200"
+		c.URL = defaultElasticsearchURL
 	}
 	if c.MaxRetries == 0 {
-		c.MaxRetries = 3
+		c.MaxRetries = defaultElasticsearchMaxRetries
 	}
 	if c.Timeout == 0 {
-		c.Timeout = 30 * time.Second
+		c.Timeout = defaultElasticsearchTimeout
 	}
 }
 
@@ -112,7 +134,7 @@ type RedisConfig struct {
 // SetDefaults applies default values for RedisConfig.
 func (c *RedisConfig) SetDefaults() {
 	if c.URL == "" {
-		c.URL = "localhost:6379"
+		c.URL = defaultRedisURL
 	}
 }
 
@@ -125,10 +147,10 @@ type LoggingConfig struct {
 // SetDefaults applies default values for LoggingConfig.
 func (c *LoggingConfig) SetDefaults() {
 	if c.Level == "" {
-		c.Level = "info"
+		c.Level = defaultLogLevel
 	}
 	if c.Format == "" {
-		c.Format = "json"
+		c.Format = defaultLogFormat
 	}
 }
 

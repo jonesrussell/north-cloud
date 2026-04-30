@@ -7,6 +7,8 @@ import (
 	"time"
 )
 
+const baselineGCDelay = 100 * time.Millisecond
+
 // MemoryMonitor tracks memory usage and detects potential leaks
 type MemoryMonitor struct {
 	mu                 sync.RWMutex
@@ -50,7 +52,7 @@ func (m *MemoryMonitor) EstablishBaseline() {
 	runtime.GC()
 
 	// Wait a moment for GC to complete
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(baselineGCDelay)
 
 	var stats runtime.MemStats
 	runtime.ReadMemStats(&stats)
@@ -100,8 +102,8 @@ func (m *MemoryMonitor) CheckForLeaks() (leaked bool, report string) {
 		return true, fmt.Sprintf(
 			"Memory leak detected: heap grew %.2fx (%.2f MB → %.2f MB)",
 			heapGrowth,
-			float64(baselineHeap)/1024/1024,
-			float64(snapshot.HeapAlloc)/1024/1024,
+			bytesToMegabytes(baselineHeap),
+			bytesToMegabytes(snapshot.HeapAlloc),
 		)
 	}
 
@@ -163,5 +165,5 @@ func (m *MemoryMonitor) GetBaseline() (heapMB float64, goroutines int) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
-	return float64(m.baselineHeap) / 1024 / 1024, m.baselineGoroutines
+	return bytesToMegabytes(m.baselineHeap), m.baselineGoroutines
 }

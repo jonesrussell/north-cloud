@@ -1,7 +1,9 @@
-package naming
+package naming_test
 
 import (
 	"testing"
+
+	"github.com/jonesrussell/north-cloud/infrastructure/naming"
 )
 
 func TestSanitizeSourceName(t *testing.T) {
@@ -36,7 +38,7 @@ func TestSanitizeSourceName(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			got := SanitizeSourceName(tt.input)
+			got := naming.SanitizeSourceName(tt.input)
 			if got != tt.expected {
 				t.Errorf("SanitizeSourceName(%q) = %q, want %q", tt.input, got, tt.expected)
 			}
@@ -62,7 +64,7 @@ func TestRawContentIndex(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			got := RawContentIndex(tt.input)
+			got := naming.RawContentIndex(tt.input)
 			if got != tt.expected {
 				t.Errorf("RawContentIndex(%q) = %q, want %q", tt.input, got, tt.expected)
 			}
@@ -86,7 +88,7 @@ func TestClassifiedContentIndex(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			got := ClassifiedContentIndex(tt.input)
+			got := naming.ClassifiedContentIndex(tt.input)
 			if got != tt.expected {
 				t.Errorf("ClassifiedContentIndex(%q) = %q, want %q", tt.input, got, tt.expected)
 			}
@@ -114,7 +116,7 @@ func TestClassifiedIndexFromRaw(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			got, err := ClassifiedIndexFromRaw(tt.input)
+			got, err := naming.ClassifiedIndexFromRaw(tt.input)
 			if tt.wantErr {
 				if err == nil {
 					t.Errorf("expected error, got nil")
@@ -149,7 +151,7 @@ func TestIsRawContentIndex(t *testing.T) {
 		t.Run(tt.input, func(t *testing.T) {
 			t.Parallel()
 
-			if got := IsRawContentIndex(tt.input); got != tt.expected {
+			if got := naming.IsRawContentIndex(tt.input); got != tt.expected {
 				t.Errorf("IsRawContentIndex(%q) = %v, want %v", tt.input, got, tt.expected)
 			}
 		})
@@ -173,7 +175,7 @@ func TestIsClassifiedContentIndex(t *testing.T) {
 		t.Run(tt.input, func(t *testing.T) {
 			t.Parallel()
 
-			if got := IsClassifiedContentIndex(tt.input); got != tt.expected {
+			if got := naming.IsClassifiedContentIndex(tt.input); got != tt.expected {
 				t.Errorf("IsClassifiedContentIndex(%q) = %v, want %v", tt.input, got, tt.expected)
 			}
 		})
@@ -200,7 +202,7 @@ func TestBaseSourceFromIndex(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			got, err := BaseSourceFromIndex(tt.input)
+			got, err := naming.BaseSourceFromIndex(tt.input)
 			if tt.wantErr {
 				if err == nil {
 					t.Errorf("expected error, got nil")

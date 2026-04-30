@@ -1,15 +1,16 @@
-package icp
+package icp_test
 
 import (
 	"testing"
 
+	"github.com/jonesrussell/north-cloud/infrastructure/icp"
 	"github.com/stretchr/testify/require"
 )
 
 func TestMatchRequiresCanadianAnchorForIndigenousChannel(t *testing.T) {
 	seed := testSeed(t)
 
-	result := Match(seed, Document{
+	result := icp.Match(seed, icp.Document{
 		Title:  "ABC Indigenous reports new Aboriginal business program in Australia",
 		Body:   "The Aboriginal and Torres Strait Islander program supports economic development.",
 		Topics: []string{"indigenous"},
@@ -21,7 +22,7 @@ func TestMatchRequiresCanadianAnchorForIndigenousChannel(t *testing.T) {
 func TestMatchEmitsSegmentsWithModelVersion(t *testing.T) {
 	seed := testSeed(t)
 
-	result := Match(seed, Document{
+	result := icp.Match(seed, icp.Document{
 		Title:      "Wahnapitae First Nation selects Sudbury engineering consultancy",
 		Body:       "The Indigenous-owned firm will support water infrastructure and economic development.",
 		SourceName: "Northern Ontario Business",
@@ -29,18 +30,18 @@ func TestMatchEmitsSegmentsWithModelVersion(t *testing.T) {
 	})
 
 	require.NotNil(t, result)
-	require.Equal(t, ModelVersionV1, result.ModelVersion)
+	require.Equal(t, icp.ModelVersionV1, result.ModelVersion)
 	require.NotEmpty(t, result.Segments)
 	require.Equal(t, "indigenous_channel", result.Segments[0].Segment)
 	require.Contains(t, result.Segments[0].MatchedKeywords, "first nation")
 }
 
-func testSeed(t *testing.T) *Seed {
+func testSeed(t *testing.T) *icp.Seed {
 	t.Helper()
-	seed := &Seed{
+	seed := &icp.Seed{
 		SegmentSchemaVersion: 1,
 		SeedUpdatedAt:        "2026-04-26",
-		Segments: []Segment{
+		Segments: []icp.Segment{
 			{
 				Name:        "indigenous_channel",
 				Description: "Indigenous-owned or adjacent organizations in Canada.",
@@ -63,6 +64,6 @@ func testSeed(t *testing.T) *Seed {
 			},
 		},
 	}
-	require.NoError(t, ValidateSeed(seed))
+	require.NoError(t, icp.ValidateSeed(seed))
 	return seed
 }

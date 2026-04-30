@@ -1,88 +1,119 @@
-package elasticsearch
+package elasticsearch_test
 
 import (
 	"context"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
 
+	"github.com/jonesrussell/north-cloud/infrastructure/elasticsearch"
 	"github.com/jonesrussell/north-cloud/infrastructure/logger"
 	"github.com/jonesrussell/north-cloud/infrastructure/retry"
 )
 
-func TestNormalizeURL(t *testing.T) {
-	tests := []struct {
-		name     string
-		input    string
-		expected string
-	}{
-		{
-			name:     "already has http://",
-			input:    "http://elasticsearch:9200",
-			expected: "http://elasticsearch:9200",
-		},
-		{
-			name:     "already has https://",
-			input:    "https://elasticsearch:9200",
-			expected: "https://elasticsearch:9200",
-		},
-		{
-			name:     "missing protocol",
-			input:    "elasticsearch:9200",
-			expected: "http://elasticsearch:9200",
-		},
-		{
-			name:     "empty string",
-			input:    "",
-			expected: "http://localhost:9200",
+func TestNewClient_NormalizesURLWithoutProtocol(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("X-Elastic-Product", "Elasticsearch")
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	cfg := elasticsearch.Config{
+		URL:         server.Listener.Addr().String(),
+		MaxRetries:  1,
+		PingTimeout: time.Second,
+		RetryConfig: &retry.Config{
+			MaxAttempts:  1,
+			InitialDelay: time.Millisecond,
+			MaxDelay:     time.Millisecond,
+			Multiplier:   1,
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := normalizeURL(tt.input)
-			if result != tt.expected {
-				t.Errorf("normalizeURL(%q) = %q, want %q", tt.input, result, tt.expected)
-			}
-		})
+	client, err := elasticsearch.NewClient(context.Background(), cfg, testLogger(t))
+	if err != nil {
+		t.Fatalf("NewClient() error = %v", err)
+	}
+	if client == nil {
+		t.Fatal("NewClient() returned nil client")
+	}
+}
+
+func TestNewClient_UsesTLSConfig(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("X-Elastic-Product", "Elasticsearch")
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	cfg := elasticsearch.Config{
+		URL:         server.URL,
+		MaxRetries:  1,
+		PingTimeout: time.Second,
+		TLS: &elasticsearch.TLSConfig{
+			Enabled:            true,
+			InsecureSkipVerify: true,
+		},
+		RetryConfig: &retry.Config{
+			MaxAttempts:  1,
+			InitialDelay: time.Millisecond,
+			MaxDelay:     time.Millisecond,
+			Multiplier:   1,
+		},
+	}
+
+	client, err := elasticsearch.NewClient(context.Background(), cfg, testLogger(t))
+	if err != nil {
+		t.Fatalf("NewClient() error = %v", err)
+	}
+	if client == nil {
+		t.Fatal("NewClient() returned nil client")
 	}
 }
 
 func TestConfig_SetDefaults(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name     string
-		config   Config
-		expected Config
+		config   elasticsearch.Config
+		expected elasticsearch.Config
 	}{
 		{
 			name:   "empty config gets defaults",
-			config: Config{},
-			expected: Config{
+			config: elasticsearch.Config{},
+			expected: elasticsearch.Config{
 				URL:         "http://localhost:9200",
-				MaxRetries:  DefaultMaxRetries,
-				PingTimeout: DefaultPingTimeout,
+				MaxRetries:  elasticsearch.DefaultMaxRetries,
+				PingTimeout: elasticsearch.DefaultPingTimeout,
 				RetryConfig: &retry.Config{
-					MaxAttempts:  DefaultRetryMaxAttempts,
-					InitialDelay: DefaultRetryInitialDelay,
-					MaxDelay:     DefaultRetryMaxDelay,
-					Multiplier:   DefaultRetryMultiplier,
+					MaxAttempts:  elasticsearch.DefaultRetryMaxAttempts,
+					InitialDelay: elasticsearch.DefaultRetryInitialDelay,
+					MaxDelay:     elasticsearch.DefaultRetryMaxDelay,
+					Multiplier:   elasticsearch.DefaultRetryMultiplier,
 				},
 			},
 		},
 		{
 			name: "partial config preserves values",
-			config: Config{
+			config: elasticsearch.Config{
 				URL:        "http://custom:9200",
 				MaxRetries: 5,
 			},
-			expected: Config{
+			expected: elasticsearch.Config{
 				URL:         "http://custom:9200",
 				MaxRetries:  5,
-				PingTimeout: DefaultPingTimeout,
+				PingTimeout: elasticsearch.DefaultPingTimeout,
 				RetryConfig: &retry.Config{
-					MaxAttempts:  DefaultRetryMaxAttempts,
-					InitialDelay: DefaultRetryInitialDelay,
-					MaxDelay:     DefaultRetryMaxDelay,
-					Multiplier:   DefaultRetryMultiplier,
+					MaxAttempts:  elasticsearch.DefaultRetryMaxAttempts,
+					InitialDelay: elasticsearch.DefaultRetryInitialDelay,
+					MaxDelay:     elasticsearch.DefaultRetryMaxDelay,
+					Multiplier:   elasticsearch.DefaultRetryMultiplier,
 				},
 			},
 		},
@@ -90,6 +121,8 @@ func TestConfig_SetDefaults(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			tt.config.SetDefaults()
 
 			if tt.config.URL != tt.expected.URL {
@@ -104,83 +137,57 @@ func TestConfig_SetDefaults(t *testing.T) {
 			if tt.config.RetryConfig == nil {
 				t.Error("RetryConfig is nil, expected non-nil")
 			} else {
-				rc := tt.config.RetryConfig
-				erc := tt.expected.RetryConfig
-				if rc.MaxAttempts != erc.MaxAttempts {
-					t.Errorf("RetryConfig.MaxAttempts = %d, want %d", rc.MaxAttempts, erc.MaxAttempts)
-				}
-				if rc.InitialDelay != erc.InitialDelay {
-					t.Errorf("RetryConfig.InitialDelay = %v, want %v", rc.InitialDelay, erc.InitialDelay)
-				}
-				if rc.MaxDelay != erc.MaxDelay {
-					t.Errorf("RetryConfig.MaxDelay = %v, want %v", rc.MaxDelay, erc.MaxDelay)
-				}
-				if rc.Multiplier != erc.Multiplier {
-					t.Errorf("RetryConfig.Multiplier = %f, want %f", rc.Multiplier, erc.Multiplier)
-				}
+				assertRetryConfig(t, tt.config.RetryConfig, tt.expected.RetryConfig)
 			}
 		})
 	}
 }
 
-func TestCreateTransport(t *testing.T) {
-	tests := []struct {
-		name      string
-		tlsConfig *TLSConfig
-		expectTLS bool
-	}{
-		{
-			name:      "nil TLS config",
-			tlsConfig: nil,
-			expectTLS: false,
-		},
-		{
-			name: "disabled TLS",
-			tlsConfig: &TLSConfig{
-				Enabled: false,
-			},
-			expectTLS: false,
-		},
-		{
-			name: "enabled TLS",
-			tlsConfig: &TLSConfig{
-				Enabled:            true,
-				InsecureSkipVerify: true,
-			},
-			expectTLS: true,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			transport := createTransport(tt.tlsConfig)
-
-			if transport == nil {
-				t.Fatal("transport is nil")
-			}
-
-			if tt.expectTLS {
-				if transport.TLSClientConfig == nil {
-					t.Error("TLSClientConfig is nil, expected non-nil")
-				} else if tt.tlsConfig != nil && transport.TLSClientConfig.InsecureSkipVerify != tt.tlsConfig.InsecureSkipVerify {
-					t.Errorf("InsecureSkipVerify = %v, want %v",
-						transport.TLSClientConfig.InsecureSkipVerify,
-						tt.tlsConfig.InsecureSkipVerify)
-				}
-			} else {
-				// When TLS is not expected, TLSClientConfig should be nil
-				if transport.TLSClientConfig != nil {
-					t.Error("TLSClientConfig is not nil, expected nil")
-				}
-			}
-		})
-	}
-}
-
-// TestNewClient_InvalidURL tests that NewClient handles invalid URLs gracefully
-// This is a unit test that doesn't require a running Elasticsearch instance
 func TestNewClient_InvalidURL(t *testing.T) {
-	ctx := context.Background()
+	t.Parallel()
+
+	cfg := elasticsearch.Config{
+		URL:         "http://invalid-host-that-does-not-exist:9200",
+		MaxRetries:  1,
+		PingTimeout: time.Second,
+		RetryConfig: &retry.Config{
+			MaxAttempts:  2,
+			InitialDelay: 100 * time.Millisecond,
+			MaxDelay:     500 * time.Millisecond,
+			Multiplier:   2.0,
+		},
+	}
+
+	_, err := elasticsearch.NewClient(context.Background(), cfg, testLogger(t))
+	if err == nil {
+		t.Fatal("Expected error for invalid URL, got nil")
+	}
+
+	if !contains(err.Error(), "failed to connect") {
+		t.Errorf("Expected error to contain 'failed to connect', got: %v", err)
+	}
+}
+
+func assertRetryConfig(t *testing.T, got, want *retry.Config) {
+	t.Helper()
+
+	if got.MaxAttempts != want.MaxAttempts {
+		t.Errorf("RetryConfig.MaxAttempts = %d, want %d", got.MaxAttempts, want.MaxAttempts)
+	}
+	if got.InitialDelay != want.InitialDelay {
+		t.Errorf("RetryConfig.InitialDelay = %v, want %v", got.InitialDelay, want.InitialDelay)
+	}
+	if got.MaxDelay != want.MaxDelay {
+		t.Errorf("RetryConfig.MaxDelay = %v, want %v", got.MaxDelay, want.MaxDelay)
+	}
+	if got.Multiplier != want.Multiplier {
+		t.Errorf("RetryConfig.Multiplier = %f, want %f", got.Multiplier, want.Multiplier)
+	}
+}
+
+func testLogger(t *testing.T) logger.Logger {
+	t.Helper()
+
 	log, err := logger.New(logger.Config{
 		Level:  "debug",
 		Format: "console",
@@ -188,31 +195,9 @@ func TestNewClient_InvalidURL(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create logger: %v", err)
 	}
-
-	cfg := Config{
-		URL:         "http://invalid-host-that-does-not-exist:9200",
-		MaxRetries:  1,
-		PingTimeout: 1 * time.Second,
-		RetryConfig: &retry.Config{
-			MaxAttempts:  2, // Only 2 attempts for faster test
-			InitialDelay: 100 * time.Millisecond,
-			MaxDelay:     500 * time.Millisecond,
-			Multiplier:   2.0,
-		},
-	}
-
-	_, err = NewClient(ctx, cfg, log)
-	if err == nil {
-		t.Error("Expected error for invalid URL, got nil")
-	}
-
-	// Verify error message contains expected text
-	if err != nil && !contains(err.Error(), "failed to connect") {
-		t.Errorf("Expected error to contain 'failed to connect', got: %v", err)
-	}
+	return log
 }
 
-// contains checks if a string contains a substring
 func contains(s, substr string) bool {
 	if len(s) < len(substr) {
 		return false

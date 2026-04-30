@@ -1,4 +1,4 @@
-package sse
+package sse_test
 
 import (
 	"context"
@@ -7,6 +7,7 @@ import (
 	"time"
 
 	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
+	"github.com/jonesrussell/north-cloud/infrastructure/sse"
 )
 
 func newTestLogger(t *testing.T) infralogger.Logger {
@@ -18,7 +19,7 @@ func TestBroker_StartStop(t *testing.T) {
 	t.Helper()
 
 	logger := newTestLogger(t)
-	broker := NewBroker(logger)
+	broker := sse.NewBroker(logger)
 
 	ctx := context.Background()
 	if err := broker.Start(ctx); err != nil {
@@ -34,7 +35,7 @@ func TestBroker_PublishSubscribe(t *testing.T) {
 	t.Helper()
 
 	logger := newTestLogger(t)
-	broker := NewBroker(logger)
+	broker := sse.NewBroker(logger)
 
 	ctx := context.Background()
 	if err := broker.Start(ctx); err != nil {
@@ -47,7 +48,7 @@ func TestBroker_PublishSubscribe(t *testing.T) {
 	defer cleanup()
 
 	// Publish
-	testEvent := Event{
+	testEvent := sse.Event{
 		Type: "test:event",
 		Data: map[string]any{"message": "hello"},
 	}
@@ -71,7 +72,7 @@ func TestBroker_MultipleSubscribers(t *testing.T) {
 	t.Helper()
 
 	logger := newTestLogger(t)
-	broker := NewBroker(logger)
+	broker := sse.NewBroker(logger)
 
 	ctx := context.Background()
 	if err := broker.Start(ctx); err != nil {
@@ -82,7 +83,7 @@ func TestBroker_MultipleSubscribers(t *testing.T) {
 	const subscriberCount = 5
 
 	// Create multiple subscribers
-	subscribers := make([]<-chan Event, subscriberCount)
+	subscribers := make([]<-chan sse.Event, subscriberCount)
 	cleanups := make([]func(), subscriberCount)
 	for i := range subscriberCount {
 		events, cleanup := broker.Subscribe(ctx)
@@ -101,7 +102,7 @@ func TestBroker_MultipleSubscribers(t *testing.T) {
 	}
 
 	// Publish an event
-	testEvent := Event{
+	testEvent := sse.Event{
 		Type: "test:broadcast",
 		Data: map[string]any{"count": 1},
 	}
@@ -127,7 +128,7 @@ func TestBroker_EventFilter(t *testing.T) {
 	t.Helper()
 
 	logger := newTestLogger(t)
-	broker := NewBroker(logger)
+	broker := sse.NewBroker(logger)
 
 	ctx := context.Background()
 	if err := broker.Start(ctx); err != nil {
@@ -136,21 +137,21 @@ func TestBroker_EventFilter(t *testing.T) {
 	defer broker.Stop()
 
 	// Subscribe with job filter
-	jobEvents, jobCleanup := broker.Subscribe(ctx, WithJobFilter())
+	jobEvents, jobCleanup := broker.Subscribe(ctx, sse.WithJobFilter())
 	defer jobCleanup()
 
 	// Subscribe with health filter
-	healthEvents, healthCleanup := broker.Subscribe(ctx, WithHealthFilter())
+	healthEvents, healthCleanup := broker.Subscribe(ctx, sse.WithHealthFilter())
 	defer healthCleanup()
 
 	// Publish job event
-	jobEvent := NewJobStatusEvent("job-1", "running", nil)
+	jobEvent := sse.NewJobStatusEvent("job-1", "running", nil)
 	if err := broker.Publish(ctx, jobEvent); err != nil {
 		t.Fatalf("Failed to publish job event: %v", err)
 	}
 
 	// Publish health event
-	healthEvent := NewHealthStatusEvent("crawler", "healthy", nil, nil)
+	healthEvent := sse.NewHealthStatusEvent("crawler", "healthy", nil, nil)
 	if err := broker.Publish(ctx, healthEvent); err != nil {
 		t.Fatalf("Failed to publish health event: %v", err)
 	}
@@ -158,8 +159,8 @@ func TestBroker_EventFilter(t *testing.T) {
 	// Job subscriber should only receive job event
 	select {
 	case received := <-jobEvents:
-		if received.Type != EventTypeJobStatus {
-			t.Errorf("Job subscriber: expected %s, got %s", EventTypeJobStatus, received.Type)
+		if received.Type != sse.EventTypeJobStatus {
+			t.Errorf("Job subscriber: expected %s, got %s", sse.EventTypeJobStatus, received.Type)
 		}
 	case <-time.After(time.Second):
 		t.Error("Job subscriber: timeout waiting for job event")
@@ -176,8 +177,8 @@ func TestBroker_EventFilter(t *testing.T) {
 	// Health subscriber should only receive health event
 	select {
 	case received := <-healthEvents:
-		if received.Type != EventTypeHealthStatus {
-			t.Errorf("Health subscriber: expected %s, got %s", EventTypeHealthStatus, received.Type)
+		if received.Type != sse.EventTypeHealthStatus {
+			t.Errorf("Health subscriber: expected %s, got %s", sse.EventTypeHealthStatus, received.Type)
 		}
 	case <-time.After(time.Second):
 		t.Error("Health subscriber: timeout waiting for health event")
@@ -190,7 +191,7 @@ func TestBroker_SlowClientDropped(t *testing.T) {
 	logger := newTestLogger(t)
 	// Use small buffer to trigger slow client behavior
 	smallBuffer := 5
-	broker := NewBroker(logger, WithClientBufferSize(smallBuffer))
+	broker := sse.NewBroker(logger, sse.WithClientBufferSize(smallBuffer))
 
 	ctx := context.Background()
 	if err := broker.Start(ctx); err != nil {
@@ -205,7 +206,7 @@ func TestBroker_SlowClientDropped(t *testing.T) {
 	// Publish more events than buffer size
 	eventCount := smallBuffer + 10
 	for i := range eventCount {
-		event := Event{
+		event := sse.Event{
 			Type: "test:flood",
 			Data: map[string]any{"count": i},
 		}
@@ -236,7 +237,7 @@ func TestBroker_MaxClients(t *testing.T) {
 
 	logger := newTestLogger(t)
 	maxClients := 3
-	broker := NewBroker(logger, WithMaxClients(maxClients))
+	broker := sse.NewBroker(logger, sse.WithMaxClients(maxClients))
 
 	ctx := context.Background()
 	if err := broker.Start(ctx); err != nil {
@@ -281,7 +282,7 @@ func TestBroker_GracefulShutdown(t *testing.T) {
 	t.Helper()
 
 	logger := newTestLogger(t)
-	broker := NewBroker(logger)
+	broker := sse.NewBroker(logger)
 
 	ctx := context.Background()
 	if err := broker.Start(ctx); err != nil {
@@ -290,7 +291,7 @@ func TestBroker_GracefulShutdown(t *testing.T) {
 
 	// Create subscribers
 	const subscriberCount = 3
-	channels := make([]<-chan Event, subscriberCount)
+	channels := make([]<-chan sse.Event, subscriberCount)
 	cleanups := make([]func(), subscriberCount)
 
 	for i := range subscriberCount {
@@ -332,7 +333,7 @@ func TestBroker_ConcurrentPublish(t *testing.T) {
 	t.Helper()
 
 	logger := newTestLogger(t)
-	broker := NewBroker(logger, WithEventBufferSize(1000))
+	broker := sse.NewBroker(logger, sse.WithEventBufferSize(1000))
 
 	ctx := context.Background()
 	if err := broker.Start(ctx); err != nil {
@@ -341,7 +342,7 @@ func TestBroker_ConcurrentPublish(t *testing.T) {
 	defer broker.Stop()
 
 	// Subscribe
-	events, cleanup := broker.Subscribe(ctx, WithBufferSize(1000))
+	events, cleanup := broker.Subscribe(ctx, sse.WithBufferSize(1000))
 	defer cleanup()
 
 	// Concurrent publishers
@@ -355,7 +356,7 @@ func TestBroker_ConcurrentPublish(t *testing.T) {
 		go func(publisherID int) {
 			defer wg.Done()
 			for e := range eventsPerPublisher {
-				event := Event{
+				event := sse.Event{
 					Type: "test:concurrent",
 					Data: map[string]any{
 						"publisher": publisherID,
@@ -401,50 +402,50 @@ func TestEventFactories(t *testing.T) {
 
 	tests := []struct {
 		name     string
-		factory  func() Event
+		factory  func() sse.Event
 		expected string
 	}{
 		{
 			name: "JobStatusEvent",
-			factory: func() Event {
-				return NewJobStatusEvent("job-1", "running", nil)
+			factory: func() sse.Event {
+				return sse.NewJobStatusEvent("job-1", "running", nil)
 			},
-			expected: EventTypeJobStatus,
+			expected: sse.EventTypeJobStatus,
 		},
 		{
 			name: "JobProgressEvent",
-			factory: func() Event {
-				return NewJobProgressEvent("job-1", "exec-1", 10, 5)
+			factory: func() sse.Event {
+				return sse.NewJobProgressEvent("job-1", "exec-1", 10, 5)
 			},
-			expected: EventTypeJobProgress,
+			expected: sse.EventTypeJobProgress,
 		},
 		{
 			name: "JobCompletedEvent",
-			factory: func() Event {
-				return NewJobCompletedEvent("job-1", "exec-1", "completed", 1000, 100, nil)
+			factory: func() sse.Event {
+				return sse.NewJobCompletedEvent("job-1", "exec-1", "completed", 1000, 100, nil)
 			},
-			expected: EventTypeJobCompleted,
+			expected: sse.EventTypeJobCompleted,
 		},
 		{
 			name: "HealthStatusEvent",
-			factory: func() Event {
-				return NewHealthStatusEvent("crawler", "healthy", nil, nil)
+			factory: func() sse.Event {
+				return sse.NewHealthStatusEvent("crawler", "healthy", nil, nil)
 			},
-			expected: EventTypeHealthStatus,
+			expected: sse.EventTypeHealthStatus,
 		},
 		{
 			name: "MetricsUpdateEvent",
-			factory: func() Event {
-				return NewMetricsUpdateEvent("jobs_running", 5.0)
+			factory: func() sse.Event {
+				return sse.NewMetricsUpdateEvent("jobs_running", 5.0)
 			},
-			expected: EventTypeMetricsUpdate,
+			expected: sse.EventTypeMetricsUpdate,
 		},
 		{
 			name: "PipelineStageEvent",
-			factory: func() Event {
-				return NewPipelineStageEvent("crawled", 100)
+			factory: func() sse.Event {
+				return sse.NewPipelineStageEvent("crawled", 100)
 			},
-			expected: EventTypePipelineStage,
+			expected: sse.EventTypePipelineStage,
 		},
 	}
 

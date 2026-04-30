@@ -39,6 +39,71 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+const (
+	defaultPprofPort             = "6060"
+	defaultPyroscopeServerURL    = "http://pyroscope:4040"
+	defaultPyroscopeEnvironment  = "development"
+	defaultPyroscopeAppVersion   = "unknown"
+	envEnablePprof               = "ENABLE_PROFILING"
+	envPprofPort                 = "PPROF_PORT"
+	envEnableContinuousProfiling = "ENABLE_CONTINUOUS_PROFILING"
+	envPyroscopeServerURL        = "PYROSCOPE_SERVER_URL"
+	envPyroscopeEnvironment      = "PYROSCOPE_ENVIRONMENT"
+	envAppVersion                = "APP_VERSION"
+)
+
+// PprofConfig holds pprof server configuration loaded by the config package.
+type PprofConfig struct {
+	Enabled bool
+	Port    string
+}
+
+// ContinuousProfilingConfig holds Pyroscope profiling configuration.
+type ContinuousProfilingConfig struct {
+	Enabled     bool
+	ServerURL   string
+	Environment string
+	Version     string
+}
+
+// LoadPprofConfig loads pprof configuration from environment values.
+func LoadPprofConfig() PprofConfig {
+	port := os.Getenv(envPprofPort)
+	if port == "" {
+		port = defaultPprofPort
+	}
+
+	return PprofConfig{
+		Enabled: parseBool(os.Getenv(envEnablePprof)),
+		Port:    port,
+	}
+}
+
+// LoadContinuousProfilingConfig loads Pyroscope configuration from environment values.
+func LoadContinuousProfilingConfig() ContinuousProfilingConfig {
+	serverURL := os.Getenv(envPyroscopeServerURL)
+	if serverURL == "" {
+		serverURL = defaultPyroscopeServerURL
+	}
+
+	environment := os.Getenv(envPyroscopeEnvironment)
+	if environment == "" {
+		environment = defaultPyroscopeEnvironment
+	}
+
+	version := os.Getenv(envAppVersion)
+	if version == "" {
+		version = defaultPyroscopeAppVersion
+	}
+
+	return ContinuousProfilingConfig{
+		Enabled:     parseBool(os.Getenv(envEnableContinuousProfiling)),
+		ServerURL:   serverURL,
+		Environment: environment,
+		Version:     version,
+	}
+}
+
 // loadEnvFiles loads .env files in priority order:
 // 1. ENV_FILE environment variable (if set, loads only this file)
 // 2. .env.local (if exists, overrides .env)
@@ -232,6 +297,20 @@ func setFieldFromString(field reflect.Value, val string) {
 			}
 			field.Set(reflect.ValueOf(parts))
 		}
+
+	case reflect.Invalid,
+		reflect.Uintptr,
+		reflect.Complex64,
+		reflect.Complex128,
+		reflect.Array,
+		reflect.Chan,
+		reflect.Func,
+		reflect.Interface,
+		reflect.Map,
+		reflect.Pointer,
+		reflect.Struct,
+		reflect.UnsafePointer:
+		return
 	}
 }
 

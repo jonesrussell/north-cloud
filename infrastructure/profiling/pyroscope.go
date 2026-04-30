@@ -6,6 +6,7 @@ import (
 	"runtime"
 
 	"github.com/grafana/pyroscope-go"
+	"github.com/jonesrussell/north-cloud/infrastructure/config"
 	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
 )
 
@@ -15,41 +16,30 @@ type PyroscopeProfiler struct {
 }
 
 // StartPyroscope initializes and starts Pyroscope continuous profiling
-// It reads configuration from environment variables:
+// It reads configuration from the config package, which owns environment lookup:
 // - ENABLE_CONTINUOUS_PROFILING: Set to "true" to enable (default: false)
 // - PYROSCOPE_SERVER_URL: Pyroscope server address (default: http://pyroscope:4040)
 // - PYROSCOPE_ENVIRONMENT: Environment tag (default: development)
 //
-// Returns nil if continuous profiling is disabled.
+// Returns a no-op profiler if continuous profiling is disabled.
 // Returns error if profiling is enabled but initialization fails.
 func StartPyroscope(serviceName string) (*PyroscopeProfiler, error) {
-	// Check if continuous profiling is enabled
-	enabled := os.Getenv("ENABLE_CONTINUOUS_PROFILING")
-	if enabled != "true" {
-		return nil, nil // Not an error - just disabled
-	}
+	return StartPyroscopeWithConfig(serviceName, config.LoadContinuousProfilingConfig())
+}
 
-	// Get configuration from environment
-	serverURL := os.Getenv("PYROSCOPE_SERVER_URL")
-	if serverURL == "" {
-		serverURL = "http://pyroscope:4040"
-	}
-
-	environment := os.Getenv("PYROSCOPE_ENVIRONMENT")
-	if environment == "" {
-		environment = "development"
-	}
-
-	// Get application version from environment (optional)
-	version := os.Getenv("APP_VERSION")
-	if version == "" {
-		version = "unknown"
+// StartPyroscopeWithConfig initializes and starts Pyroscope with explicit configuration.
+func StartPyroscopeWithConfig(
+	serviceName string,
+	cfg config.ContinuousProfilingConfig,
+) (*PyroscopeProfiler, error) {
+	if !cfg.Enabled {
+		return &PyroscopeProfiler{}, nil
 	}
 
 	// Configure profiler
-	config := pyroscope.Config{
+	pyroscopeConfig := pyroscope.Config{
 		ApplicationName: fmt.Sprintf("north-cloud.%s", serviceName),
-		ServerAddress:   serverURL,
+		ServerAddress:   cfg.ServerURL,
 
 		// Enable all profile types for comprehensive monitoring
 		ProfileTypes: []pyroscope.ProfileType{
@@ -63,15 +53,15 @@ func StartPyroscope(serviceName string) (*PyroscopeProfiler, error) {
 
 		// Add tags for filtering and grouping
 		Tags: map[string]string{
-			"environment": environment,
-			"version":     version,
+			"environment": cfg.Environment,
+			"version":     cfg.Version,
 			"hostname":    getHostname(),
 			"go_version":  runtime.Version(),
 		},
 	}
 
 	// Start profiler
-	profiler, err := pyroscope.Start(config)
+	profiler, err := pyroscope.Start(pyroscopeConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to start Pyroscope profiler: %w", err)
 	}
@@ -82,9 +72,9 @@ func StartPyroscope(serviceName string) (*PyroscopeProfiler, error) {
 	})
 	if logErr == nil {
 		log.Info("Pyroscope continuous profiling started",
-			infralogger.String("service", config.ApplicationName),
-			infralogger.String("server", serverURL),
-			infralogger.String("environment", environment),
+			infralogger.String("service", pyroscopeConfig.ApplicationName),
+			infralogger.String("server", cfg.ServerURL),
+			infralogger.String("environment", cfg.Environment),
 		)
 	}
 

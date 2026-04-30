@@ -7,6 +7,14 @@ import (
 	"time"
 )
 
+const (
+	bytesPerKilobyte          = 1024
+	bytesPerMegabyte          = bytesPerKilobyte * bytesPerKilobyte
+	gcPauseRingBufferSize     = 256
+	nanosecondsPerMicrosecond = 1000
+	nanosecondsPerMillisecond = nanosecondsPerMicrosecond * 1000
+)
+
 // MemoryHealth represents memory health metrics
 type MemoryHealth struct {
 	Timestamp          time.Time `json:"timestamp"`
@@ -28,21 +36,7 @@ func MemoryHealthHandler(w http.ResponseWriter, r *http.Request) {
 	var stats runtime.MemStats
 	runtime.ReadMemStats(&stats)
 
-	health := MemoryHealth{
-		Timestamp:    time.Now().UTC(),
-		HeapAllocMB:  float64(stats.Alloc) / 1024 / 1024,
-		HeapInuseMB:  float64(stats.HeapInuse) / 1024 / 1024,
-		HeapIdleMB:   float64(stats.HeapIdle) / 1024 / 1024,
-		StackInuseMB: float64(stats.StackInuse) / 1024 / 1024,
-		NumGC:        stats.NumGC,
-		NumGoroutine: runtime.NumGoroutine(),
-		GOMaxProcs:   runtime.GOMAXPROCS(0),
-	}
-
-	// Add last GC pause if any GC has occurred
-	if stats.NumGC > 0 {
-		health.LastGCPauseMs = float64(stats.PauseNs[(stats.NumGC+255)%256]) / 1000000
-	}
+	health := newMemoryHealth(stats)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
@@ -59,21 +53,7 @@ func MemoryHealthHandlerWithMonitor(monitor *MemoryMonitor) http.HandlerFunc {
 		var stats runtime.MemStats
 		runtime.ReadMemStats(&stats)
 
-		health := MemoryHealth{
-			Timestamp:    time.Now().UTC(),
-			HeapAllocMB:  float64(stats.Alloc) / 1024 / 1024,
-			HeapInuseMB:  float64(stats.HeapInuse) / 1024 / 1024,
-			HeapIdleMB:   float64(stats.HeapIdle) / 1024 / 1024,
-			StackInuseMB: float64(stats.StackInuse) / 1024 / 1024,
-			NumGC:        stats.NumGC,
-			NumGoroutine: runtime.NumGoroutine(),
-			GOMaxProcs:   runtime.GOMAXPROCS(0),
-		}
-
-		// Add last GC pause if any GC has occurred
-		if stats.NumGC > 0 {
-			health.LastGCPauseMs = float64(stats.PauseNs[(stats.NumGC+255)%256]) / 1000000
-		}
+		health := newMemoryHealth(stats)
 
 		// Add baseline metrics if monitor is provided
 		if monitor != nil {
@@ -90,4 +70,33 @@ func MemoryHealthHandlerWithMonitor(monitor *MemoryMonitor) http.HandlerFunc {
 			return
 		}
 	}
+}
+
+func newMemoryHealth(stats runtime.MemStats) MemoryHealth {
+	health := MemoryHealth{
+		Timestamp:    time.Now().UTC(),
+		HeapAllocMB:  bytesToMegabytes(stats.Alloc),
+		HeapInuseMB:  bytesToMegabytes(stats.HeapInuse),
+		HeapIdleMB:   bytesToMegabytes(stats.HeapIdle),
+		StackInuseMB: bytesToMegabytes(stats.StackInuse),
+		NumGC:        stats.NumGC,
+		NumGoroutine: runtime.NumGoroutine(),
+		GOMaxProcs:   runtime.GOMAXPROCS(0),
+	}
+
+	if stats.NumGC > 0 {
+		health.LastGCPauseMs = nanosecondsToMilliseconds(
+			stats.PauseNs[(stats.NumGC+gcPauseRingBufferSize-1)%gcPauseRingBufferSize],
+		)
+	}
+
+	return health
+}
+
+func bytesToMegabytes(bytes uint64) float64 {
+	return float64(bytes) / bytesPerMegabyte
+}
+
+func nanosecondsToMilliseconds(nanoseconds uint64) float64 {
+	return float64(nanoseconds) / nanosecondsPerMillisecond
 }
