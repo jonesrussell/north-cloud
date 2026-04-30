@@ -222,7 +222,7 @@ tasks:
       - |
         SERVICES=$(./scripts/detect-changed-services.sh "${BASE_REF:-HEAD~1}")
         echo "Changed services: $SERVICES"
-        GO_SERVICES="ai-observer auth classifier crawler index-manager mcp-north-cloud nc-http-proxy pipeline publisher search signal-producer source-manager"
+        GO_SERVICES="ai-observer auth classifier crawler enrichment index-manager mcp-north-cloud nc-http-proxy pipeline publisher search signal-producer source-manager"
         if echo "$SERVICES" | grep -q '"all"'; then
           echo "Infrastructure changed - checking all services"
           task vuln

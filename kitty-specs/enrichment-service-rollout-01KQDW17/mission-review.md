@@ -20,7 +20,7 @@
 | FR-005 | Callback client with API key, JSON, retry policy | WP02/WP04 | `enrichment/internal/callback/client_test.go` | Adequate | - |
 | FR-006 | ES-backed `company_intel`, `tech_stack`, `hiring` enrichers | WP03 | `enrichment/internal/enricher/enricher_test.go` | Adequate for unit/fake ES; live ES deferred | - |
 | FR-007 | `GET /health` returns 200 JSON | WP01/WP05 | `TestHealthReturnsOK`; deploy docs use `/health` | Adequate | - |
-| FR-008 | Build/test/lint/vuln Taskfile integration | WP01/WP05 | Root/service Taskfile tasks added; local build/test/race passed | Partial | DRIFT-1 |
+| FR-008 | Build/test/lint/vuln Taskfile integration | WP01/WP05 | Root/service Taskfile tasks added; local build/test/race passed; `vuln:changed` dry-run verified after follow-up fix | Adequate | DRIFT-1 resolved |
 | FR-009 | Deployment/systemd/env/journald/health docs | WP05 | `enrichment/deploy/*`, `enrichment/docs/deployment.md` | Adequate | - |
 
 ## Drift Findings
@@ -36,6 +36,8 @@
 - `Taskfile.yml:225` defines the `vuln:changed` Go service allowlist without `enrichment`: `GO_SERVICES="ai-observer auth classifier crawler index-manager mcp-north-cloud nc-http-proxy pipeline publisher search signal-producer source-manager"`.
 
 **Analysis**: The service has root-level vulnerability integration for full runs, but changed-service vulnerability checks skip `enrichment`. This is a coverage gap in FR-008 because `task ci:changed` can detect an enrichment change and still omit `task enrichment:vuln`. It is not a runtime service blocker, but it weakens the intended CI quality gate.
+
+**Resolution**: Fixed after mission review by adding `enrichment` to the `GO_SERVICES` allowlist in `Taskfile.yml` `vuln:changed`. Verified with `task vuln:changed --dry`.
 
 ## Risk Findings
 
@@ -65,12 +67,10 @@ No blocking runtime or security risks found in the merged service code. Callback
 
 ## Final Verdict
 
-**PASS WITH NOTES**
+**PASS**
 
-The merged implementation realizes the core service contract: request validation, `202` async handling, callback retry semantics, ES-backed enrichers, health endpoint, root/service Taskfile hooks, and deployment handoff documentation. No Waaseyaa repository changes or real secrets were introduced. The only identified gap is non-blocking CI coverage drift in `vuln:changed`, which should be fixed in a follow-up cleanup.
+The merged implementation realizes the core service contract: request validation, `202` async handling, callback retry semantics, ES-backed enrichers, health endpoint, root/service Taskfile hooks, and deployment handoff documentation. No Waaseyaa repository changes or real secrets were introduced. The only identified gap was CI coverage drift in `vuln:changed`; it has been fixed and dry-run verified.
 
 ## Open Items
 
-- Add `enrichment` to the `GO_SERVICES` allowlist inside `Taskfile.yml` `vuln:changed` so changed-service CI runs `task enrichment:vuln`.
 - Run deferred host/tool validation in an environment with `ansible`, `docker`, `golangci-lint`, and `govulncheck` installed.
-
