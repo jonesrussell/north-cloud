@@ -1,0 +1,89 @@
+work_packages:
+  - id: WP01
+    title: "Constants and Low-Risk Lint"
+    dependencies: []
+    owned_files:
+      - "infrastructure/monitoring/**"
+      - "infrastructure/retry/**"
+      - "infrastructure/sse/options.go"
+    requirement_refs:
+      - FR-001
+      - FR-005
+      - C-001
+      - C-002
+      - C-003
+    subtasks:
+      - T001
+      - T002
+      - T003
+      - T004
+      - T005
+
+  - id: WP02
+    title: "Profiling Config Cleanup"
+    dependencies:
+      - WP01
+    owned_files:
+      - "infrastructure/profiling/**"
+      - "infrastructure/config/**"
+      - "**/*profiling*"
+      - "**/*pprof*"
+      - "**/*pyroscope*"
+    requirement_refs:
+      - FR-002
+      - FR-004
+      - FR-006
+      - C-001
+      - C-002
+      - C-004
+    subtasks:
+      - T006
+      - T007
+      - T008
+      - T009
+      - T010
+
+  - id: WP03
+    title: "Test Package Hygiene"
+    dependencies:
+      - WP01
+    owned_files:
+      - "infrastructure/**/*_test.go"
+    requirement_refs:
+      - FR-003
+      - FR-005
+      - C-001
+      - C-003
+    subtasks:
+      - T011
+      - T012
+      - T013
+      - T014
+
+  - id: WP04
+    title: "Security and Complexity Fixes"
+    dependencies:
+      - WP02
+      - WP03
+    owned_files:
+      - "infrastructure/sse/broker.go"
+      - "infrastructure/sse/client.go"
+      - "infrastructure/sse/middleware.go"
+      - "infrastructure/sse/types.go"
+      - "infrastructure/http/**"
+      - "infrastructure/gin/**"
+    requirement_refs:
+      - FR-004
+      - FR-005
+      - FR-006
+      - C-001
+      - C-002
+      - C-003
+      - C-004
+    subtasks:
+      - T015
+      - T016
+      - T017
+      - T018
+      - T019
+      - T020
