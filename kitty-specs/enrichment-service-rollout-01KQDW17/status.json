@@ -1,16 +1,16 @@
 {
-  "event_count": 33,
-  "last_event_id": "01KQF6V96RF937H7PGMPG7D86K",
-  "materialized_at": "2026-04-30T12:47:00.824746+00:00",
+  "event_count": 34,
+  "last_event_id": "01KQF6VAP1JTRSQFMMEZWY1CWJ",
+  "materialized_at": "2026-04-30T12:47:02.337583+00:00",
   "mission_number": "2",
   "mission_slug": "enrichment-service-rollout-01KQDW17",
   "mission_type": "software-dev",
   "summary": {
-    "approved": 2,
+    "approved": 1,
     "blocked": 0,
     "canceled": 0,
     "claimed": 0,
-    "done": 3,
+    "done": 4,
     "for_review": 0,
     "in_progress": 0,
     "in_review": 0,
@@ -27,9 +27,9 @@
     "WP02": {
       "actor": "user",
       "force_count": 1,
-      "lane": "approved",
-      "last_event_id": "01KQDXSKQNCEGNCEX8T14DRHRX",
-      "last_transition_at": "2026-04-30T00:49:34.453355+00:00"
+      "lane": "done",
+      "last_event_id": "01KQF6VAP1JTRSQFMMEZWY1CWJ",
+      "last_transition_at": "2026-04-30T12:47:02.337583+00:00"
     },
     "WP03": {
       "actor": "user",
