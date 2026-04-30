@@ -6,6 +6,18 @@ import (
 	"strings"
 )
 
+const (
+	keywordScoreWeight        = 1.5
+	keywordScoreCap           = 0.85
+	topicScoreWeight          = 0.5
+	topicScoreCap             = 0.30
+	keywordBonusThreshold     = 3
+	keywordBonusScore         = 0.10
+	maxSegmentScore           = 1
+	segmentScoreRoundFactor   = 100
+	minimumScoringDenominator = 1
+)
+
 type Document struct {
 	Title      string
 	Body       string
@@ -44,7 +56,8 @@ func Match(seed *Seed, doc Document) *Result {
 		if len(keywordMatches) == 0 && len(topicMatches) == 0 {
 			continue
 		}
-		matched := append(keywordMatches, topicMatches...)
+		matched := append([]string{}, keywordMatches...)
+		matched = append(matched, topicMatches...)
 		slices.Sort(matched)
 		score := scoreSegment(len(keywordMatches), len(topicMatches), len(keywords), len(segmentTopics))
 		if score < segment.MinScore {
@@ -92,16 +105,16 @@ func matchTopics(docTopics, segmentTopics []string) []string {
 }
 
 func scoreSegment(keywordMatches, topicMatches, keywordCount, topicCount int) float64 {
-	keywordDenom := math.Max(float64(keywordCount), 1)
-	topicDenom := math.Max(float64(topicCount), 1)
-	keywordScore := math.Min(float64(keywordMatches)/keywordDenom*1.5, 0.85)
-	topicScore := math.Min(float64(topicMatches)/topicDenom*0.5, 0.30)
+	keywordDenom := math.Max(float64(keywordCount), minimumScoringDenominator)
+	topicDenom := math.Max(float64(topicCount), minimumScoringDenominator)
+	keywordScore := math.Min(float64(keywordMatches)/keywordDenom*keywordScoreWeight, keywordScoreCap)
+	topicScore := math.Min(float64(topicMatches)/topicDenom*topicScoreWeight, topicScoreCap)
 	score := keywordScore + topicScore
-	if keywordMatches >= 3 {
-		score += 0.10
+	if keywordMatches >= keywordBonusThreshold {
+		score += keywordBonusScore
 	}
-	if score > 1 {
-		score = 1
+	if score > maxSegmentScore {
+		score = maxSegmentScore
 	}
-	return math.Round(score*100) / 100
+	return math.Round(score*segmentScoreRoundFactor) / segmentScoreRoundFactor
 }

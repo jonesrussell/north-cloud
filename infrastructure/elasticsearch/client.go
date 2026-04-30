@@ -58,10 +58,10 @@ func NewClient(ctx context.Context, cfg Config, log logger.Logger) (*es.Client, 
 	}
 
 	retryCfg := *cfg.RetryConfig
-	if err := retry.Retry(ctx, retryCfg, func() error {
+	if retryErr := retry.Retry(ctx, retryCfg, func() error {
 		return pingElasticsearch(ctx, esClient, cfg.PingTimeout, log)
-	}); err != nil {
-		return nil, fmt.Errorf("failed to connect to Elasticsearch after retries: %w", err)
+	}); retryErr != nil {
+		return nil, fmt.Errorf("failed to connect to Elasticsearch after retries: %w", retryErr)
 	}
 
 	if log != nil {
@@ -86,32 +86,34 @@ func normalizeURL(url string) string {
 func createTransport(tlsConfig *TLSConfig) *http.Transport {
 	transport := &http.Transport{}
 
-	if tlsConfig != nil && tlsConfig.Enabled {
-		tlsClientConfig := &tls.Config{
-			InsecureSkipVerify: tlsConfig.InsecureSkipVerify,
-		}
-
-		// Load client certificate if provided
-		if tlsConfig.CertFile != "" && tlsConfig.KeyFile != "" {
-			cert, err := tls.LoadX509KeyPair(tlsConfig.CertFile, tlsConfig.KeyFile)
-			if err == nil {
-				tlsClientConfig.Certificates = []tls.Certificate{cert}
-			}
-		}
-
-		// Load CA certificate if provided
-		if tlsConfig.CAFile != "" {
-			caCert, readErr := os.ReadFile(tlsConfig.CAFile)
-			if readErr == nil {
-				caCertPool := x509.NewCertPool()
-				if caCertPool.AppendCertsFromPEM(caCert) {
-					tlsClientConfig.RootCAs = caCertPool
-				}
-			}
-		}
-
-		transport.TLSClientConfig = tlsClientConfig
+	if tlsConfig == nil || !tlsConfig.Enabled {
+		return transport
 	}
+
+	tlsClientConfig := &tls.Config{
+		InsecureSkipVerify: tlsConfig.InsecureSkipVerify,
+	}
+
+	// Load client certificate if provided
+	if tlsConfig.CertFile != "" && tlsConfig.KeyFile != "" {
+		cert, err := tls.LoadX509KeyPair(tlsConfig.CertFile, tlsConfig.KeyFile)
+		if err == nil {
+			tlsClientConfig.Certificates = []tls.Certificate{cert}
+		}
+	}
+
+	// Load CA certificate if provided
+	if tlsConfig.CAFile != "" {
+		caCert, readErr := os.ReadFile(tlsConfig.CAFile)
+		if readErr == nil {
+			caCertPool := x509.NewCertPool()
+			if caCertPool.AppendCertsFromPEM(caCert) {
+				tlsClientConfig.RootCAs = caCertPool
+			}
+		}
+	}
+
+	transport.TLSClientConfig = tlsClientConfig
 
 	return transport
 }

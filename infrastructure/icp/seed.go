@@ -1,6 +1,7 @@
 package icp
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"slices"
@@ -11,19 +12,21 @@ import (
 
 const ModelVersionV1 = "v1"
 
+const expectedSegmentCount = 3
+
 type Seed struct {
 	SegmentSchemaVersion int       `json:"segment_schema_version" yaml:"segment_schema_version"`
-	SeedUpdatedAt        string    `json:"seed_updated_at" yaml:"seed_updated_at"`
-	Segments             []Segment `json:"segments" yaml:"segments"`
+	SeedUpdatedAt        string    `json:"seed_updated_at"        yaml:"seed_updated_at"`
+	Segments             []Segment `json:"segments"               yaml:"segments"`
 }
 
 type Segment struct {
-	Name        string   `json:"name" yaml:"name"`
-	Description string   `json:"description" yaml:"description"`
-	Keywords    []string `json:"keywords" yaml:"keywords"`
-	Topics      []string `json:"topics" yaml:"topics"`
+	Name        string   `json:"name"                   yaml:"name"`
+	Description string   `json:"description"            yaml:"description"`
+	Keywords    []string `json:"keywords"               yaml:"keywords"`
+	Topics      []string `json:"topics"                 yaml:"topics"`
 	RequiredAny []string `json:"required_any,omitempty" yaml:"required_any,omitempty"`
-	MinScore    float64  `json:"min_score" yaml:"min_score"`
+	MinScore    float64  `json:"min_score"              yaml:"min_score"`
 }
 
 func LoadSeed(path string) (*Seed, error) {
@@ -35,52 +38,42 @@ func LoadSeed(path string) (*Seed, error) {
 	if err = yaml.Unmarshal(data, &seed); err != nil {
 		return nil, fmt.Errorf("parse ICP seed: %w", err)
 	}
-	if err = ValidateSeed(&seed); err != nil {
-		return nil, err
+	if validateErr := ValidateSeed(&seed); validateErr != nil {
+		return nil, validateErr
 	}
 	return &seed, nil
 }
 
 func ValidateSeed(seed *Seed) error {
 	if seed == nil {
-		return fmt.Errorf("ICP seed is nil")
+		return errors.New("ICP seed is nil")
 	}
 	if seed.SegmentSchemaVersion != 1 {
 		return fmt.Errorf("segment_schema_version must be 1, got %d", seed.SegmentSchemaVersion)
 	}
 	if strings.TrimSpace(seed.SeedUpdatedAt) == "" {
-		return fmt.Errorf("seed_updated_at is required")
+		return errors.New("seed_updated_at is required")
 	}
-	if len(seed.Segments) != 3 {
-		return fmt.Errorf("expected exactly 3 ICP segments, got %d", len(seed.Segments))
+	if len(seed.Segments) != expectedSegmentCount {
+		return fmt.Errorf("expected exactly %d ICP segments, got %d", expectedSegmentCount, len(seed.Segments))
 	}
+
+	return validateSegments(seed.Segments)
+}
+
+func validateSegments(segments []Segment) error {
 	allowed := map[string]bool{
 		"indigenous_channel":        true,
 		"northern_ontario_industry": true,
 		"private_sector_smb":        true,
 	}
-	seen := make(map[string]bool, len(seed.Segments))
-	for _, segment := range seed.Segments {
+	seen := make(map[string]bool, len(segments))
+	for _, segment := range segments {
 		name := strings.TrimSpace(segment.Name)
-		if !allowed[name] {
-			return fmt.Errorf("unknown ICP segment %q", segment.Name)
-		}
-		if seen[name] {
-			return fmt.Errorf("duplicate ICP segment %q", name)
+		if err := validateSegment(name, segment, allowed, seen); err != nil {
+			return err
 		}
 		seen[name] = true
-		if strings.TrimSpace(segment.Description) == "" {
-			return fmt.Errorf("segment %q description is required", name)
-		}
-		if len(segment.Keywords) == 0 && len(segment.Topics) == 0 {
-			return fmt.Errorf("segment %q needs at least one keyword or topic", name)
-		}
-		if segment.MinScore <= 0 || segment.MinScore > 1 {
-			return fmt.Errorf("segment %q min_score must be > 0 and <= 1", name)
-		}
-		if hasBlank(segment.Keywords) || hasBlank(segment.Topics) || hasBlank(segment.RequiredAny) {
-			return fmt.Errorf("segment %q contains a blank keyword/topic/required term", name)
-		}
 	}
 	for name := range allowed {
 		if !seen[name] {
@@ -90,18 +83,28 @@ func ValidateSeed(seed *Seed) error {
 	return nil
 }
 
-func normalizeSeed(seed *Seed) {
-	for i := range seed.Segments {
-		segment := &seed.Segments[i]
-		segment.Name = strings.TrimSpace(segment.Name)
-		segment.Description = strings.TrimSpace(segment.Description)
-		segment.Keywords = normalizeTerms(segment.Keywords)
-		segment.Topics = normalizeTerms(segment.Topics)
-		segment.RequiredAny = normalizeTerms(segment.RequiredAny)
+func validateSegment(
+	name string,
+	segment Segment,
+	allowed map[string]bool,
+	seen map[string]bool,
+) error {
+	switch {
+	case !allowed[name]:
+		return fmt.Errorf("unknown ICP segment %q", segment.Name)
+	case seen[name]:
+		return fmt.Errorf("duplicate ICP segment %q", name)
+	case strings.TrimSpace(segment.Description) == "":
+		return fmt.Errorf("segment %q description is required", name)
+	case len(segment.Keywords) == 0 && len(segment.Topics) == 0:
+		return fmt.Errorf("segment %q needs at least one keyword or topic", name)
+	case segment.MinScore <= 0 || segment.MinScore > maxSegmentScore:
+		return fmt.Errorf("segment %q min_score must be > 0 and <= 1", name)
+	case hasBlank(segment.Keywords) || hasBlank(segment.Topics) || hasBlank(segment.RequiredAny):
+		return fmt.Errorf("segment %q contains a blank keyword/topic/required term", name)
+	default:
+		return nil
 	}
-	slices.SortFunc(seed.Segments, func(a, b Segment) int {
-		return strings.Compare(a.Name, b.Name)
-	})
 }
 
 func normalizeTerms(values []string) []string {
