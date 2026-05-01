@@ -1121,16 +1121,16 @@
       "service": "dashboard"
     },
     {
-      "bind_interface": null,
+      "bind_interface": "127.0.0.1",
       "compose_overlay": "prod",
-      "container_port": null,
+      "container_port": "9200",
       "env_vars": [
         "ES_JAVA_OPTS",
         "bootstrap.memory_lock",
         "discovery.type",
         "xpack.security.enabled"
       ],
-      "host_port": null,
+      "host_port": "9200",
       "service": "elasticsearch"
     },
     {
