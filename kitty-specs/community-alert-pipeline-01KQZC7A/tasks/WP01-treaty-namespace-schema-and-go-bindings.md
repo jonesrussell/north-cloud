@@ -7,12 +7,16 @@ requirement_refs:
 planning_base_branch: main
 merge_target_branch: main
 branch_strategy: Planning artifacts for this feature were generated on main. During /spec-kitty.implement this WP may branch from a dependency-specific base, but completed changes must merge back into main unless the human explicitly redirects the landing branch.
+base_branch: kitty/mission-community-alert-pipeline-01KQZC7A
+base_commit: bac3ba4be6cd2ed411dd6b45e80720d170b808c3
+created_at: '2026-05-06T21:28:40.669472+00:00'
 subtasks:
 - T001
 - T002
 - T003
 - T004
 phase: A
+shell_pid: '190941'
 history:
 - at: '2026-05-06T20:51:29Z'
   event: created
