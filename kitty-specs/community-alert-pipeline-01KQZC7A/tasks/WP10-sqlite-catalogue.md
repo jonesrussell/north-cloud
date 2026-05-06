@@ -18,8 +18,8 @@ subtasks:
 - T043
 - T044
 phase: B
-agent: "claude:sonnet:implementer:implementer"
-shell_pid: "251290"
+agent: "claude:opus:reviewer:reviewer"
+shell_pid: "256800"
 history:
 - at: '2026-05-06T20:51:29Z'
   event: created
@@ -236,3 +236,4 @@ Depends on WP05, WP06.
 
 - 2026-05-06T22:51:50Z – claude:sonnet:implementer:implementer – shell_pid=251290 – Started implementation via action command
 - 2026-05-06T22:58:38Z – claude:sonnet:implementer:implementer – shell_pid=251290 – SQLite catalogue + migrations + rebuild path
+- 2026-05-06T22:59:09Z – claude:opus:reviewer:reviewer – shell_pid=256800 – Started review via action command
