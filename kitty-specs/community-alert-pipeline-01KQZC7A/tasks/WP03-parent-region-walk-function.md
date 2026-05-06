@@ -15,6 +15,8 @@ subtasks:
 - T010
 - T011
 phase: A
+agent: "claude:sonnet:implementer:implementer"
+shell_pid: "204261"
 history:
 - at: '2026-05-06T20:51:29Z'
   event: created
@@ -144,3 +146,7 @@ spec-kitty agent action implement WP03 --agent <name>
 ```
 
 Depends on WP01 and WP02. The agent should wait until those are merged in `../indigenous-taxonomy/` before regenerating, since WP03's regenerated `regions.go` must include all WP02 entries.
+
+## Activity Log
+
+- 2026-05-06T21:45:53Z – claude:sonnet:implementer:implementer – shell_pid=204261 – Started implementation via action command
