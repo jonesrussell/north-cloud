@@ -16,8 +16,8 @@ subtasks:
 - T051
 - T052
 phase: B
-agent: "claude:sonnet:implementer:implementer"
-shell_pid: "263484"
+agent: "claude:opus:reviewer:reviewer"
+shell_pid: "268677"
 history:
 - at: '2026-05-06T20:51:29Z'
   event: created
@@ -180,3 +180,4 @@ Depends on WP05, WP06.
 
 - 2026-05-06T23:12:28Z – claude:sonnet:implementer:implementer – shell_pid=263484 – Started implementation via action command
 - 2026-05-06T23:21:25Z – claude:sonnet:implementer:implementer – shell_pid=263484 – Redis publisher complete with tests
+- 2026-05-06T23:21:50Z – claude:opus:reviewer:reviewer – shell_pid=268677 – Started review via action command
