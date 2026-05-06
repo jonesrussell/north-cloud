@@ -1,0 +1,84 @@
+version: '3'
+
+tasks:
+  default:
+    desc: "Show help"
+    cmds:
+      - task: build
+
+  build:
+    desc: "Build the alert-crawler binary"
+    sources:
+      - "**/*.go"
+      - "go.mod"
+      - "go.sum"
+      - "../infrastructure/**/*.go"
+      - "../../indigenous-taxonomy/**/*.go"
+    generates:
+      - "bin/alert-crawler"
+    cmds:
+      - mkdir -p bin
+      - CGO_ENABLED=1 go build -o bin/alert-crawler main.go
+
+  run:
+    desc: "Run alert-crawler (all sources)"
+    deps: [build]
+    cmds:
+      - ./bin/alert-crawler
+
+  run:dry:
+    desc: "Dry run — fetch and score without publishing"
+    deps: [build]
+    cmds:
+      - ./bin/alert-crawler --dry-run {{.CLI_ARGS}}
+
+  test:
+    desc: "Run all tests"
+    sources:
+      - "**/*.go"
+      - "go.mod"
+      - "go.sum"
+      - "../infrastructure/**/*.go"
+    cmds:
+      - go test -v ./...
+
+  test:cover:
+    desc: "Run tests with coverage and race detector"
+    cmds:
+      - go test -race -coverprofile=coverage.out -count=1 ./...
+      - go tool cover -func=coverage.out
+
+  lint:
+    desc: "Lint the Go code"
+    sources:
+      - "**/*.go"
+      - "go.mod"
+      - "go.sum"
+      - "../.golangci.yml"
+      - "../infrastructure/**/*.go"
+    cmds:
+      - go fmt ./...
+      - go vet ./...
+      - golangci-lint run --config ../.golangci.yml ./...
+
+  lint:no-cache:
+    desc: "Lint with clean cache"
+    cmds:
+      - go fmt ./...
+      - go vet ./...
+      - golangci-lint cache clean
+      - golangci-lint run --config ../.golangci.yml ./...
+
+  vuln:
+    desc: "Run vulnerability check"
+    sources:
+      - "go.mod"
+      - "go.sum"
+    cmds:
+      - govulncheck ./...
+
+  clean:
+    desc: "Clean build artifacts"
+    cmds:
+      - rm -rf bin/
+      - rm -f data/alerts.db

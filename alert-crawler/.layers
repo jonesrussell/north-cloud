@@ -1,0 +1,22 @@
+# alert-crawler layer constraints
+#
+# Layer boundaries are enforced by `task layers:check`.
+# A package at layer N may only import packages at layer < N.
+# Use `allow SOURCE TARGET` to document known violations pending resolution.
+
+# L0: Foundation — no internal imports allowed
+0 config
+0 domain
+
+# L1: Adapters and Infrastructure wrappers — may import L0 only
+1 adapter
+1 adapter/rss
+1 catalogue
+1 elasticsearch
+1 redis
+1 severity
+1 scope
+1 observability
+
+# L2: Orchestration — may import L0 and L1
+2 runner

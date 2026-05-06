@@ -1,0 +1,34 @@
+# alert-crawler configuration
+#
+# IMPORTANT: fields owned by SetDefaults must be left BLANK here.
+# A non-empty value in this file silently prevents SetDefaults from applying,
+# so the default URL or value defined in config.go is never used.
+# Only set a field here when you intentionally want to override the code default
+# for ALL environments (dev + prod). Use env vars for per-environment overrides.
+#
+# Placeholder field paths (leave blank or omit; shown for documentation only):
+#
+#   elasticsearch:
+#     url: ""             # env: ELASTICSEARCH_URL  (default: http://localhost:9200)
+#     index: ""           # env: ALERT_ES_INDEX     (default: alert_classified_content)
+#
+#   redis:
+#     url: ""             # env: REDIS_URL          (default: redis://localhost:6379)
+#     channel: ""         # env: ALERT_REDIS_CHANNEL (default: indigenous:alerts)
+#
+#   catalogue:
+#     db_path: ""         # env: ALERT_DB_PATH      (default: data/alerts.db)
+#
+#   logging:
+#     level: ""           # env: LOG_LEVEL          (default: info)
+#     format: ""          # env: LOG_FORMAT         (default: json)
+#
+#   sources:              # RSS/Atom feed URLs (env: ALERT_SOURCE_URLS, comma-separated)
+#     urls: []
+#
+#   severity:
+#     high_keywords: []   # env: ALERT_HIGH_KEYWORDS
+#     medium_keywords: [] # env: ALERT_MEDIUM_KEYWORDS
+
+# No fields are set here intentionally.
+# All runtime values come from SetDefaults in config.go or from environment variables.
