@@ -1,7 +1,7 @@
 {
-  "event_count": 55,
-  "last_event_id": "01KQZNJA713W915TJP109ZBEZT",
-  "materialized_at": "2026-05-06T22:12:06.497588+00:00",
+  "event_count": 57,
+  "last_event_id": "01KQZNKKWFARZJPX37BE63PCYM",
+  "materialized_at": "2026-05-06T22:12:49.167598+00:00",
   "mission_number": "",
   "mission_slug": "community-alert-pipeline-01KQZC7A",
   "mission_type": "software-dev",
@@ -12,9 +12,9 @@
     "claimed": 0,
     "done": 0,
     "for_review": 0,
-    "in_progress": 0,
+    "in_progress": 1,
     "in_review": 0,
-    "planned": 20
+    "planned": 19
   },
   "work_packages": {
     "WP01": {
@@ -53,11 +53,11 @@
       "last_transition_at": "2026-05-06T22:12:06.497588+00:00"
     },
     "WP06": {
-      "actor": "finalize-tasks",
+      "actor": "claude:sonnet:implementer:implementer",
       "force_count": 1,
-      "lane": "planned",
-      "last_event_id": "01KQZJP2XR4MYYK9T7YEPDY3CS",
-      "last_transition_at": "2026-05-06T21:21:44.376379+00:00"
+      "lane": "in_progress",
+      "last_event_id": "01KQZNKKWFARZJPX37BE63PCYM",
+      "last_transition_at": "2026-05-06T22:12:49.167598+00:00"
     },
     "WP07": {
       "actor": "finalize-tasks",
