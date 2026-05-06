@@ -103,12 +103,12 @@ Phase A and Phase B execute **in parallel** because alert-crawler's `go.mod` car
 | T058 | Implement default-scope expansion per source (e.g., `mhrn` defaults to `[treaty:1, canada:manitoba]`) | WP14 | | [D] |
 | T059 | Implement location-name → city slug inference (e.g., "Winnipeg" → `canada:manitoba:winnipeg`) | WP14 | | [D] |
 | T060 | Unit tests: hierarchy resolution; missing taxonomy token logs metric and continues | WP14 | | [D] |
-| T061 | Create `internal/runner/runner.go` (poll cycle: load → fetch → parse → diff → resolve → infer → write ES → publish → save) | WP15 | |
-| T062 | Implement rescission detection via `RescindAbsent` after fetch loop | WP15 | |
-| T063 | Implement error classification (transient → backoff; structural → parse_failure metric) | WP15 | |
-| T064 | Create `internal/observability/metrics.go` (structured-log emitter for the metric set in plan §4.5) | WP15 | |
-| T065 | Implement consecutive_failures gauge per source; ≥6 emits operator-actionable signal | WP15 | |
-| T066 | Unit tests with mocked dependencies; assert each per-poll metric is emitted | WP15 | |
+| T061 | Create `internal/runner/runner.go` (poll cycle: load → fetch → parse → diff → resolve → infer → write ES → publish → save) | WP15 | | [D] |
+| T062 | Implement rescission detection via `RescindAbsent` after fetch loop | WP15 | | [D] |
+| T063 | Implement error classification (transient → backoff; structural → parse_failure metric) | WP15 | | [D] |
+| T064 | Create `internal/observability/metrics.go` (structured-log emitter for the metric set in plan §4.5) | WP15 | | [D] |
+| T065 | Implement consecutive_failures gauge per source; ≥6 emits operator-actionable signal | WP15 | | [D] |
+| T066 | Unit tests with mocked dependencies; assert each per-poll metric is emitted | WP15 | | [D] |
 | T067 | Wire all dependencies in `main.go` (config, logger, sqlite, ES, redis, catalogue, runner) | WP16 | |
 | T068 | Add `signal.NotifyContext(SIGINT, SIGTERM)` and graceful shutdown | WP16 | |
 | T069 | Implement phase order: flags → setup → buildSources → runner → exit; mirrors signal-crawler | WP16 | |
@@ -499,12 +499,12 @@ Phase A and Phase B execute **in parallel** because alert-crawler's `go.mod` car
 
 **Subtasks**:
 
-- [ ] T061 Create `internal/runner/runner.go` (poll cycle orchestration) (WP15)
-- [ ] T062 Implement rescission detection via `RescindAbsent` after fetch loop (WP15)
-- [ ] T063 Implement error classification (transient → backoff; structural → parse_failure metric) (WP15)
-- [ ] T064 Create `internal/observability/metrics.go` (structured-log emitter for the metric set in plan §4.5) (WP15)
-- [ ] T065 Implement consecutive_failures gauge per source; ≥6 emits operator-actionable signal (WP15)
-- [ ] T066 Unit tests with mocked dependencies; assert each per-poll metric is emitted (WP15)
+- [x] T061 Create `internal/runner/runner.go` (poll cycle orchestration) (WP15)
+- [x] T062 Implement rescission detection via `RescindAbsent` after fetch loop (WP15)
+- [x] T063 Implement error classification (transient → backoff; structural → parse_failure metric) (WP15)
+- [x] T064 Create `internal/observability/metrics.go` (structured-log emitter for the metric set in plan §4.5) (WP15)
+- [x] T065 Implement consecutive_failures gauge per source; ≥6 emits operator-actionable signal (WP15)
+- [x] T066 Unit tests with mocked dependencies; assert each per-poll metric is emitted (WP15)
 
 **Dependencies**: WP06, WP07, WP08, WP09, WP10, WP11, WP12, WP13, WP14.
 
