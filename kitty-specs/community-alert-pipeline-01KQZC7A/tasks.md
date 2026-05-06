@@ -47,10 +47,10 @@ Phase A and Phase B execute **in parallel** because alert-crawler's `go.mod` car
 | T002 | Extend `scripts/generate.py` to emit `treaties.go` from `treaties.yaml` | WP01 | | [D] |
 | T003 | Generate `taxonomy/treaties.go` (`Treaty` type, 11 constants, `AllTreaties`, `IsValidTreaty`) | WP01 | | [D] |
 | T004 | Add unit tests for Treaty namespace | WP01 | | [D] |
-| T005 | Extend `schema/regions.yaml` with city children (winnipeg, toronto, ottawa, vancouver, calgary, saskatoon) | WP02 | [P] |
-| T006 | Add sample First Nations community per active treaty (e.g., `canada:manitoba:sagkeeng-fn`) | WP02 | |
-| T007 | Regenerate `taxonomy/regions.go` with new entries | WP02 | |
-| T008 | Update region tests (count assertions; new constant existence) | WP02 | |
+| T005 | Extend `schema/regions.yaml` with city children (winnipeg, toronto, ottawa, vancouver, calgary, saskatoon) | WP02 | [D] |
+| T006 | Add sample First Nations community per active treaty (e.g., `canada:manitoba:sagkeeng-fn`) | WP02 | | [D] |
+| T007 | Regenerate `taxonomy/regions.go` with new entries | WP02 | | [D] |
+| T008 | Update region tests (count assertions; new constant existence) | WP02 | | [D] |
 | T009 | Extend `scripts/generate.py` to emit `ParentRegion` lookup table from YAML `children:` | WP03 | |
 | T010 | Generate `ParentRegion(Region) (Region, bool)` in `taxonomy/regions.go` | WP03 | |
 | T011 | Unit tests covering hierarchy walks (leaf → province, province → canada, canada → no parent) | WP03 | |
@@ -194,10 +194,10 @@ Phase A and Phase B execute **in parallel** because alert-crawler's `go.mod` car
 
 **Subtasks**:
 
-- [ ] T005 Extend `schema/regions.yaml` with city children (winnipeg, toronto, ottawa, vancouver, calgary, saskatoon) (WP02)
-- [ ] T006 Add sample First Nations community per active treaty (e.g., `canada:manitoba:sagkeeng-fn`) (WP02)
-- [ ] T007 Regenerate `taxonomy/regions.go` with new entries (WP02)
-- [ ] T008 Update region tests (count assertions; new constant existence) (WP02)
+- [x] T005 Extend `schema/regions.yaml` with city children (winnipeg, toronto, ottawa, vancouver, calgary, saskatoon) (WP02)
+- [x] T006 Add sample First Nations community per active treaty (e.g., `canada:manitoba:sagkeeng-fn`) (WP02)
+- [x] T007 Regenerate `taxonomy/regions.go` with new entries (WP02)
+- [x] T008 Update region tests (count assertions; new constant existence) (WP02)
 
 **Dependencies**: none.
 
