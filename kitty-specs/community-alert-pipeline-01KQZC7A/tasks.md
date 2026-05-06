@@ -91,10 +91,10 @@ Phase A and Phase B execute **in parallel** because alert-crawler's `go.mod` car
 | T046 | Create `internal/elasticsearch/indexer.go` (raw HTTP; `Index`, `MarkRescinded`, `EnsureIndex`) | WP11 | | [D] |
 | T047 | Implement idempotent `EnsureIndex` (HEAD → PUT on 404) | WP11 | | [D] |
 | T048 | Unit tests with `httptest.Server` simulating ES responses | WP11 | | [D] |
-| T049 | Create `internal/redis/publisher.go` (`LifecycleEvent` JSON serializer + `Publish`) | WP12 | [P] |
-| T050 | Channel name from config (`community_alerts:lifecycle`); publish failures incremented as metrics, not rolled back | WP12 | |
-| T051 | Wrap `infrastructure/redis` client; do not write a bespoke client | WP12 | |
-| T052 | Unit tests with mock Redis client | WP12 | |
+| T049 | Create `internal/redis/publisher.go` (`LifecycleEvent` JSON serializer + `Publish`) | WP12 | [D] |
+| T050 | Channel name from config (`community_alerts:lifecycle`); publish failures incremented as metrics, not rolled back | WP12 | | [D] |
+| T051 | Wrap `infrastructure/redis` client; do not write a bespoke client | WP12 | | [D] |
+| T052 | Unit tests with mock Redis client | WP12 | | [D] |
 | T053 | Create `internal/severity/table.go` (substance presence → severity floor table) | WP13 | [P] |
 | T054 | Create `internal/severity/infer.go` (`Infer(Hazard) Severity` function) | WP13 | |
 | T055 | Default config table: `carfentanil` → `critical`, `nitazenes` → `high`, `medetomidine`+opioid → `high`, others → `medium` | WP13 | |
@@ -430,10 +430,10 @@ Phase A and Phase B execute **in parallel** because alert-crawler's `go.mod` car
 
 **Subtasks**:
 
-- [ ] T049 Create `internal/redis/publisher.go` (`LifecycleEvent` JSON serializer + `Publish`) (WP12)
-- [ ] T050 Channel name from config (`community_alerts:lifecycle`); publish failures incremented as metrics, not rolled back (WP12)
-- [ ] T051 Wrap `infrastructure/redis` client; do not write a bespoke client (WP12)
-- [ ] T052 Unit tests with mock Redis client (WP12)
+- [x] T049 Create `internal/redis/publisher.go` (`LifecycleEvent` JSON serializer + `Publish`) (WP12)
+- [x] T050 Channel name from config (`community_alerts:lifecycle`); publish failures incremented as metrics, not rolled back (WP12)
+- [x] T051 Wrap `infrastructure/redis` client; do not write a bespoke client (WP12)
+- [x] T052 Unit tests with mock Redis client (WP12)
 
 **Dependencies**: WP05, WP06.
 
