@@ -43,10 +43,10 @@ Phase A and Phase B execute **in parallel** because alert-crawler's `go.mod` car
 
 | ID | Description | WP | Parallel |
 |---|---|---|---|
-| T001 | Create `schema/treaties.yaml` (11 treaty entries with member-region metadata) | WP01 | [P] |
-| T002 | Extend `scripts/generate.py` to emit `treaties.go` from `treaties.yaml` | WP01 | |
-| T003 | Generate `taxonomy/treaties.go` (`Treaty` type, 11 constants, `AllTreaties`, `IsValidTreaty`) | WP01 | |
-| T004 | Add unit tests for Treaty namespace | WP01 | |
+| T001 | Create `schema/treaties.yaml` (11 treaty entries with member-region metadata) | WP01 | [P] | [D] |
+| T002 | Extend `scripts/generate.py` to emit `treaties.go` from `treaties.yaml` | WP01 | | [D] |
+| T003 | Generate `taxonomy/treaties.go` (`Treaty` type, 11 constants, `AllTreaties`, `IsValidTreaty`) | WP01 | | [D] |
+| T004 | Add unit tests for Treaty namespace | WP01 | | [D] |
 | T005 | Extend `schema/regions.yaml` with city children (winnipeg, toronto, ottawa, vancouver, calgary, saskatoon) | WP02 | [P] |
 | T006 | Add sample First Nations community per active treaty (e.g., `canada:manitoba:sagkeeng-fn`) | WP02 | |
 | T007 | Regenerate `taxonomy/regions.go` with new entries | WP02 | |
@@ -171,10 +171,10 @@ Phase A and Phase B execute **in parallel** because alert-crawler's `go.mod` car
 
 **Subtasks**:
 
-- [ ] T001 Create `schema/treaties.yaml` (11 treaty entries with member-region metadata) (WP01)
-- [ ] T002 Extend `scripts/generate.py` to emit `treaties.go` from `treaties.yaml` (WP01)
-- [ ] T003 Generate `taxonomy/treaties.go` (`Treaty` type, 11 constants, `AllTreaties`, `IsValidTreaty`) (WP01)
-- [ ] T004 Add unit tests for Treaty namespace (WP01)
+- [x] T001 Create `schema/treaties.yaml` (11 treaty entries with member-region metadata) (WP01)
+- [x] T002 Extend `scripts/generate.py` to emit `treaties.go` from `treaties.yaml` (WP01)
+- [x] T003 Generate `taxonomy/treaties.go` (`Treaty` type, 11 constants, `AllTreaties`, `IsValidTreaty`) (WP01)
+- [x] T004 Add unit tests for Treaty namespace (WP01)
 
 **Dependencies**: none.
 
