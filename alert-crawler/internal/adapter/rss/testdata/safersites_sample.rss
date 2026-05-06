@@ -1,0 +1,194 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Safer Sites Drug Checking Alerts</title>
+    <link>https://safersites.example.ca/alerts</link>
+    <description>Community drug checking alerts from supervised consumption sites in BC.</description>
+    <language>en-ca</language>
+    <lastBuildDate>Tue, 06 May 2025 14:00:00 +0000</lastBuildDate>
+
+    <!-- Item 1: Full clean parse — opioid supply alert with composition -->
+    <item>
+      <title>Fentanyl Alert — Vancouver Downtown Eastside</title>
+      <link>https://safersites.example.ca/alerts/2025/05/fentanyl-vdse-001</link>
+      <guid isPermaLink="true">https://safersites.example.ca/alerts/2025/05/fentanyl-vdse-001</guid>
+      <pubDate>Tue, 06 May 2025 09:15:00 +0000</pubDate>
+      <description><![CDATA[
+        <p><strong>Location:</strong> Vancouver, BC</p>
+        <p><strong>Substances:</strong> Fentanyl, Benzodiazepines</p>
+        <p><strong>Composition:</strong> Fentanyl (72.4%), Etizolam (18.1%), Caffeine (9.5%)</p>
+        <p><strong>Lab Source:</strong> BCCDC Drug Checking Service</p>
+        <p><strong>Guidance:</strong> Do not use alone. Use fentanyl test strips before use. Start with a small amount.</p>
+      ]]></description>
+    </item>
+
+    <!-- Item 2: Full clean parse — stimulant supply alert -->
+    <item>
+      <title>Methamphetamine Supply Alert — Surrey</title>
+      <link>https://safersites.example.ca/alerts/2025/05/meth-surrey-002</link>
+      <guid isPermaLink="true">https://safersites.example.ca/alerts/2025/05/meth-surrey-002</guid>
+      <pubDate>Mon, 05 May 2025 16:45:00 +0000</pubDate>
+      <description><![CDATA[
+        <p><strong>Location:</strong> Surrey, BC</p>
+        <p><strong>Substances:</strong> Methamphetamine, Fentanyl</p>
+        <p><strong>Composition:</strong> Methamphetamine (85.0%), Fentanyl (15.0%)</p>
+        <p><strong>Lab Source:</strong> Forensic Drug Checking Laboratory</p>
+        <p><strong>Guidance:</strong> Fentanyl detected in stimulant supply. Use fentanyl test strips. Have naloxone nearby.</p>
+      ]]></description>
+    </item>
+
+    <!-- Item 3: Degraded parse — substances found but composition missing -->
+    <item>
+      <title>Unknown Substance Alert — Kelowna</title>
+      <link>https://safersites.example.ca/alerts/2025/05/unknown-kelowna-003</link>
+      <guid isPermaLink="true">https://safersites.example.ca/alerts/2025/05/unknown-kelowna-003</guid>
+      <pubDate>Mon, 05 May 2025 11:30:00 +0000</pubDate>
+      <description><![CDATA[
+        <p><strong>Location:</strong> Kelowna, BC</p>
+        <p><strong>Substances:</strong> Cocaine, Unknown adulterant</p>
+        <p>Full composition analysis pending. Exercise caution.</p>
+        <p><strong>Guidance:</strong> Avoid use until further testing complete. Contact harm reduction services.</p>
+      ]]></description>
+    </item>
+
+    <!-- Item 4: Clean parse — RFC822Z date format -->
+    <item>
+      <title>Heroin Supply Warning — Victoria</title>
+      <link>https://safersites.example.ca/alerts/2025/04/heroin-victoria-004</link>
+      <guid isPermaLink="true">https://safersites.example.ca/alerts/2025/04/heroin-victoria-004</guid>
+      <pubDate>30 Apr 2025 08:00:00 +0000</pubDate>
+      <description><![CDATA[
+        <p><strong>Location:</strong> Victoria, BC</p>
+        <p><strong>Substances:</strong> Heroin, Carfentanil</p>
+        <p><strong>Composition:</strong> Heroin (60.0%), Carfentanil (2.5%), Cutting agent (37.5%)</p>
+        <p><strong>Lab Source:</strong> Vancouver Island Drug Checking</p>
+        <p><strong>Guidance:</strong> Extreme danger. Carfentanil detected. Do not use alone. Keep naloxone immediately accessible.</p>
+      ]]></description>
+    </item>
+
+    <!-- Item 5: Clean parse — multiple guidance bullets -->
+    <item>
+      <title>Benzodiazepine Contamination Alert — Abbotsford</title>
+      <link>https://safersites.example.ca/alerts/2025/04/benzo-abbotsford-005</link>
+      <guid isPermaLink="true">https://safersites.example.ca/alerts/2025/04/benzo-abbotsford-005</guid>
+      <pubDate>Fri, 25 Apr 2025 14:20:00 +0000</pubDate>
+      <description><![CDATA[
+        <p><strong>Location:</strong> Abbotsford, BC</p>
+        <p><strong>Substances:</strong> Etizolam, Clonazolam</p>
+        <p><strong>Composition:</strong> Etizolam (55.3%), Clonazolam (44.7%)</p>
+        <p><strong>Lab Source:</strong> Fraser Health Drug Checking</p>
+        <p><strong>Guidance:</strong> Benzo-only supply detected. Naloxone will not reverse benzodiazepine overdose. Call 911 immediately for overdose response.</p>
+      ]]></description>
+    </item>
+
+    <!-- Item 6: Degraded parse — no lab source -->
+    <item>
+      <title>Fentanyl Spike — Prince George</title>
+      <link>https://safersites.example.ca/alerts/2025/04/fentanyl-pg-006</link>
+      <guid isPermaLink="true">https://safersites.example.ca/alerts/2025/04/fentanyl-pg-006</guid>
+      <pubDate>Thu, 24 Apr 2025 09:00:00 +0000</pubDate>
+      <description><![CDATA[
+        <p><strong>Location:</strong> Prince George, BC</p>
+        <p><strong>Substances:</strong> Fentanyl</p>
+        <p><strong>Composition:</strong> Fentanyl (91.2%), Unknown (8.8%)</p>
+        <p><strong>Guidance:</strong> Extremely high potency fentanyl detected. Do not use alone. Start with a very small amount.</p>
+      ]]></description>
+    </item>
+
+    <!-- Item 7: Clean parse — RFC1123 date (no timezone offset) -->
+    <item>
+      <title>MDMA Adulterant Warning — Nanaimo</title>
+      <link>https://safersites.example.ca/alerts/2025/04/mdma-nanaimo-007</link>
+      <guid isPermaLink="true">https://safersites.example.ca/alerts/2025/04/mdma-nanaimo-007</guid>
+      <pubDate>Tue, 22 Apr 2025 17:30:00 GMT</pubDate>
+      <description><![CDATA[
+        <p><strong>Location:</strong> Nanaimo, BC</p>
+        <p><strong>Substances:</strong> MDMA, Methylone</p>
+        <p><strong>Composition:</strong> MDMA (48.5%), Methylone (51.5%)</p>
+        <p><strong>Lab Source:</strong> Island Drug Checking Network</p>
+        <p><strong>Guidance:</strong> More Methylone than MDMA detected. Effects may differ from expected. Stay hydrated but do not over-drink water.</p>
+      ]]></description>
+    </item>
+
+    <!-- Item 8: Degraded parse — no location in description -->
+    <item>
+      <title>Opioid Supply Alert</title>
+      <link>https://safersites.example.ca/alerts/2025/04/opioid-generic-008</link>
+      <guid isPermaLink="true">https://safersites.example.ca/alerts/2025/04/opioid-generic-008</guid>
+      <pubDate>Sun, 20 Apr 2025 12:00:00 +0000</pubDate>
+      <description><![CDATA[
+        <p>Highly potent opioid supply detected at multiple community sites.</p>
+        <p><strong>Substances:</strong> Fentanyl, Nitazene analog</p>
+        <p><strong>Composition:</strong> Fentanyl (65.0%), Nitazene (35.0%)</p>
+        <p><strong>Lab Source:</strong> Provincial Drug Checking Network</p>
+        <p><strong>Guidance:</strong> Novel nitazene analog detected. Naloxone may require multiple doses. Call 911 immediately.</p>
+      ]]></description>
+    </item>
+
+    <!-- Item 9: Clean parse — single-word location, minimal description -->
+    <item>
+      <title>Cocaine Adulterant Alert — Burnaby</title>
+      <link>https://safersites.example.ca/alerts/2025/04/cocaine-burnaby-009</link>
+      <guid isPermaLink="true">https://safersites.example.ca/alerts/2025/04/cocaine-burnaby-009</guid>
+      <pubDate>Fri, 18 Apr 2025 10:45:00 +0000</pubDate>
+      <description><![CDATA[
+        <p><strong>Location:</strong> Burnaby, BC</p>
+        <p><strong>Substances:</strong> Cocaine, Levamisole</p>
+        <p><strong>Composition:</strong> Cocaine (70.2%), Levamisole (29.8%)</p>
+        <p><strong>Lab Source:</strong> Metro Vancouver Drug Checking</p>
+        <p><strong>Guidance:</strong> Levamisole detected. Long-term use may suppress white blood cell count. Seek medical advice.</p>
+      ]]></description>
+    </item>
+
+    <!-- Item 10: Edge case — missing pubDate (should fail required-field check) -->
+    <item>
+      <title>Undated Supply Alert</title>
+      <link>https://safersites.example.ca/alerts/2025/04/undated-010</link>
+      <guid isPermaLink="true">https://safersites.example.ca/alerts/2025/04/undated-010</guid>
+      <description><![CDATA[
+        <p><strong>Location:</strong> Vancouver, BC</p>
+        <p><strong>Substances:</strong> Fentanyl</p>
+        <p>Alert issued without timestamp. Should be skipped by parser.</p>
+      ]]></description>
+    </item>
+
+    <!-- Item 11: Edge case — missing link (should fail required-field check) -->
+    <item>
+      <title>No-Link Supply Alert</title>
+      <guid>urn:uuid:no-link-alert-011</guid>
+      <pubDate>Wed, 16 Apr 2025 08:00:00 +0000</pubDate>
+      <description><![CDATA[
+        <p><strong>Location:</strong> Victoria, BC</p>
+        <p><strong>Substances:</strong> Heroin</p>
+      ]]></description>
+    </item>
+
+    <!-- Item 12: Edge case — empty title (should fail required-field check) -->
+    <item>
+      <title></title>
+      <link>https://safersites.example.ca/alerts/2025/04/notitle-012</link>
+      <guid isPermaLink="true">https://safersites.example.ca/alerts/2025/04/notitle-012</guid>
+      <pubDate>Tue, 15 Apr 2025 09:00:00 +0000</pubDate>
+      <description><![CDATA[
+        <p><strong>Location:</strong> Richmond, BC</p>
+        <p><strong>Substances:</strong> Fentanyl</p>
+      ]]></description>
+    </item>
+
+    <!-- Item 13: Clean parse — RFC1123Z format -->
+    <item>
+      <title>Tranq Supply Alert — Kamloops</title>
+      <link>https://safersites.example.ca/alerts/2025/04/tranq-kamloops-013</link>
+      <guid isPermaLink="true">https://safersites.example.ca/alerts/2025/04/tranq-kamloops-013</guid>
+      <pubDate>Mon, 14 Apr 2025 13:00:00 +0000</pubDate>
+      <description><![CDATA[
+        <p><strong>Location:</strong> Kamloops, BC</p>
+        <p><strong>Substances:</strong> Fentanyl, Xylazine</p>
+        <p><strong>Composition:</strong> Fentanyl (58.0%), Xylazine (42.0%)</p>
+        <p><strong>Lab Source:</strong> Interior Health Drug Checking</p>
+        <p><strong>Guidance:</strong> Xylazine (tranq) detected. Naloxone does not reverse xylazine sedation. Monitor breathing. Call 911.</p>
+      ]]></description>
+    </item>
+
+  </channel>
+</rss>
