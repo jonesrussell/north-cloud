@@ -65,11 +65,11 @@ Phase A and Phase B execute **in parallel** because alert-crawler's `go.mod` car
 | T020 | Create multi-stage `Dockerfile` (Alpine, uid 1000 non-root user, CGO enabled) | WP05 | | [D] |
 | T021 | Create `.layers` (L0 config/domain; L1 adapter/catalogue/elasticsearch/redis/severity/scope/observability; L2 runner) | WP05 | | [D] |
 | T022 | Create `alert-crawler/CLAUDE.md` skeleton with placeholders for gotchas | WP05 | | [D] |
-| T023 | Create `internal/domain/alert.go` (Alert envelope) | WP06 | |
-| T024 | Create `internal/domain/hazard.go` (HarmReductionHazard, Substance) | WP06 | |
-| T025 | Create `internal/domain/source.go` (AlertSource, AcquisitionStrategy enum) | WP06 | |
-| T026 | Create `internal/domain/lifecycle_event.go` (LifecycleEvent, EventType enum) | WP06 | |
-| T027 | Add unit tests for envelope JSON round-trip and schema conformance | WP06 | |
+| T023 | Create `internal/domain/alert.go` (Alert envelope) | WP06 | | [D] |
+| T024 | Create `internal/domain/hazard.go` (HarmReductionHazard, Substance) | WP06 | | [D] |
+| T025 | Create `internal/domain/source.go` (AlertSource, AcquisitionStrategy enum) | WP06 | | [D] |
+| T026 | Create `internal/domain/lifecycle_event.go` (LifecycleEvent, EventType enum) | WP06 | | [D] |
+| T027 | Add unit tests for envelope JSON round-trip and schema conformance | WP06 | | [D] |
 | T028 | Create `internal/config/config.go` (Config struct with env tags) | WP07 | |
 | T029 | Create `internal/config/defaults.go` (`SetDefaults` function) | WP07 | |
 | T030 | Wire to `infrastructure/config.LoadWithDefaults[Config]` | WP07 | |
@@ -290,11 +290,11 @@ Phase A and Phase B execute **in parallel** because alert-crawler's `go.mod` car
 
 **Subtasks**:
 
-- [ ] T023 Create `internal/domain/alert.go` (Alert envelope) (WP06)
-- [ ] T024 Create `internal/domain/hazard.go` (HarmReductionHazard, Substance) (WP06)
-- [ ] T025 Create `internal/domain/source.go` (AlertSource, AcquisitionStrategy enum) (WP06)
-- [ ] T026 Create `internal/domain/lifecycle_event.go` (LifecycleEvent, EventType enum) (WP06)
-- [ ] T027 Add unit tests for envelope JSON round-trip and schema conformance (WP06)
+- [x] T023 Create `internal/domain/alert.go` (Alert envelope) (WP06)
+- [x] T024 Create `internal/domain/hazard.go` (HarmReductionHazard, Substance) (WP06)
+- [x] T025 Create `internal/domain/source.go` (AlertSource, AcquisitionStrategy enum) (WP06)
+- [x] T026 Create `internal/domain/lifecycle_event.go` (LifecycleEvent, EventType enum) (WP06)
+- [x] T027 Add unit tests for envelope JSON round-trip and schema conformance (WP06)
 
 **Dependencies**: WP05.
 
