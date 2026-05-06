@@ -16,7 +16,8 @@ subtasks:
 - T003
 - T004
 phase: A
-shell_pid: '190941'
+shell_pid: "190941"
+agent: "claude:sonnet:implementer:implementer"
 history:
 - at: '2026-05-06T20:51:29Z'
   event: created
@@ -190,3 +191,7 @@ spec-kitty agent action implement WP01 --agent <name>
 ```
 
 This WP has no prerequisites. Begin immediately. The agent operates primarily in `../indigenous-taxonomy/` for code changes; the spec-kitty lane worktree is informational.
+
+## Activity Log
+
+- 2026-05-06T21:28:46Z – claude:sonnet:implementer:implementer – shell_pid=190941 – Assigned agent via action command
