@@ -17,6 +17,8 @@ subtasks:
 - T014
 - T015
 phase: A
+agent: "claude:sonnet:implementer:implementer"
+shell_pid: "207988"
 history:
 - at: '2026-05-06T20:51:29Z'
   event: created
@@ -194,3 +196,7 @@ spec-kitty agent action implement WP04 --agent <name>
 ```
 
 Depends on WP01, WP02, WP03. The agent should confirm those are merged before opening the consolidation PR. Note: this WP's "merge" happens in the sibling repo, not in north-cloud. Update the spec-kitty mission state by manually marking the WP done after the tag is pushed.
+
+## Activity Log
+
+- 2026-05-06T21:50:55Z – claude:sonnet:implementer:implementer – shell_pid=207988 – Started implementation via action command
