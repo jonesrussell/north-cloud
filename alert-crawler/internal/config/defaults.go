@@ -141,11 +141,11 @@ func defaultSources() []domain.AlertSource {
 // Keywords are lowercased for case-insensitive matching in the severity package.
 func defaultSeverityTable() map[string]domain.Severity {
 	return map[string]domain.Severity{
-		"carfentanil":   domain.SeverityCritical,
-		"nitazenes":     domain.SeverityHigh,
-		"medetomidine":  domain.SeverityHigh,
-		"xylazine":      domain.SeverityHigh,
-		"fentanyl":      domain.SeverityHigh,
+		"carfentanil":    domain.SeverityCritical,
+		"nitazenes":      domain.SeverityHigh,
+		"medetomidine":   domain.SeverityHigh,
+		"xylazine":       domain.SeverityHigh,
+		"fentanyl":       domain.SeverityHigh,
 		"benzodiazepine": domain.SeverityHigh,
 	}
 }

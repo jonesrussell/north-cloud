@@ -60,13 +60,13 @@ type ObservabilityConfig struct {
 // Load via [Load], which calls infrastructure/config.LoadWithDefaults and
 // enforces the env > YAML > SetDefaults precedence chain.
 type Config struct {
-	Service       ServiceConfig       `yaml:"service"`
+	Service       ServiceConfig        `yaml:"service"`
 	Sources       []domain.AlertSource `yaml:"sources"`
-	Database      DatabaseConfig      `yaml:"database"`
-	Elasticsearch ESConfig            `yaml:"elasticsearch"`
-	Redis         RedisConfig         `yaml:"redis"`
-	Severity      SeverityConfig      `yaml:"severity"`
-	Observability ObservabilityConfig `yaml:"observability"`
+	Database      DatabaseConfig       `yaml:"database"`
+	Elasticsearch ESConfig             `yaml:"elasticsearch"`
+	Redis         RedisConfig          `yaml:"redis"`
+	Severity      SeverityConfig       `yaml:"severity"`
+	Observability ObservabilityConfig  `yaml:"observability"`
 }
 
 // Load reads config from path, applies code defaults via SetDefaults, then
