@@ -13,6 +13,8 @@ subtasks:
 - T007
 - T008
 phase: A
+agent: "claude:sonnet:implementer:implementer"
+shell_pid: "201197"
 history:
 - at: '2026-05-06T20:51:29Z'
   event: created
@@ -165,3 +167,7 @@ spec-kitty agent action implement WP02 --agent <name>
 ```
 
 No prerequisites. Parallel-safe with WP01.
+
+## Activity Log
+
+- 2026-05-06T21:40:10Z – claude:sonnet:implementer:implementer – shell_pid=201197 – Started implementation via action command
