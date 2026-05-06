@@ -1,0 +1,10 @@
+{
+  "created_at": "2026-05-06T19:28:49.017520+00:00",
+  "friendly_name": "community alert pipeline",
+  "mission_id": "01KQZC7A7SJJZ6EKHZ9JW3AZJG",
+  "mission_number": null,
+  "mission_slug": "community-alert-pipeline-01KQZC7A",
+  "mission_type": "software-dev",
+  "slug": "community-alert-pipeline-01KQZC7A",
+  "target_branch": "main"
+}
