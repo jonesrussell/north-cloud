@@ -1,0 +1,47 @@
+{
+  "id": "safersites:20260505fentanyl",
+  "category": "harm_reduction",
+  "severity": "high",
+  "scope": ["canada:manitoba", "canada:manitoba:winnipeg"],
+  "issued_at": "2026-05-05T14:00:00Z",
+  "expires_at": "2026-06-04T14:00:00Z",
+  "lifecycle_state": "active",
+  "rescinded_at": null,
+  "title": "Fentanyl detected in Winnipeg opioid supply — May 5 2026",
+  "summary": "Safer Sites Winnipeg drug-checking service confirmed fentanyl in a sample presented as heroin. Potency is above baseline. Do not use alone.",
+  "hazard": {
+    "hazard_type": "opioid_supply",
+    "substances": ["fentanyl", "heroin"],
+    "composition": [
+      {"name": "fentanyl", "percentage": 12.5, "is_active_ingredient": true},
+      {"name": "heroin", "percentage": 87.5, "is_active_ingredient": false}
+    ],
+    "visual_description": "White powder, fine grain",
+    "lab_source": "Safer Sites Winnipeg drug-checking",
+    "confirmation_date": "2026-05-05T00:00:00Z"
+  },
+  "guidance": [
+    "Do not use alone",
+    "Have naloxone on hand",
+    "Start low, go slow",
+    "Call 911 if someone overdoses"
+  ],
+  "sources": [
+    {
+      "source_id": "safersites",
+      "source_name": "Safer Sites Winnipeg",
+      "url": "https://safersiteswinnipeg.ca/alerts/20260505-fentanyl",
+      "attribution_text": "Drug-checking result published by Safer Sites Winnipeg harm reduction program."
+    }
+  ],
+  "revision_history": [
+    {
+      "revision_at": "2026-05-05T14:00:00Z",
+      "revision_kind": "created",
+      "change_summary": "Initial alert published"
+    }
+  ],
+  "parse_quality": "clean",
+  "crawled_at": "2026-05-05T14:05:00Z",
+  "last_updated_at": "2026-05-05T14:05:00Z"
+}
