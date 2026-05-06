@@ -95,10 +95,10 @@ Phase A and Phase B execute **in parallel** because alert-crawler's `go.mod` car
 | T050 | Channel name from config (`community_alerts:lifecycle`); publish failures incremented as metrics, not rolled back | WP12 | | [D] |
 | T051 | Wrap `infrastructure/redis` client; do not write a bespoke client | WP12 | | [D] |
 | T052 | Unit tests with mock Redis client | WP12 | | [D] |
-| T053 | Create `internal/severity/table.go` (substance presence → severity floor table) | WP13 | [P] |
-| T054 | Create `internal/severity/infer.go` (`Infer(Hazard) Severity` function) | WP13 | |
-| T055 | Default config table: `carfentanil` → `critical`, `nitazenes` → `high`, `medetomidine`+opioid → `high`, others → `medium` | WP13 | |
-| T056 | Unit tests: highest-severity substance wins; empty hazard returns `medium` floor | WP13 | |
+| T053 | Create `internal/severity/table.go` (substance presence → severity floor table) | WP13 | [D] |
+| T054 | Create `internal/severity/infer.go` (`Infer(Hazard) Severity` function) | WP13 | | [D] |
+| T055 | Default config table: `carfentanil` → `critical`, `nitazenes` → `high`, `medetomidine`+opioid → `high`, others → `medium` | WP13 | | [D] |
+| T056 | Unit tests: highest-severity substance wins; empty hazard returns `medium` floor | WP13 | | [D] |
 | T057 | Create `internal/scope/resolver.go` (imports `taxonomy.ParentRegion`) | WP14 | [P] |
 | T058 | Implement default-scope expansion per source (e.g., `mhrn` defaults to `[treaty:1, canada:manitoba]`) | WP14 | |
 | T059 | Implement location-name → city slug inference (e.g., "Winnipeg" → `canada:manitoba:winnipeg`) | WP14 | |
@@ -453,10 +453,10 @@ Phase A and Phase B execute **in parallel** because alert-crawler's `go.mod` car
 
 **Subtasks**:
 
-- [ ] T053 Create `internal/severity/table.go` (substance presence → severity floor table) (WP13)
-- [ ] T054 Create `internal/severity/infer.go` (`Infer(Hazard) Severity` function) (WP13)
-- [ ] T055 Default config table: `carfentanil` → `critical`, `nitazenes` → `high`, `medetomidine`+opioid → `high`, others → `medium` (WP13)
-- [ ] T056 Unit tests: highest-severity substance wins; empty hazard returns `medium` floor (WP13)
+- [x] T053 Create `internal/severity/table.go` (substance presence → severity floor table) (WP13)
+- [x] T054 Create `internal/severity/infer.go` (`Infer(Hazard) Severity` function) (WP13)
+- [x] T055 Default config table: `carfentanil` → `critical`, `nitazenes` → `high`, `medetomidine`+opioid → `high`, others → `medium` (WP13)
+- [x] T056 Unit tests: highest-severity substance wins; empty hazard returns `medium` floor (WP13)
 
 **Dependencies**: WP05, WP06, WP07.
 
