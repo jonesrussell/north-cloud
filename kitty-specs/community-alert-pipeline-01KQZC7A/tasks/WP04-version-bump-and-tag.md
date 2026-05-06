@@ -17,8 +17,8 @@ subtasks:
 - T014
 - T015
 phase: A
-agent: "claude:sonnet:implementer:implementer"
-shell_pid: "207988"
+agent: "claude:opus:reviewer:reviewer"
+shell_pid: "209604"
 history:
 - at: '2026-05-06T20:51:29Z'
   event: created
@@ -201,3 +201,4 @@ Depends on WP01, WP02, WP03. The agent should confirm those are merged before op
 
 - 2026-05-06T21:50:55Z – claude:sonnet:implementer:implementer – shell_pid=207988 – Started implementation via action command
 - 2026-05-06T21:55:32Z – claude:sonnet:implementer:implementer – shell_pid=207988 – v1.1.0 tagged and indexed by proxy.golang.org
+- 2026-05-06T21:56:02Z – claude:opus:reviewer:reviewer – shell_pid=209604 – Started review via action command
