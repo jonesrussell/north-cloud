@@ -54,10 +54,10 @@ Phase A and Phase B execute **in parallel** because alert-crawler's `go.mod` car
 | T009 | Extend `scripts/generate.py` to emit `ParentRegion` lookup table from YAML `children:` | WP03 | | [D] |
 | T010 | Generate `ParentRegion(Region) (Region, bool)` in `taxonomy/regions.go` | WP03 | | [D] |
 | T011 | Unit tests covering hierarchy walks (leaf → province, province → canada, canada → no parent) | WP03 | | [D] |
-| T012 | Audit `tests/` for hardcoded counter assertions (RR-004) | WP04 | |
-| T013 | Update `taxonomy/version.go` and `go.mod` to v1.1.0 | WP04 | |
-| T014 | Update `CHANGELOG.md` with additive changes | WP04 | |
-| T015 | Open PR; tag `v1.1.0` after merge | WP04 | |
+| T012 | Audit `tests/` for hardcoded counter assertions (RR-004) | WP04 | | [D] |
+| T013 | Update `taxonomy/version.go` and `go.mod` to v1.1.0 | WP04 | | [D] |
+| T014 | Update `CHANGELOG.md` with additive changes | WP04 | | [D] |
+| T015 | Open PR; tag `v1.1.0` after merge | WP04 | | [D] |
 | T016 | Create `alert-crawler/` directory with `go.mod` (includes `replace` directive) | WP05 | |
 | T017 | Create `main.go` skeleton with phase-order comments | WP05 | |
 | T018 | Create `config.yml` (defaults blank where `SetDefaults` applies) | WP05 | |
@@ -239,10 +239,10 @@ Phase A and Phase B execute **in parallel** because alert-crawler's `go.mod` car
 
 **Subtasks**:
 
-- [ ] T012 Audit `tests/` for hardcoded counter assertions (RR-004) (WP04)
-- [ ] T013 Update `taxonomy/version.go` and `go.mod` to v1.1.0 (WP04)
-- [ ] T014 Update `CHANGELOG.md` with additive changes (WP04)
-- [ ] T015 Open PR; tag `v1.1.0` after merge (WP04)
+- [x] T012 Audit `tests/` for hardcoded counter assertions (RR-004) (WP04)
+- [x] T013 Update `taxonomy/version.go` and `go.mod` to v1.1.0 (WP04)
+- [x] T014 Update `CHANGELOG.md` with additive changes (WP04)
+- [x] T015 Open PR; tag `v1.1.0` after merge (WP04)
 
 **Dependencies**: WP01, WP02, WP03 (all schema and generator work must merge first).
 
