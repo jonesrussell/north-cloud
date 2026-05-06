@@ -1,10 +1,12 @@
 {
   "created_at": "2026-05-06T19:28:49.017520+00:00",
-  "friendly_name": "community alert pipeline",
+  "friendly_name": "Community Alert Pipeline",
   "mission_id": "01KQZC7A7SJJZ6EKHZ9JW3AZJG",
   "mission_number": null,
   "mission_slug": "community-alert-pipeline-01KQZC7A",
   "mission_type": "software-dev",
   "slug": "community-alert-pipeline-01KQZC7A",
-  "target_branch": "main"
+  "target_branch": "main",
+  "vcs": "git",
+  "source_description": "Add a new alert-crawler service to north-cloud that polls authoritative regional safety sources (first: Manitoba Harm Reduction Network at safersites.ca), normalizes results into a generic community_alert envelope, persists to a dedicated Elasticsearch index, and publishes lifecycle events (created/updated/rescinded) on a dedicated Redis pub/sub channel. Bypasses classifier and publisher routing (mirrors rfp-ingestor pattern). Scope field uses a hierarchical controlled vocabulary sourced from jonesrussell/indigenous-taxonomy (extension in-scope). First consumer: Minoo community pages."
 }
