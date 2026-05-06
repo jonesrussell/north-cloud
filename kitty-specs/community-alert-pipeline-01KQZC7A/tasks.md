@@ -74,10 +74,10 @@ Phase A and Phase B execute **in parallel** because alert-crawler's `go.mod` car
 | T029 | Create `internal/config/defaults.go` (`SetDefaults` function) | WP07 | | [D] |
 | T030 | Wire to `infrastructure/config.LoadWithDefaults[Config]` | WP07 | | [D] |
 | T031 | Add SetDefaults pitfall regression test (RR-007) — fields with SetDefaults must be absent from `config.yml` | WP07 | | [D] |
-| T032 | Create `internal/adapter/rss/client.go` (HTTP fetch with `If-None-Match` and `If-Modified-Since`) | WP08 | [P] |
-| T033 | Implement `ErrNotModified` on 304 path; ETag and Last-Modified return values | WP08 | |
-| T034 | Configure User-Agent (`alert-crawler/1.0 (+https://northcloud.one)`) and HTTP timeouts | WP08 | |
-| T035 | Unit tests: 304 path, 200 path, 5xx with backoff, network timeout | WP08 | |
+| T032 | Create `internal/adapter/rss/client.go` (HTTP fetch with `If-None-Match` and `If-Modified-Since`) | WP08 | [D] |
+| T033 | Implement `ErrNotModified` on 304 path; ETag and Last-Modified return values | WP08 | | [D] |
+| T034 | Configure User-Agent (`alert-crawler/1.0 (+https://northcloud.one)`) and HTTP timeouts | WP08 | | [D] |
+| T035 | Unit tests: 304 path, 200 path, 5xx with backoff, network timeout | WP08 | | [D] |
 | T036 | Create `internal/adapter/rss/parser.go` (RSS XML parse via `encoding/xml`) | WP09 | [P] |
 | T037 | Implement `<description>` HTML extractor (substance composition, lab source, confirmation date) | WP09 | |
 | T038 | Defensive parsing with `parse_quality` flag (clean/degraded); never auto-rescind on parse failure (TC-010) | WP09 | |
@@ -337,10 +337,10 @@ Phase A and Phase B execute **in parallel** because alert-crawler's `go.mod` car
 
 **Subtasks**:
 
-- [ ] T032 Create `internal/adapter/rss/client.go` (HTTP fetch with `If-None-Match` and `If-Modified-Since`) (WP08)
-- [ ] T033 Implement `ErrNotModified` on 304 path; ETag and Last-Modified return values (WP08)
-- [ ] T034 Configure User-Agent (`alert-crawler/1.0 (+https://northcloud.one)`) and HTTP timeouts (WP08)
-- [ ] T035 Unit tests: 304 path, 200 path, 5xx with backoff, network timeout (WP08)
+- [x] T032 Create `internal/adapter/rss/client.go` (HTTP fetch with `If-None-Match` and `If-Modified-Since`) (WP08)
+- [x] T033 Implement `ErrNotModified` on 304 path; ETag and Last-Modified return values (WP08)
+- [x] T034 Configure User-Agent (`alert-crawler/1.0 (+https://northcloud.one)`) and HTTP timeouts (WP08)
+- [x] T035 Unit tests: 304 path, 200 path, 5xx with backoff, network timeout (WP08)
 
 **Dependencies**: WP05, WP06.
 
