@@ -17,8 +17,8 @@ subtasks:
 - T030
 - T031
 phase: B
-agent: "claude:sonnet:implementer:implementer"
-shell_pid: "229458"
+agent: "claude:opus:reviewer:reviewer"
+shell_pid: "235245"
 history:
 - at: '2026-05-06T20:51:29Z'
   event: created
@@ -288,3 +288,4 @@ Depends on WP05, WP06.
 
 - 2026-05-06T22:21:25Z – claude:sonnet:implementer:implementer – shell_pid=229458 – Started implementation via action command
 - 2026-05-06T22:25:28Z – claude:sonnet:implementer:implementer – shell_pid=229458 – Config loaded via infraconfig + RR-007 pitfall test
+- 2026-05-06T22:26:10Z – claude:opus:reviewer:reviewer – shell_pid=235245 – Started review via action command
