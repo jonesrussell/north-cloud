@@ -306,3 +306,4 @@ Depends on WP05.
 ## Activity Log
 
 - 2026-05-06T22:12:49Z – claude:sonnet:implementer:implementer – shell_pid=221680 – Started implementation via action command
+- 2026-05-06T22:18:16Z – claude:sonnet:implementer:implementer – shell_pid=221680 – Domain types match JSON schemas; round-trip + golden tests pass; 97.6% coverage; lint + vet clean
