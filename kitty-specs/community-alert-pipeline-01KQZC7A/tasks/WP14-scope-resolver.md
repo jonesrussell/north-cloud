@@ -209,3 +209,4 @@ Depends on WP05, WP06, WP07. Functionally depends on WP02 and WP03 in the siblin
 ## Activity Log
 
 - 2026-05-06T23:29:08Z – claude:sonnet:implementer:implementer – shell_pid=273598 – Started implementation via action command
+- 2026-05-06T23:35:43Z – claude:sonnet:implementer:implementer – shell_pid=273598 – Scope resolver via taxonomy.ParentRegion
