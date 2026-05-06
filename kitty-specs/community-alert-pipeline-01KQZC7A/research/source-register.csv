@@ -1,0 +1,40 @@
+source_id,kind,location,access_method,researched_at,research_item,notes
+S-001,external_website,https://www.safersites.ca/,Playwright (Cloudflare gate),2026-05-06,R-001,Manitoba Harm Reduction Network homepage
+S-002,external_feed,https://www.safersites.ca/drugalerts.rss,HTTPS GET (Cloudflare-passthrough),2026-05-06,R-001,RSS 2.0 feed; primary acquisition path
+S-003,external_page,https://www.safersites.ca/drugalerts,Playwright,2026-05-06,R-001,Listing page with feed auto-discovery link
+S-004,external_page,https://www.safersites.ca/20260505fentanyl,Playwright,2026-05-06,R-001,Sample alert page; HTML structure reference
+S-005,external_page,https://www.safersites.ca/join,Playwright,2026-05-06,R-001,Email subscription form; NationBuilder backend
+S-006,local_repo,/home/jones/dev/north-cloud/signal-crawler/,filesystem (Read),2026-05-06,R-002,Reference oneshot service implementation
+S-007,local_repo,/home/jones/dev/north-cloud/signal-crawler/CLAUDE.md,filesystem (Read),2026-05-06,R-002,Service-local CLAUDE.md (notes maintenance mode)
+S-008,local_repo,/home/jones/dev/north-cloud/signal-crawler/Taskfile.yml,filesystem (Read),2026-05-06,R-002,Per-service task graph (build/lint/test/vuln)
+S-009,local_repo,/home/jones/dev/north-cloud/signal-crawler/main.go,filesystem (Read),2026-05-06,R-002,Manual wiring; phase order; oneshot lifecycle
+S-010,local_repo,/home/jones/dev/north-cloud/signal-crawler/internal/config/,filesystem (Read),2026-05-06,R-002,SetDefaults + env binding pattern
+S-011,local_repo,/home/jones/dev/north-cloud/signal-crawler/internal/dedup/,filesystem (Read),2026-05-06,R-002,SQLite dedup store pattern
+S-012,local_repo,/home/jones/dev/north-cloud/signal-crawler/Dockerfile,filesystem (Read),2026-05-06,R-002,Multi-stage Alpine; uid 1000 non-root user
+S-013,local_repo,/home/jones/dev/north-cloud/signal-crawler/.layers,filesystem (Read),2026-05-06,R-002,Layer constraints (L0/L1/L2)
+S-014,local_repo,/home/jones/dev/north-cloud/docker-compose.base.yml,filesystem (Read),2026-05-06,R-002,Compose entry style for oneshot services (restart no)
+S-015,local_repo,/home/jones/dev/north-cloud/scripts/deploy.sh,filesystem (Read),2026-05-06,R-002,Oneshot health-check skip list location
+S-016,local_repo,/home/jones/dev/northcloud-ansible/roles/north-cloud/,filesystem (Read),2026-05-06,R-002,Systemd timer + service templates
+S-017,local_repo,/home/jones/dev/northcloud-ansible/roles/north-cloud/templates/signal-crawler.timer.j2,filesystem (Read),2026-05-06,R-002,Timer template (OnCalendar parameterized)
+S-018,local_repo,/home/jones/dev/northcloud-ansible/roles/north-cloud/templates/signal-crawler.service.j2,filesystem (Read),2026-05-06,R-002,Type=oneshot service template
+S-019,local_repo,/home/jones/dev/north-cloud/docs/specs/lead-pipeline.md,filesystem (Read),2026-05-06,R-002,Cross-producer signal contract spec
+S-020,local_repo,/home/jones/dev/north-cloud/rfp-ingestor/,filesystem (Read),2026-05-06,R-003,Reference bypass-pattern service
+S-021,local_repo,/home/jones/dev/north-cloud/rfp-ingestor/main.go,filesystem (Read),2026-05-06,R-003,Daemon (ticker) bootstrap
+S-022,local_repo,/home/jones/dev/north-cloud/rfp-ingestor/internal/elasticsearch/indexer.go,filesystem (Read),2026-05-06,R-003,ES bulk write via raw HTTP NDJSON
+S-023,local_repo,/home/jones/dev/north-cloud/rfp-ingestor/internal/elasticsearch/mapping.go,filesystem (Read),2026-05-06,R-003,Self-contained mapping definition
+S-024,local_repo,/home/jones/dev/north-cloud/rfp-ingestor/internal/domain/rfp.go,filesystem (Read),2026-05-06,R-003,Document envelope shape
+S-025,local_repo,/home/jones/dev/north-cloud/rfp-ingestor/internal/ingestor/ingestor.go,filesystem (Read),2026-05-06,R-003,Run-once + ticker orchestration
+S-026,local_repo,/home/jones/dev/north-cloud/docs/specs/rfp-ingestor.md,filesystem (Read),2026-05-06,R-003,Spec documenting bypass rationale
+S-027,local_repo,/home/jones/dev/north-cloud/rfp-ingestor/CLAUDE.md,filesystem (Read),2026-05-06,R-003,Service-local CLAUDE.md
+S-028,local_repo,/home/jones/dev/indigenous-taxonomy/,filesystem (Read),2026-05-06,R-004,Sibling repo holding the controlled vocabulary
+S-029,local_repo,/home/jones/dev/indigenous-taxonomy/schema/regions.yaml,filesystem (Read),2026-05-06,R-004,Region hierarchy source (children: keys)
+S-030,local_repo,/home/jones/dev/indigenous-taxonomy/schema/categories.yaml,filesystem (Read),2026-05-06,R-004,Category list source
+S-031,local_repo,/home/jones/dev/indigenous-taxonomy/generated/go/taxonomy/,filesystem (Read),2026-05-06,R-004,Generated Go package surface
+S-032,local_repo,/home/jones/dev/indigenous-taxonomy/generated/go/taxonomy/regions.go,filesystem (Read),2026-05-06,R-004,Region type alias and constants
+S-033,local_repo,/home/jones/dev/indigenous-taxonomy/generated/go/taxonomy/categories.go,filesystem (Read),2026-05-06,R-004,Category type alias and constants
+S-034,local_repo,/home/jones/dev/indigenous-taxonomy/generated/go/taxonomy/version.go,filesystem (Read),2026-05-06,R-004,Package version (currently 1.0.0)
+S-035,local_repo,/home/jones/dev/indigenous-taxonomy/scripts/generate.py,filesystem (Read),2026-05-06,R-004,Code generator (does not currently emit ParentRegion)
+S-036,local_repo,/home/jones/dev/indigenous-taxonomy/CLAUDE.md,filesystem (Read),2026-05-06,R-004,Versioning conventions (additive vs breaking)
+S-037,local_repo,/home/jones/dev/north-cloud/infrastructure/indigenous/region.go,filesystem (Read),2026-05-06,R-004,Hand-rolled NC shim (continental-scale only)
+S-038,local_repo,/home/jones/dev/north-cloud/publisher/internal/router/indigenous.go,filesystem (Read),2026-05-06,R-004,Publisher's region-slug routing (uses NC shim)
+S-039,local_repo,/home/jones/dev/north-cloud/CLAUDE.md,filesystem (Read),2026-05-06,R-004,Repo CLAUDE.md mandate (NC must import indigenous-taxonomy; aspirational)

@@ -1,0 +1,53 @@
+finding_id,research_item,claim,evidence_source,confidence,observed_at,disposition
+F-001,R-001,RSS 2.0 feed exists at https://www.safersites.ca/drugalerts.rss with Content-Type application/rss+xml,S-002,0.99,2026-05-06,binding
+F-002,R-001,Feed declared via head link rel=alternate type=application/rss+xml at /drugalerts,S-003,0.99,2026-05-06,binding
+F-003,R-001,Feed not at /feed /rss /atom.xml /index.xml — only at /drugalerts.rss,S-002,0.99,2026-05-06,binding
+F-004,R-001,RSS items carry title description pubDate author link but no guid,S-002,0.99,2026-05-06,binding-shapes-FR-006
+F-005,R-001,description contains full HTML body with substance composition lab-confirmation date PDF handbill URLs,S-002,0.95,2026-05-06,binding-parser-design
+F-006,R-001,pubDate is RFC-822 with timezone (e.g. Tue 05 May 2026 17:50:31 -0500),S-002,0.99,2026-05-06,binding-issued_at-mapping
+F-007,R-001,Feed sends ETag (weak) but no Last-Modified; Cache-Control public max-age=14400,S-002,0.99,2026-05-06,binding-conditional-GET-design
+F-008,R-001,No JSON API: /api /api/alerts /api/v1/alerts return 404; /wp-json/ returns 403,S-001,0.98,2026-05-06,binding
+F-009,R-001,CMS is NationBuilder (asset hosts; form action /forms/signups; theme origin),S-001,0.99,2026-05-06,context
+F-010,R-001,Sitemap and robots.txt return 403 to non-browser agents (Cloudflare bot management),S-001,0.97,2026-05-06,risk-RR-001
+F-011,R-001,Alert URL pattern is /YYYYMMDD{substance} (e.g. /20260505fentanyl),S-004,0.99,2026-05-06,binding-id-derivation
+F-012,R-001,Email subscription is NationBuilder native — no Mailchimp Substack or GovDelivery archive available,S-005,0.99,2026-05-06,context-no-feed-substitute
+F-013,R-001,Source does not publish explicit expires_at,S-002,0.95,2026-05-06,decision-D-004
+F-014,R-001,No explicit rescission signal; rescinded alerts disappear from feed,S-002,0.93,2026-05-06,decision-D-003
+F-015,R-002,signal-crawler is oneshot binary; main.go runs r.Run(ctx) and exits,S-009,0.99,2026-05-06,binding-process-model
+F-016,R-002,signal-crawler uses infrastructure/config.LoadWithDefaults[T] with env-tag binding,S-010,0.98,2026-05-06,binding-config-style
+F-017,R-002,signal-crawler config.yml fields silently override SetDefaults (gotcha),S-010,0.97,2026-05-06,risk-RR-007
+F-018,R-002,signal-crawler hardcodes sources in buildSources in main.go (no source-manager integration),S-009,0.98,2026-05-06,decision-source-config-style
+F-019,R-002,signal-crawler dedup is SQLite at data/seen.db — single seen(source external_id) table,S-011,0.99,2026-05-06,binding-state-pattern
+F-020,R-002,signal-crawler manual wiring (no Uber FX); phase order flags->setup->buildSources->ingest->runner,S-009,0.99,2026-05-06,binding-lifecycle
+F-021,R-002,signal-crawler Dockerfile multi-stage golang:1.26.2-alpine + alpine:3.21; non-root uid/gid 1000,S-012,0.99,2026-05-06,binding-docker-pattern
+F-022,R-002,docker-compose entry has restart no and named volume; no health check,S-014,0.99,2026-05-06,binding-compose-pattern
+F-023,R-002,signal-crawler is in oneshot skip list in scripts/deploy.sh,S-015,0.99,2026-05-06,binding-deploy-pattern
+F-024,R-002,Ansible role uses two templates (timer.j2 with OnCalendar parameterized; service.j2 Type=oneshot),S-017,0.99,2026-05-06,binding-ansible-pattern
+F-025,R-002,Ansible service template runs as deploy_user on host but uid 1000 inside container,S-018,0.99,2026-05-06,binding-volume-ownership
+F-026,R-002,signal-crawler .layers enforces 3 tiers (L0 config L1 adapters L2 runner); no allow exceptions,S-013,0.99,2026-05-06,binding-layer-model
+F-027,R-002,signal-crawler does NOT publish to Redis; uses HTTP POST to NorthOps,S-009,0.99,2026-05-06,divergence-alert-crawler-uses-Redis
+F-028,R-002,signal-crawler is in maintenance mode; new adapters go to signal-producer per service CLAUDE.md,S-007,0.95,2026-05-06,note-spec-C-007-clarification
+F-029,R-003,rfp-ingestor is long-running daemon (ticker) — diverges from signal-crawler oneshot,S-021,0.99,2026-05-06,divergence-alert-crawler-follows-signal-crawler-topology
+F-030,R-003,rfp-ingestor uses bulk ES indexing via raw NDJSON POST /_bulk; bulkSize default 500,S-022,0.99,2026-05-06,binding-ES-write-pattern
+F-031,R-003,rfp-ingestor ES client is plain net/http.Client — no Go ES SDK dependency,S-022,0.99,2026-05-06,binding-no-SDK-dep
+F-032,R-003,Mapping lives in rfp-ingestor/internal/elasticsearch/mapping.go; not in index-manager or infrastructure/esmapping,S-023,0.99,2026-05-06,binding-mapping-ownership
+F-033,R-003,EnsureIndex does HEAD then PUT idempotently on startup,S-022,0.99,2026-05-06,binding-index-bootstrap-pattern
+F-034,R-003,rfp-ingestor index name rfp_classified_content uses *_classified_content family for search wildcard discovery,S-023,0.99,2026-05-06,divergence-alerts-use-fresh-family
+F-035,R-003,content_type must be text with explicit .keyword sub-field (search service queries content_type.keyword),S-023,0.97,2026-05-06,note-search-coupling
+F-036,R-003,rfp-ingestor publishes nothing to Redis,S-021,0.99,2026-05-06,divergence-alerts-publish-Redis
+F-037,R-003,Publisher Layer 11 reads content_type==rfp from search index — async downstream routing,S-026,0.95,2026-05-06,context
+F-038,R-003,rfp-ingestor RFPDocument shape: title url source_name content_type quality_score snippet raw_text topics crawled_at + nested rfp object,S-024,0.99,2026-05-06,binding-envelope-reuse
+F-039,R-003,rfp-ingestor has only Zap structured logs and a /api/v1/status endpoint — no Prometheus,S-021,0.99,2026-05-06,decision-D-010
+F-040,R-003,Spec at docs/specs/rfp-ingestor.md rationalizes bypass for pre-classified data,S-026,0.97,2026-05-06,binding-bypass-rationale-applies-to-alerts
+F-041,R-004,indigenous-taxonomy package surface has 3 namespaces: Category Region DialectCode,S-031,0.99,2026-05-06,binding
+F-042,R-004,Category has 10 constants (culture language land-rights environment sovereignty education health justice history community),S-033,0.99,2026-05-06,context
+F-043,R-004,Region has 16 constants colon-delimited (canada canada:manitoba canada:manitoba:southern canada:north:yukon etc),S-032,0.99,2026-05-06,context
+F-044,R-004,No treaty territory tokens exist in package,S-031,0.99,2026-05-06,gap-D-012-add-Treaty
+F-045,R-004,No First Nations Métis or Inuit community-level slugs exist,S-031,0.99,2026-05-06,gap-D-012-add-community-samples
+F-046,R-004,No urban Indigenous city designations exist (manitoba:southern only; no cities),S-032,0.99,2026-05-06,gap-D-012-add-cities
+F-047,R-004,Package has no ParentRegion or Ancestors function — hierarchy implicit only in slug colons,S-031,0.99,2026-05-06,gap-D-012-add-walk-fn
+F-048,R-004,YAML schema/regions.yaml has children: keys but generate.py does not emit a parent lookup table,S-035,0.99,2026-05-06,gap-extend-generator
+F-049,R-004,grep indigenous-taxonomy in north-cloud/*.go returned zero hits — package not yet imported,S-039,0.99,2026-05-06,critical-finding-aspirational-mandate
+F-050,R-004,north-cloud uses hand-rolled shim at infrastructure/indigenous/region.go (7 continental slugs),S-037,0.99,2026-05-06,decision-D-011-alert-crawler-imports-package-directly
+F-051,R-004,publisher/internal/router/indigenous.go uses NC shim (NormalizeRegionSlug); does not import taxonomy package,S-038,0.99,2026-05-06,context-classifier-publisher-migration-out-of-scope
+F-052,R-004,Package versioning convention: additive=minor bump; rename/remove=major bump,S-036,0.97,2026-05-06,binding-v1.1.0-bump
