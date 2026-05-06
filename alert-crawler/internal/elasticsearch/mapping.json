@@ -1,0 +1,66 @@
+{
+  "settings": {
+    "number_of_shards": 1,
+    "number_of_replicas": 0
+  },
+  "mappings": {
+    "dynamic": "strict",
+    "properties": {
+      "id": { "type": "keyword" },
+      "category": { "type": "keyword" },
+      "severity": { "type": "keyword" },
+      "scope": { "type": "keyword" },
+      "issued_at": { "type": "date" },
+      "expires_at": { "type": "date" },
+      "lifecycle_state": { "type": "keyword" },
+      "rescinded_at": { "type": "date" },
+      "title": {
+        "type": "text",
+        "fields": { "keyword": { "type": "keyword", "ignore_above": 256 } }
+      },
+      "summary": { "type": "text" },
+      "hazard": {
+        "type": "object",
+        "properties": {
+          "hazard_type": { "type": "keyword" },
+          "substances": { "type": "keyword" },
+          "composition": {
+            "type": "nested",
+            "properties": {
+              "name": { "type": "keyword" },
+              "percentage": { "type": "float" },
+              "is_active_ingredient": { "type": "boolean" },
+              "note": { "type": "text" }
+            }
+          },
+          "visual_description": { "type": "text" },
+          "lab_source": { "type": "keyword" },
+          "confirmation_date": { "type": "date", "format": "date_optional_time" }
+        }
+      },
+      "guidance": { "type": "text" },
+      "sources": {
+        "type": "nested",
+        "properties": {
+          "source_id": { "type": "keyword" },
+          "source_name": { "type": "keyword" },
+          "url": { "type": "keyword" },
+          "attribution_text": { "type": "text" },
+          "media_links": { "type": "keyword" }
+        }
+      },
+      "revision_history": {
+        "type": "nested",
+        "properties": {
+          "revision_at": { "type": "date" },
+          "revision_kind": { "type": "keyword" },
+          "change_summary": { "type": "text" },
+          "changed_fields": { "type": "keyword" }
+        }
+      },
+      "parse_quality": { "type": "keyword" },
+      "crawled_at": { "type": "date" },
+      "last_updated_at": { "type": "date" }
+    }
+  }
+}
