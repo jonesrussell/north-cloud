@@ -248,3 +248,4 @@ Depends on WP05, WP06.
 ## Activity Log
 
 - 2026-05-06T23:01:14Z – claude:sonnet:implementer:implementer – shell_pid=257956 – Started implementation via action command
+- 2026-05-06T23:08:57Z – claude:sonnet:implementer:implementer – shell_pid=257956 – ES indexer + EnsureIndex + Bulk + QueryActive (lint + 81.7% cov)
