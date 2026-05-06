@@ -87,10 +87,10 @@ Phase A and Phase B execute **in parallel** because alert-crawler's `go.mod` car
 | T042 | Create `internal/catalogue/store.go` (`LoadCheckpoint`, `SaveCheckpoint`, `LookupAlert`, `MarkSeen`, `RescindAbsent`) | WP10 | | [D] |
 | T043 | Implement catalogue rebuild-from-ES path (idempotent recovery on startup) | WP10 | | [D] |
 | T044 | Unit tests with in-memory SQLite | WP10 | | [D] |
-| T045 | Create `internal/elasticsearch/mapping.go` (loads `community_alerts` mapping JSON from contracts/) | WP11 | [P] |
-| T046 | Create `internal/elasticsearch/indexer.go` (raw HTTP; `Index`, `MarkRescinded`, `EnsureIndex`) | WP11 | |
-| T047 | Implement idempotent `EnsureIndex` (HEAD → PUT on 404) | WP11 | |
-| T048 | Unit tests with `httptest.Server` simulating ES responses | WP11 | |
+| T045 | Create `internal/elasticsearch/mapping.go` (loads `community_alerts` mapping JSON from contracts/) | WP11 | [D] |
+| T046 | Create `internal/elasticsearch/indexer.go` (raw HTTP; `Index`, `MarkRescinded`, `EnsureIndex`) | WP11 | | [D] |
+| T047 | Implement idempotent `EnsureIndex` (HEAD → PUT on 404) | WP11 | | [D] |
+| T048 | Unit tests with `httptest.Server` simulating ES responses | WP11 | | [D] |
 | T049 | Create `internal/redis/publisher.go` (`LifecycleEvent` JSON serializer + `Publish`) | WP12 | [P] |
 | T050 | Channel name from config (`community_alerts:lifecycle`); publish failures incremented as metrics, not rolled back | WP12 | |
 | T051 | Wrap `infrastructure/redis` client; do not write a bespoke client | WP12 | |
@@ -407,10 +407,10 @@ Phase A and Phase B execute **in parallel** because alert-crawler's `go.mod` car
 
 **Subtasks**:
 
-- [ ] T045 Create `internal/elasticsearch/mapping.go` (loads `community_alerts` mapping JSON from contracts/) (WP11)
-- [ ] T046 Create `internal/elasticsearch/indexer.go` (raw HTTP; `Index`, `MarkRescinded`, `EnsureIndex`) (WP11)
-- [ ] T047 Implement idempotent `EnsureIndex` (HEAD → PUT on 404) (WP11)
-- [ ] T048 Unit tests with `httptest.Server` simulating ES responses (WP11)
+- [x] T045 Create `internal/elasticsearch/mapping.go` (loads `community_alerts` mapping JSON from contracts/) (WP11)
+- [x] T046 Create `internal/elasticsearch/indexer.go` (raw HTTP; `Index`, `MarkRescinded`, `EnsureIndex`) (WP11)
+- [x] T047 Implement idempotent `EnsureIndex` (HEAD → PUT on 404) (WP11)
+- [x] T048 Unit tests with `httptest.Server` simulating ES responses (WP11)
 
 **Dependencies**: WP05, WP06.
 
