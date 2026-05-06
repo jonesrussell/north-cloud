@@ -235,3 +235,4 @@ Depends on WP05, WP06.
 ## Activity Log
 
 - 2026-05-06T22:51:50Z – claude:sonnet:implementer:implementer – shell_pid=251290 – Started implementation via action command
+- 2026-05-06T22:58:38Z – claude:sonnet:implementer:implementer – shell_pid=251290 – SQLite catalogue + migrations + rebuild path
