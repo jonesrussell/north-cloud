@@ -9,6 +9,7 @@ replace (
 
 require (
 	github.com/jonesrussell/north-cloud/infrastructure v0.0.0-20260502205351-34167b1e4b9c
+	github.com/mattn/go-sqlite3 v1.14.44
 	github.com/stretchr/testify v1.11.1
 	gopkg.in/yaml.v3 v3.0.1
 )
