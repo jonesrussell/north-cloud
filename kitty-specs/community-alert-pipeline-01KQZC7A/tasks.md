@@ -99,10 +99,10 @@ Phase A and Phase B execute **in parallel** because alert-crawler's `go.mod` car
 | T054 | Create `internal/severity/infer.go` (`Infer(Hazard) Severity` function) | WP13 | | [D] |
 | T055 | Default config table: `carfentanil` → `critical`, `nitazenes` → `high`, `medetomidine`+opioid → `high`, others → `medium` | WP13 | | [D] |
 | T056 | Unit tests: highest-severity substance wins; empty hazard returns `medium` floor | WP13 | | [D] |
-| T057 | Create `internal/scope/resolver.go` (imports `taxonomy.ParentRegion`) | WP14 | [P] |
-| T058 | Implement default-scope expansion per source (e.g., `mhrn` defaults to `[treaty:1, canada:manitoba]`) | WP14 | |
-| T059 | Implement location-name → city slug inference (e.g., "Winnipeg" → `canada:manitoba:winnipeg`) | WP14 | |
-| T060 | Unit tests: hierarchy resolution; missing taxonomy token logs metric and continues | WP14 | |
+| T057 | Create `internal/scope/resolver.go` (imports `taxonomy.ParentRegion`) | WP14 | [D] |
+| T058 | Implement default-scope expansion per source (e.g., `mhrn` defaults to `[treaty:1, canada:manitoba]`) | WP14 | | [D] |
+| T059 | Implement location-name → city slug inference (e.g., "Winnipeg" → `canada:manitoba:winnipeg`) | WP14 | | [D] |
+| T060 | Unit tests: hierarchy resolution; missing taxonomy token logs metric and continues | WP14 | | [D] |
 | T061 | Create `internal/runner/runner.go` (poll cycle: load → fetch → parse → diff → resolve → infer → write ES → publish → save) | WP15 | |
 | T062 | Implement rescission detection via `RescindAbsent` after fetch loop | WP15 | |
 | T063 | Implement error classification (transient → backoff; structural → parse_failure metric) | WP15 | |
@@ -476,10 +476,10 @@ Phase A and Phase B execute **in parallel** because alert-crawler's `go.mod` car
 
 **Subtasks**:
 
-- [ ] T057 Create `internal/scope/resolver.go` (imports `taxonomy.ParentRegion`) (WP14)
-- [ ] T058 Implement default-scope expansion per source (e.g., `mhrn` defaults to `[treaty:1, canada:manitoba]`) (WP14)
-- [ ] T059 Implement location-name → city slug inference (e.g., "Winnipeg" → `canada:manitoba:winnipeg`) (WP14)
-- [ ] T060 Unit tests: hierarchy resolution; missing taxonomy token logs metric and continues (WP14)
+- [x] T057 Create `internal/scope/resolver.go` (imports `taxonomy.ParentRegion`) (WP14)
+- [x] T058 Implement default-scope expansion per source (e.g., `mhrn` defaults to `[treaty:1, canada:manitoba]`) (WP14)
+- [x] T059 Implement location-name → city slug inference (e.g., "Winnipeg" → `canada:manitoba:winnipeg`) (WP14)
+- [x] T060 Unit tests: hierarchy resolution; missing taxonomy token logs metric and continues (WP14)
 
 **Dependencies**: WP05, WP06, WP07. (Functionally also depends on the `taxonomy.ParentRegion` function from Phase A; this dependency is satisfied at runtime via the `replace` directive in `go.mod` and is not a sequencing dependency.)
 
