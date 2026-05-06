@@ -70,10 +70,10 @@ Phase A and Phase B execute **in parallel** because alert-crawler's `go.mod` car
 | T025 | Create `internal/domain/source.go` (AlertSource, AcquisitionStrategy enum) | WP06 | | [D] |
 | T026 | Create `internal/domain/lifecycle_event.go` (LifecycleEvent, EventType enum) | WP06 | | [D] |
 | T027 | Add unit tests for envelope JSON round-trip and schema conformance | WP06 | | [D] |
-| T028 | Create `internal/config/config.go` (Config struct with env tags) | WP07 | |
-| T029 | Create `internal/config/defaults.go` (`SetDefaults` function) | WP07 | |
-| T030 | Wire to `infrastructure/config.LoadWithDefaults[Config]` | WP07 | |
-| T031 | Add SetDefaults pitfall regression test (RR-007) — fields with SetDefaults must be absent from `config.yml` | WP07 | |
+| T028 | Create `internal/config/config.go` (Config struct with env tags) | WP07 | | [D] |
+| T029 | Create `internal/config/defaults.go` (`SetDefaults` function) | WP07 | | [D] |
+| T030 | Wire to `infrastructure/config.LoadWithDefaults[Config]` | WP07 | | [D] |
+| T031 | Add SetDefaults pitfall regression test (RR-007) — fields with SetDefaults must be absent from `config.yml` | WP07 | | [D] |
 | T032 | Create `internal/adapter/rss/client.go` (HTTP fetch with `If-None-Match` and `If-Modified-Since`) | WP08 | [P] |
 | T033 | Implement `ErrNotModified` on 304 path; ETag and Last-Modified return values | WP08 | |
 | T034 | Configure User-Agent (`alert-crawler/1.0 (+https://northcloud.one)`) and HTTP timeouts | WP08 | |
@@ -314,10 +314,10 @@ Phase A and Phase B execute **in parallel** because alert-crawler's `go.mod` car
 
 **Subtasks**:
 
-- [ ] T028 Create `internal/config/config.go` (Config struct with env tags) (WP07)
-- [ ] T029 Create `internal/config/defaults.go` (`SetDefaults` function) (WP07)
-- [ ] T030 Wire to `infrastructure/config.LoadWithDefaults[Config]` (WP07)
-- [ ] T031 Add SetDefaults pitfall regression test (RR-007) — fields with SetDefaults must be absent from `config.yml` (WP07)
+- [x] T028 Create `internal/config/config.go` (Config struct with env tags) (WP07)
+- [x] T029 Create `internal/config/defaults.go` (`SetDefaults` function) (WP07)
+- [x] T030 Wire to `infrastructure/config.LoadWithDefaults[Config]` (WP07)
+- [x] T031 Add SetDefaults pitfall regression test (RR-007) — fields with SetDefaults must be absent from `config.yml` (WP07)
 
 **Dependencies**: WP05 (scaffold), WP06 (domain types referenced by config).
 
