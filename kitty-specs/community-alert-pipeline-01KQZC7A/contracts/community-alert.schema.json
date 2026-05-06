@@ -1,0 +1,183 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://north-cloud.local/schemas/community-alert.schema.json",
+  "title": "CommunityAlert",
+  "description": "Canonical envelope for a community safety alert. Single source of truth: alert-crawler's Elasticsearch index 'community_alerts'. Mission community-alert-pipeline-01KQZC7A.",
+  "type": "object",
+  "required": [
+    "id",
+    "category",
+    "severity",
+    "scope",
+    "issued_at",
+    "lifecycle_state",
+    "title",
+    "summary",
+    "hazard",
+    "sources",
+    "parse_quality",
+    "crawled_at",
+    "last_updated_at"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Stable identifier across re-fetches. Derived from canonical source URL when no upstream id is available. Format: '{source_id}:{url_path_slug}'.",
+      "pattern": "^[a-z0-9_-]+:[a-z0-9_-]+$",
+      "examples": ["safersites:20260505fentanyl"]
+    },
+    "category": {
+      "type": "string",
+      "description": "Discriminator. v1 supports harm_reduction. Future categories reserve schema headroom.",
+      "enum": ["harm_reduction"]
+    },
+    "severity": {
+      "type": "string",
+      "enum": ["info", "low", "medium", "high", "critical"]
+    },
+    "scope": {
+      "type": "array",
+      "description": "Hierarchical scope tokens drawn from jonesrussell/indigenous-taxonomy.",
+      "items": {
+        "type": "string",
+        "pattern": "^(canada(:[a-z0-9-]+)*|treaty:[1-9]|treaty:1[01])$",
+        "examples": ["canada:manitoba", "canada:manitoba:winnipeg", "treaty:1", "canada:manitoba:sagkeeng-fn"]
+      },
+      "minItems": 1
+    },
+    "issued_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "RFC 3339 / ISO 8601 timestamp. Source-provided publication time."
+    },
+    "expires_at": {
+      "type": ["string", "null"],
+      "format": "date-time",
+      "description": "When the alert ceases to be 'active'. Source-provided when available; otherwise derived per per-source default policy (default: 30 days from issued_at)."
+    },
+    "lifecycle_state": {
+      "type": "string",
+      "enum": ["active", "rescinded"]
+    },
+    "rescinded_at": {
+      "type": ["string", "null"],
+      "format": "date-time",
+      "description": "Set when lifecycle_state = rescinded. Null otherwise."
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1
+    },
+    "summary": {
+      "type": "string",
+      "minLength": 1
+    },
+    "hazard": {
+      "$ref": "#/definitions/Hazard"
+    },
+    "guidance": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "sources": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/SourceAttribution" },
+      "minItems": 1
+    },
+    "revision_history": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/Revision" }
+    },
+    "parse_quality": {
+      "type": "string",
+      "enum": ["clean", "degraded", "failed"],
+      "description": "Set by the parser. Consumers MAY filter or display a 'review needed' indicator on degraded items."
+    },
+    "crawled_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When alert-crawler first persisted this alert."
+    },
+    "last_updated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Most recent state-change timestamp."
+    }
+  },
+  "definitions": {
+    "Hazard": {
+      "type": "object",
+      "description": "Discriminated by Alert.category. v1 implements HarmReductionHazard.",
+      "oneOf": [
+        { "$ref": "#/definitions/HarmReductionHazard" }
+      ]
+    },
+    "HarmReductionHazard": {
+      "type": "object",
+      "required": ["hazard_type", "substances"],
+      "additionalProperties": false,
+      "properties": {
+        "hazard_type": {
+          "type": "string",
+          "enum": ["opioid_supply", "stimulant_supply", "benzo_supply", "other"]
+        },
+        "substances": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 1
+        },
+        "composition": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/Substance" }
+        },
+        "visual_description": { "type": "string" },
+        "lab_source": { "type": "string" },
+        "confirmation_date": { "type": "string", "format": "date" }
+      }
+    },
+    "Substance": {
+      "type": "object",
+      "required": ["name"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string" },
+        "percentage": { "type": "number", "minimum": 0, "maximum": 100 },
+        "is_active_ingredient": { "type": "boolean" },
+        "note": { "type": "string" }
+      }
+    },
+    "SourceAttribution": {
+      "type": "object",
+      "required": ["source_id", "source_name", "url"],
+      "additionalProperties": false,
+      "properties": {
+        "source_id": { "type": "string" },
+        "source_name": { "type": "string" },
+        "url": { "type": "string", "format": "uri" },
+        "attribution_text": { "type": "string" },
+        "media_links": {
+          "type": "array",
+          "items": { "type": "string", "format": "uri" }
+        }
+      }
+    },
+    "Revision": {
+      "type": "object",
+      "required": ["revision_at", "revision_kind"],
+      "additionalProperties": false,
+      "properties": {
+        "revision_at": { "type": "string", "format": "date-time" },
+        "revision_kind": {
+          "type": "string",
+          "enum": ["created", "updated", "rescinded", "parse_degraded", "parse_recovered"]
+        },
+        "change_summary": { "type": "string" },
+        "changed_fields": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    }
+  }
+}

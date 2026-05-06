@@ -1,0 +1,41 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://north-cloud.local/schemas/community-alert-lifecycle-event.schema.json",
+  "title": "CommunityAlertLifecycleEvent",
+  "description": "Payload published to Redis pub/sub channel 'community_alerts:lifecycle' on every alert state transition. Ephemeral; ES is the canonical store.",
+  "type": "object",
+  "required": ["event_type", "event_at", "alert_id", "category", "severity", "scope", "payload"],
+  "additionalProperties": false,
+  "properties": {
+    "event_type": {
+      "type": "string",
+      "enum": ["created", "updated", "rescinded"]
+    },
+    "event_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When alert-crawler emitted the event (UTC)."
+    },
+    "alert_id": {
+      "type": "string",
+      "description": "Stable Alert.id. Use to look up canonical state in ES if payload is incomplete or ordering is ambiguous."
+    },
+    "category": {
+      "type": "string",
+      "description": "Convenience copy of Alert.category. Lets consumers route without re-fetch."
+    },
+    "severity": {
+      "type": "string",
+      "description": "Convenience copy of Alert.severity."
+    },
+    "scope": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Convenience copy of Alert.scope. Allows server-side filtering by community without re-fetch."
+    },
+    "payload": {
+      "description": "Full Alert envelope at the moment of state change. Consumers MAY use directly; for strong consistency they SHOULD re-read ES.",
+      "$ref": "community-alert.schema.json#"
+    }
+  }
+}
