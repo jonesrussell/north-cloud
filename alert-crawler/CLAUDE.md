@@ -31,6 +31,20 @@ Layer boundaries enforced by `.layers` and `task layers:check`.
 
 ## Known Gotchas
 
+### RSS HTTP client User-Agent (WP08)
+
+The RSS HTTP client (`internal/adapter/rss/Client`) sends:
+
+```
+User-Agent: alert-crawler/1.0 (+https://northcloud.one)
+```
+
+This string is intentionally public and identifies the service if safersites.ca or
+other upstream operators want to contact us. If debugging 403/Cloudflare blocks, match
+this string against server-side access logs. Override via `rss.WithUserAgent(ua)` in
+tests or if the upstream demands a custom header. See RR-001 in WP08 for the
+Cloudflare-block risk and mitigation deferral.
+
 ### RR-007 — config.yml overrides SetDefaults silently
 
 Non-empty values in `config.yml` prevent `config.go` `SetDefaults()` from applying.
