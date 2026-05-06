@@ -92,7 +92,7 @@ And operational observability records source-unreachable events
 And an operator can determine source freshness from observability output
 ```
 
-[NEEDS CLARIFICATION: should community pages display a visible staleness indicator to the community member when the source has been unreachable for longer than a defined threshold?]
+> **Resolution (research, 2026-05-06)**: No end-user staleness indicator in v1. Staleness signaling is operator-only via NFR-008 (operational observability metrics include source-unreachable counts and a consecutive-failures threshold per NFR-005). A future spec amendment may revisit if community feedback indicates the indicator is needed.
 
 **AS-06: Scope vocabulary lookup**
 
@@ -124,9 +124,9 @@ And displays the alert without the page configurator having to enumerate every p
 | FR-003 | The envelope SHALL support a discriminated `category` field with `harm_reduction` as the first implemented category and additional categories (water, evacuation, missing_person, etc.) reserved for future sources without schema changes. | Active |
 | FR-004 | The system SHALL persist every active alert to a durable, queryable, indexed store such that consumers can retrieve the set of currently-active alerts on demand, independently of any subscription state. | Active |
 | FR-005 | The system SHALL emit lifecycle events (`created`, `updated`, `rescinded`) to a dedicated live event channel each time an alert transitions state. | Active |
-| FR-006 | An alert SHALL be addressable by a stable identifier across re-fetches; re-fetching unchanged content SHALL be idempotent and SHALL NOT emit lifecycle events. | Active |
+| FR-006 | An alert SHALL be addressable by a stable identifier across re-fetches; re-fetching unchanged content SHALL be idempotent and SHALL NOT emit lifecycle events. When the upstream source provides no native identifier, the stable ID SHALL be derived deterministically from the canonical source URL. | Active |
 | FR-007 | When an alert's content changes upstream, the system SHALL update the existing alert document in place, append an entry to `revision_history`, and emit an `updated` event. | Active |
-| FR-008 | When an alert is no longer present in the upstream source before its `expires_at`, the system SHALL mark it as rescinded within one poll cycle and emit a `rescinded` event. | Active |
+| FR-008 | When an alert is no longer present in the upstream source before its `expires_at`, the system SHALL mark it as rescinded within one poll cycle and emit a `rescinded` event. Rescission detection requires the system to maintain a local active-alert catalogue and detect upstream feed deltas; the system MAY rebuild the catalogue from the durable store on startup. | Active |
 | FR-009 | The `scope` field SHALL be a list of tokens drawn from the controlled vocabulary maintained in the `jonesrussell/indigenous-taxonomy` package; tokens SHALL participate in a defined hierarchy (e.g., a treaty token transitively includes its constituent communities). | Active |
 | FR-010 | Consumers SHALL be able to determine "does this alert apply to my community?" by resolving a single community identifier against the scope hierarchy, without enumerating parent tokens. | Active |
 | FR-011 | Alerts with `expires_at` in the past SHALL be excluded from the "currently active" query result, regardless of how recently they were published. | Active |
@@ -158,12 +158,12 @@ And displays the alert without the page configurator having to enumerate every p
 | ID | Constraint | Status |
 |---|---|---|
 | C-001 | Alert-crawler is a new service in the north-cloud monorepo and SHALL respect existing service boundaries: services may import only from `infrastructure/` and not from each other. | Active |
-| C-002 | Alert-crawler SHALL NOT introduce new languages, frameworks, or scaffold-level dependencies. Go 1.26+, the existing `infrastructure/logger` package, the existing config patterns, Redis, Elasticsearch, and Postgres are the only permitted runtime building blocks. | Active |
-| C-003 | The `scope` controlled vocabulary SHALL live in `jonesrussell/indigenous-taxonomy`. This mission MAY extend that package; this mission SHALL NOT define or maintain a parallel registry inside north-cloud. | Active |
+| C-002 | Alert-crawler SHALL NOT introduce new languages, frameworks, or scaffold-level dependencies. Go 1.26+, the existing `infrastructure/logger` package, the existing config patterns, Redis, Elasticsearch, Postgres, SQLite (local poll-checkpoint and active-alert catalogue), and a stdlib-or-minimal RSS/Atom feed parser (e.g., `encoding/xml` or `github.com/mmcdole/gofeed`) are the only permitted runtime building blocks. | Active |
+| C-003 | The `scope` controlled vocabulary SHALL live in `jonesrussell/indigenous-taxonomy`. Alert-crawler SHALL import this package directly. This mission MAY extend the package (additive only, with a minor version bump); this mission SHALL NOT define or maintain a parallel registry inside north-cloud, and SHALL NOT depend on the existing hand-rolled shim at `infrastructure/indigenous/region.go`. | Active |
 | C-004 | The durable alert store SHALL be Elasticsearch, naming-aligned with existing classifier indices (`*_classified_content` family) where appropriate, and the index mapping SHALL be managed via `index-manager`. | Active |
 | C-005 | The live event channel SHALL be Redis pub/sub, with channel naming consistent with existing north-cloud conventions (channel naming follows from indigenous-taxonomy slugs where applicable). | Active |
 | C-006 | Alert-crawler SHALL bypass classifier rules and publisher routing entirely; no new classifier rules or publisher channels are required for this mission. | Active |
-| C-007 | Alert-crawler SHALL be operable as a oneshot process driven by an external schedule (systemd timer via the `northcloud-ansible` repo), consistent with `signal-crawler`'s deployment topology. | Active |
+| C-007 | Alert-crawler SHALL be operable as a oneshot process driven by an external schedule (systemd timer via the `northcloud-ansible` repo), consistent with the deployment topology established by `signal-crawler` and its successor `signal-producer` (oneshot binary, systemd timer, Docker Compose `restart: "no"`). | Active |
 | C-008 | Alert-crawler SHALL respect existing quality gates: `task lint:force` clean, `task test` clean, `task drift:check` clean, `task ports:check` clean, `task layers:check` clean, lefthook pre-commit and pre-push pass without `--no-verify`. | Active |
 | C-009 | This mission's specifications, plans, and implementations SHALL document material decisions per DIRECTIVE_003 and SHALL remain faithful to the approved spec per DIRECTIVE_010. | Active |
 | C-010 | Production deployment SHALL follow existing patterns: Docker Compose orchestrated by `deploy.sh`, container naming `north-cloud-alert-crawler`, migrations with unique numeric prefixes, health-check skip list updated for the oneshot pattern. | Active |
@@ -189,7 +189,7 @@ And displays the alert without the page configurator having to enumerate every p
 
 ### 7.1 Alert (community_alert envelope)
 
-A single normalized community safety alert. Discriminated by `category`. Has a stable identifier across re-fetches. Carries severity, scope, issuance and expiry timestamps, hazard-specific structured data, recommended guidance for community members, attribution back to the issuing source(s), and a revision history.
+A single normalized community safety alert. Discriminated by `category`. Has a stable identifier across re-fetches (derived from the canonical source URL when no upstream identifier is available). Carries severity, scope, an issuance timestamp, an expiry timestamp (either provided by the upstream source or derived per a configurable per-source default policy when no upstream value is published), hazard-specific structured data, recommended guidance for community members, attribution back to the issuing source(s), and a revision history.
 
 ### 7.2 Source
 
@@ -257,6 +257,7 @@ The following material decisions are recorded here per DIRECTIVE_003. Detailed A
 - An admin UI for source registration (sources may be configured via the existing source-manager APIs or via service-local config; UX work is deferred).
 - Push notifications, SMS, or email delivery (separate consumer integrations, separate missions).
 - Authoritative quoting/citation tooling for alert provenance beyond the `sources` field.
+- Migrating the existing classifier and publisher services to import `jonesrussell/indigenous-taxonomy` directly (they currently use the hand-rolled shim at `infrastructure/indigenous/region.go`); this is a separate backlog item to be filed independently.
 
 ---
 

@@ -14,7 +14,7 @@
 
 ## Requirement Completeness
 
-- [x] Only one [NEEDS CLARIFICATION] marker remains (AS-05, staleness indicator threshold). Within the 3-marker limit. Decision is non-blocking for plan phase; plan can default to "no UI staleness indicator in v1, observability-only" if not resolved.
+- [x] All [NEEDS CLARIFICATION] markers resolved. AS-05 resolved 2026-05-06 via research findings: no end-user staleness indicator in v1; operator-only observability via NFR-008.
 - [x] Requirements are testable and unambiguous. Each FR/NFR can be verified with a defined test case (e.g., FR-006 idempotency by 100-cycle replay; NFR-001 by latency measurement against `issued_at`).
 - [x] Requirement types are separated: §3 Functional (FR-###), §4 Non-Functional (NFR-###), §5 Constraints (C-###). No mixing.
 - [x] IDs are unique across FR-###, NFR-###, and C-### namespaces. Verified: FR-001..015, NFR-001..009, C-001..011.
@@ -36,7 +36,7 @@
 
 ## Notes
 
-- **Single open clarification**: AS-05 staleness indicator threshold. Recommended default if not resolved in plan: no end-user staleness indicator in v1; operator-only observability via NFR-008. The maintainer can resolve at plan-phase or carry the marker forward as a known v2 enhancement.
+- **AS-05 resolved**: 2026-05-06 via research findings (no end-user staleness indicator in v1; operator-only observability via NFR-008). Spec inline resolution recorded in §2.2 AS-05 block.
 - **Charter exception**: documented in AD-007 and C-011. No further action required at spec phase. Plan phase should reaffirm in any architectural overview.
 - **Research dependencies**: R-001 (feed availability), R-002 (signal-crawler internals), R-003 (rfp-ingestor bypass), R-004 (taxonomy gaps) are flagged as required pre-plan research, not as spec gaps. They affect plan-level decisions, not spec-level requirements.
 - **Risks captured**: §9 includes RK-001..007 with mitigations, applying the `premortem-risk-identification` tactic from the specify-action doctrine.
