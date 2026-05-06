@@ -78,10 +78,10 @@ Phase A and Phase B execute **in parallel** because alert-crawler's `go.mod` car
 | T033 | Implement `ErrNotModified` on 304 path; ETag and Last-Modified return values | WP08 | | [D] |
 | T034 | Configure User-Agent (`alert-crawler/1.0 (+https://northcloud.one)`) and HTTP timeouts | WP08 | | [D] |
 | T035 | Unit tests: 304 path, 200 path, 5xx with backoff, network timeout | WP08 | | [D] |
-| T036 | Create `internal/adapter/rss/parser.go` (RSS XML parse via `encoding/xml`) | WP09 | [P] |
-| T037 | Implement `<description>` HTML extractor (substance composition, lab source, confirmation date) | WP09 | |
-| T038 | Defensive parsing with `parse_quality` flag (clean/degraded); never auto-rescind on parse failure (TC-010) | WP09 | |
-| T039 | Unit tests with golden RSS fixture (real safersites.ca sample anonymized to a fixture) | WP09 | |
+| T036 | Create `internal/adapter/rss/parser.go` (RSS XML parse via `encoding/xml`) | WP09 | [D] |
+| T037 | Implement `<description>` HTML extractor (substance composition, lab source, confirmation date) | WP09 | | [D] |
+| T038 | Defensive parsing with `parse_quality` flag (clean/degraded); never auto-rescind on parse failure (TC-010) | WP09 | | [D] |
+| T039 | Unit tests with golden RSS fixture (real safersites.ca sample anonymized to a fixture) | WP09 | | [D] |
 | T040 | Create `internal/catalogue/schema.sql` (`poll_checkpoint`, `alert_catalogue` tables) | WP10 | [P] |
 | T041 | Add `internal/catalogue/migrations/` with unique numeric prefixes | WP10 | |
 | T042 | Create `internal/catalogue/store.go` (`LoadCheckpoint`, `SaveCheckpoint`, `LookupAlert`, `MarkSeen`, `RescindAbsent`) | WP10 | |
@@ -360,10 +360,10 @@ Phase A and Phase B execute **in parallel** because alert-crawler's `go.mod` car
 
 **Subtasks**:
 
-- [ ] T036 Create `internal/adapter/rss/parser.go` (RSS XML parse via `encoding/xml`) (WP09)
-- [ ] T037 Implement `<description>` HTML extractor (substance composition, lab source, confirmation date) (WP09)
-- [ ] T038 Defensive parsing with `parse_quality` flag (clean/degraded); never auto-rescind on parse failure (TC-010) (WP09)
-- [ ] T039 Unit tests with golden RSS fixture (real safersites.ca sample anonymized to a fixture) (WP09)
+- [x] T036 Create `internal/adapter/rss/parser.go` (RSS XML parse via `encoding/xml`) (WP09)
+- [x] T037 Implement `<description>` HTML extractor (substance composition, lab source, confirmation date) (WP09)
+- [x] T038 Defensive parsing with `parse_quality` flag (clean/degraded); never auto-rescind on parse failure (TC-010) (WP09)
+- [x] T039 Unit tests with golden RSS fixture (real safersites.ca sample anonymized to a fixture) (WP09)
 
 **Dependencies**: WP05, WP06.
 
