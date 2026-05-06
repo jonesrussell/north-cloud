@@ -1,0 +1,86 @@
+// Package config provides configuration management for the alert-crawler service.
+//
+// Precedence (highest to lowest):
+//
+//  1. Environment variables (env struct tags)
+//  2. YAML file values
+//  3. SetDefaults (code-level defaults)
+//
+// # RR-007 Pitfall
+//
+// Non-empty values in config.yml silently prevent SetDefaults from applying.
+// Fields owned by SetDefaults MUST be left blank or omitted in config.yml.
+// Use environment variables for per-environment overrides.
+package config
+
+import (
+	"fmt"
+
+	"github.com/jonesrussell/north-cloud/alert-crawler/internal/domain"
+	infraconfig "github.com/jonesrussell/north-cloud/infrastructure/config"
+)
+
+// ServiceConfig holds basic service identity configuration.
+type ServiceConfig struct {
+	Name string `yaml:"name" env:"SERVICE_NAME"`
+}
+
+// DatabaseConfig holds SQLite catalogue database configuration.
+type DatabaseConfig struct {
+	Path           string `yaml:"path"            env:"ALERT_DB_PATH"`
+	MigrationsPath string `yaml:"migrations_path" env:"ALERT_DB_MIGRATIONS_PATH"`
+}
+
+// ESConfig holds Elasticsearch index configuration for alert-crawler.
+type ESConfig struct {
+	URL   string `yaml:"url"   env:"ELASTICSEARCH_URL"`
+	Index string `yaml:"index" env:"ALERT_ES_INDEX"`
+}
+
+// RedisConfig holds Redis pub/sub configuration for alert-crawler.
+type RedisConfig struct {
+	URL     string `yaml:"url"     env:"REDIS_URL"`
+	Channel string `yaml:"channel" env:"ALERT_REDIS_CHANNEL"`
+}
+
+// SeverityConfig maps hazard keyword strings to domain severity levels.
+// The Table field drives the keyword-scoring step in the severity package.
+type SeverityConfig struct {
+	Table map[string]domain.Severity `yaml:"table"`
+}
+
+// ObservabilityConfig holds structured logging configuration.
+type ObservabilityConfig struct {
+	LogLevel  string `yaml:"log_level"  env:"LOG_LEVEL"`
+	LogFormat string `yaml:"log_format" env:"LOG_FORMAT"`
+}
+
+// Config is the top-level configuration for alert-crawler.
+//
+// Load via [Load], which calls infrastructure/config.LoadWithDefaults and
+// enforces the env > YAML > SetDefaults precedence chain.
+type Config struct {
+	Service       ServiceConfig       `yaml:"service"`
+	Sources       []domain.AlertSource `yaml:"sources"`
+	Database      DatabaseConfig      `yaml:"database"`
+	Elasticsearch ESConfig            `yaml:"elasticsearch"`
+	Redis         RedisConfig         `yaml:"redis"`
+	Severity      SeverityConfig      `yaml:"severity"`
+	Observability ObservabilityConfig `yaml:"observability"`
+}
+
+// Load reads config from path, applies code defaults via SetDefaults, then
+// re-applies environment variable overrides so that env always wins.
+//
+// Precedence: env vars > YAML file > SetDefaults.
+// See the package-level doc and RR-007 in alert-crawler/CLAUDE.md for the
+// config.yml pitfall: fields that have non-empty YAML values prevent
+// SetDefaults from running — leave SetDefaults-owned fields blank in config.yml.
+func Load(path string) (*Config, error) {
+	cfg, err := infraconfig.LoadWithDefaults[Config](path, SetDefaults)
+	if err != nil {
+		return nil, fmt.Errorf("load alert-crawler config: %w", err)
+	}
+
+	return cfg, nil
+}
