@@ -17,8 +17,8 @@ subtasks:
 - T014
 - T015
 phase: A
-agent: "claude:sonnet:implementer:implementer"
-shell_pid: "210794"
+agent: "claude:opus:reviewer:reviewer"
+shell_pid: "213114"
 history:
 - at: '2026-05-06T20:51:29Z'
   event: created
@@ -205,3 +205,4 @@ Depends on WP01, WP02, WP03. The agent should confirm those are merged before op
 - 2026-05-06T21:59:11Z – claude:opus:reviewer:reviewer – shell_pid=209604 – Moved to planned
 - 2026-05-06T22:00:06Z – claude:sonnet:implementer:implementer – shell_pid=210794 – Started implementation via action command
 - 2026-05-06T22:01:51Z – claude:sonnet:implementer:implementer – shell_pid=210794 – Cycle 1 fix: pyproject.toml bumped to 1.1.0; v1.1.0 retagged in place on commit 63a336f
+- 2026-05-06T22:02:21Z – claude:opus:reviewer:reviewer – shell_pid=213114 – Started review via action command
