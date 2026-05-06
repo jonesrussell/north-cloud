@@ -82,11 +82,11 @@ Phase A and Phase B execute **in parallel** because alert-crawler's `go.mod` car
 | T037 | Implement `<description>` HTML extractor (substance composition, lab source, confirmation date) | WP09 | | [D] |
 | T038 | Defensive parsing with `parse_quality` flag (clean/degraded); never auto-rescind on parse failure (TC-010) | WP09 | | [D] |
 | T039 | Unit tests with golden RSS fixture (real safersites.ca sample anonymized to a fixture) | WP09 | | [D] |
-| T040 | Create `internal/catalogue/schema.sql` (`poll_checkpoint`, `alert_catalogue` tables) | WP10 | [P] |
-| T041 | Add `internal/catalogue/migrations/` with unique numeric prefixes | WP10 | |
-| T042 | Create `internal/catalogue/store.go` (`LoadCheckpoint`, `SaveCheckpoint`, `LookupAlert`, `MarkSeen`, `RescindAbsent`) | WP10 | |
-| T043 | Implement catalogue rebuild-from-ES path (idempotent recovery on startup) | WP10 | |
-| T044 | Unit tests with in-memory SQLite | WP10 | |
+| T040 | Create `internal/catalogue/schema.sql` (`poll_checkpoint`, `alert_catalogue` tables) | WP10 | [D] |
+| T041 | Add `internal/catalogue/migrations/` with unique numeric prefixes | WP10 | | [D] |
+| T042 | Create `internal/catalogue/store.go` (`LoadCheckpoint`, `SaveCheckpoint`, `LookupAlert`, `MarkSeen`, `RescindAbsent`) | WP10 | | [D] |
+| T043 | Implement catalogue rebuild-from-ES path (idempotent recovery on startup) | WP10 | | [D] |
+| T044 | Unit tests with in-memory SQLite | WP10 | | [D] |
 | T045 | Create `internal/elasticsearch/mapping.go` (loads `community_alerts` mapping JSON from contracts/) | WP11 | [P] |
 | T046 | Create `internal/elasticsearch/indexer.go` (raw HTTP; `Index`, `MarkRescinded`, `EnsureIndex`) | WP11 | |
 | T047 | Implement idempotent `EnsureIndex` (HEAD → PUT on 404) | WP11 | |
@@ -383,11 +383,11 @@ Phase A and Phase B execute **in parallel** because alert-crawler's `go.mod` car
 
 **Subtasks**:
 
-- [ ] T040 Create `internal/catalogue/schema.sql` (`poll_checkpoint`, `alert_catalogue` tables) (WP10)
-- [ ] T041 Add `internal/catalogue/migrations/` with unique numeric prefixes (WP10)
-- [ ] T042 Create `internal/catalogue/store.go` (`LoadCheckpoint`, `SaveCheckpoint`, `LookupAlert`, `MarkSeen`, `RescindAbsent`) (WP10)
-- [ ] T043 Implement catalogue rebuild-from-ES path (idempotent recovery on startup) (WP10)
-- [ ] T044 Unit tests with in-memory SQLite (WP10)
+- [x] T040 Create `internal/catalogue/schema.sql` (`poll_checkpoint`, `alert_catalogue` tables) (WP10)
+- [x] T041 Add `internal/catalogue/migrations/` with unique numeric prefixes (WP10)
+- [x] T042 Create `internal/catalogue/store.go` (`LoadCheckpoint`, `SaveCheckpoint`, `LookupAlert`, `MarkSeen`, `RescindAbsent`) (WP10)
+- [x] T043 Implement catalogue rebuild-from-ES path (idempotent recovery on startup) (WP10)
+- [x] T044 Unit tests with in-memory SQLite (WP10)
 
 **Dependencies**: WP05, WP06.
 
