@@ -51,9 +51,9 @@ Phase A and Phase B execute **in parallel** because alert-crawler's `go.mod` car
 | T006 | Add sample First Nations community per active treaty (e.g., `canada:manitoba:sagkeeng-fn`) | WP02 | | [D] |
 | T007 | Regenerate `taxonomy/regions.go` with new entries | WP02 | | [D] |
 | T008 | Update region tests (count assertions; new constant existence) | WP02 | | [D] |
-| T009 | Extend `scripts/generate.py` to emit `ParentRegion` lookup table from YAML `children:` | WP03 | |
-| T010 | Generate `ParentRegion(Region) (Region, bool)` in `taxonomy/regions.go` | WP03 | |
-| T011 | Unit tests covering hierarchy walks (leaf → province, province → canada, canada → no parent) | WP03 | |
+| T009 | Extend `scripts/generate.py` to emit `ParentRegion` lookup table from YAML `children:` | WP03 | | [D] |
+| T010 | Generate `ParentRegion(Region) (Region, bool)` in `taxonomy/regions.go` | WP03 | | [D] |
+| T011 | Unit tests covering hierarchy walks (leaf → province, province → canada, canada → no parent) | WP03 | | [D] |
 | T012 | Audit `tests/` for hardcoded counter assertions (RR-004) | WP04 | |
 | T013 | Update `taxonomy/version.go` and `go.mod` to v1.1.0 | WP04 | |
 | T014 | Update `CHANGELOG.md` with additive changes | WP04 | |
@@ -217,9 +217,9 @@ Phase A and Phase B execute **in parallel** because alert-crawler's `go.mod` car
 
 **Subtasks**:
 
-- [ ] T009 Extend `scripts/generate.py` to emit `ParentRegion` lookup table from YAML `children:` (WP03)
-- [ ] T010 Generate `ParentRegion(Region) (Region, bool)` in `taxonomy/regions.go` (WP03)
-- [ ] T011 Unit tests covering hierarchy walks (leaf → province, province → canada, canada → no parent) (WP03)
+- [x] T009 Extend `scripts/generate.py` to emit `ParentRegion` lookup table from YAML `children:` (WP03)
+- [x] T010 Generate `ParentRegion(Region) (Region, bool)` in `taxonomy/regions.go` (WP03)
+- [x] T011 Unit tests covering hierarchy walks (leaf → province, province → canada, canada → no parent) (WP03)
 
 **Dependencies**: WP01, WP02 (the generator changes operate on the regions and treaties schemas; can race-condition the `regions.go` regeneration).
 
