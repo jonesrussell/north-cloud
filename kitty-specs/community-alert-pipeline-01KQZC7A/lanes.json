@@ -1,0 +1,285 @@
+{
+  "version": 1,
+  "mission_slug": "community-alert-pipeline-01KQZC7A",
+  "mission_id": "01KQZC7A7SJJZ6EKHZ9JW3AZJG",
+  "mission_branch": "kitty/mission-community-alert-pipeline-01KQZC7A",
+  "target_branch": "main",
+  "lanes": [
+    {
+      "lane_id": "lane-a",
+      "wp_ids": [
+        "WP01",
+        "WP02",
+        "WP03",
+        "WP04",
+        "WP05",
+        "WP06",
+        "WP07",
+        "WP08",
+        "WP09",
+        "WP10",
+        "WP11",
+        "WP12",
+        "WP13",
+        "WP14",
+        "WP15",
+        "WP16",
+        "WP17",
+        "WP18",
+        "WP19",
+        "WP20",
+        "WP21",
+        "WP22",
+        "WP23",
+        "WP24"
+      ],
+      "write_scope": [
+        "../indigenous-taxonomy/CHANGELOG.md",
+        "../indigenous-taxonomy/generated/go/taxonomy/parent_region_test.go",
+        "../indigenous-taxonomy/generated/go/taxonomy/regions.go",
+        "../indigenous-taxonomy/generated/go/taxonomy/regions_test.go",
+        "../indigenous-taxonomy/generated/go/taxonomy/treaties.go",
+        "../indigenous-taxonomy/generated/go/taxonomy/treaties_test.go",
+        "../indigenous-taxonomy/generated/go/taxonomy/version.go",
+        "../indigenous-taxonomy/go.mod",
+        "../indigenous-taxonomy/schema/regions.yaml",
+        "../indigenous-taxonomy/schema/treaties.yaml",
+        "../indigenous-taxonomy/scripts/generate.py",
+        "../indigenous-taxonomy/tests/**",
+        "../northcloud-ansible/roles/north-cloud/defaults/main.yml",
+        "../northcloud-ansible/roles/north-cloud/tasks/alert-crawler.yml",
+        "../northcloud-ansible/roles/north-cloud/templates/alert-crawler.service.j2",
+        "../northcloud-ansible/roles/north-cloud/templates/alert-crawler.timer.j2",
+        "CLAUDE.md",
+        "Taskfile.yml",
+        "alert-crawler/.layers",
+        "alert-crawler/CLAUDE.md",
+        "alert-crawler/Dockerfile",
+        "alert-crawler/Taskfile.yml",
+        "alert-crawler/cmd/backfill/**",
+        "alert-crawler/config.yml",
+        "alert-crawler/data/.gitkeep",
+        "alert-crawler/go.mod",
+        "alert-crawler/go.sum",
+        "alert-crawler/integration/as01_test.go",
+        "alert-crawler/integration/as02_test.go",
+        "alert-crawler/integration/as03_test.go",
+        "alert-crawler/integration/as04_test.go",
+        "alert-crawler/integration/as05_test.go",
+        "alert-crawler/integration/as06_test.go",
+        "alert-crawler/integration/backfill_rehearsal_test.go",
+        "alert-crawler/integration/fixture_feed.go",
+        "alert-crawler/integration/harness.go",
+        "alert-crawler/integration/nfr_*",
+        "alert-crawler/integration/subscriber.go",
+        "alert-crawler/internal/adapter/rss/client.go",
+        "alert-crawler/internal/adapter/rss/client_test.go",
+        "alert-crawler/internal/adapter/rss/errors.go",
+        "alert-crawler/internal/adapter/rss/extractor.go",
+        "alert-crawler/internal/adapter/rss/extractor_test.go",
+        "alert-crawler/internal/adapter/rss/parser.go",
+        "alert-crawler/internal/adapter/rss/parser_test.go",
+        "alert-crawler/internal/adapter/rss/testdata/**",
+        "alert-crawler/internal/catalogue/**",
+        "alert-crawler/internal/config/**",
+        "alert-crawler/internal/domain/**",
+        "alert-crawler/internal/elasticsearch/**",
+        "alert-crawler/internal/observability/**",
+        "alert-crawler/internal/redis/**",
+        "alert-crawler/internal/runner/backfill.go",
+        "alert-crawler/internal/runner/backfill_test.go",
+        "alert-crawler/internal/runner/integration_test.go",
+        "alert-crawler/internal/runner/mocks_test.go",
+        "alert-crawler/internal/runner/runner.go",
+        "alert-crawler/internal/runner/runner_test.go",
+        "alert-crawler/internal/scope/**",
+        "alert-crawler/internal/severity/**",
+        "alert-crawler/main.go",
+        "alert-crawler/main_test.go",
+        "docker-compose.base.yml",
+        "docs/generated/ports-and-env.md",
+        "docs/specs/community-alert-pipeline.md",
+        "scripts/deploy.sh",
+        "scripts/detect-changed-services.sh",
+        "tools/drift-detector.sh"
+      ],
+      "predicted_surfaces": [
+        "api",
+        "app-shell",
+        "artifact-rendering",
+        "legacy-cleanup",
+        "tests",
+        "tracker-integration",
+        "workspace"
+      ],
+      "depends_on_lanes": [],
+      "parallel_group": 0
+    },
+    {
+      "lane_id": "lane-planning",
+      "wp_ids": [
+        "WP25"
+      ],
+      "write_scope": [
+        "kitty-specs/community-alert-pipeline-01KQZC7A/checklists/pre-merge.md"
+      ],
+      "predicted_surfaces": [
+        "planning"
+      ],
+      "depends_on_lanes": [],
+      "parallel_group": 0
+    }
+  ],
+  "computed_at": "2026-05-06T21:21:45.029971+00:00",
+  "computed_from": "dependency_graph+ownership",
+  "planning_artifact_wps": [
+    "WP25"
+  ],
+  "collapse_report": {
+    "events": [
+      {
+        "wp_a": "WP03",
+        "wp_b": "WP01",
+        "rule": "dependency",
+        "evidence": "WP03 depends on WP01"
+      },
+      {
+        "wp_a": "WP03",
+        "wp_b": "WP02",
+        "rule": "dependency",
+        "evidence": "WP03 depends on WP02"
+      },
+      {
+        "wp_a": "WP04",
+        "wp_b": "WP01",
+        "rule": "dependency",
+        "evidence": "WP04 depends on WP01"
+      },
+      {
+        "wp_a": "WP06",
+        "wp_b": "WP05",
+        "rule": "dependency",
+        "evidence": "WP06 depends on WP05"
+      },
+      {
+        "wp_a": "WP07",
+        "wp_b": "WP05",
+        "rule": "dependency",
+        "evidence": "WP07 depends on WP05"
+      },
+      {
+        "wp_a": "WP08",
+        "wp_b": "WP05",
+        "rule": "dependency",
+        "evidence": "WP08 depends on WP05"
+      },
+      {
+        "wp_a": "WP09",
+        "wp_b": "WP05",
+        "rule": "dependency",
+        "evidence": "WP09 depends on WP05"
+      },
+      {
+        "wp_a": "WP10",
+        "wp_b": "WP05",
+        "rule": "dependency",
+        "evidence": "WP10 depends on WP05"
+      },
+      {
+        "wp_a": "WP11",
+        "wp_b": "WP05",
+        "rule": "dependency",
+        "evidence": "WP11 depends on WP05"
+      },
+      {
+        "wp_a": "WP12",
+        "wp_b": "WP05",
+        "rule": "dependency",
+        "evidence": "WP12 depends on WP05"
+      },
+      {
+        "wp_a": "WP13",
+        "wp_b": "WP05",
+        "rule": "dependency",
+        "evidence": "WP13 depends on WP05"
+      },
+      {
+        "wp_a": "WP14",
+        "wp_b": "WP05",
+        "rule": "dependency",
+        "evidence": "WP14 depends on WP05"
+      },
+      {
+        "wp_a": "WP15",
+        "wp_b": "WP06",
+        "rule": "dependency",
+        "evidence": "WP15 depends on WP06"
+      },
+      {
+        "wp_a": "WP16",
+        "wp_b": "WP15",
+        "rule": "dependency",
+        "evidence": "WP16 depends on WP15"
+      },
+      {
+        "wp_a": "WP17",
+        "wp_b": "WP15",
+        "rule": "dependency",
+        "evidence": "WP17 depends on WP15"
+      },
+      {
+        "wp_a": "WP18",
+        "wp_b": "WP15",
+        "rule": "dependency",
+        "evidence": "WP18 depends on WP15"
+      },
+      {
+        "wp_a": "WP19",
+        "wp_b": "WP04",
+        "rule": "dependency",
+        "evidence": "WP19 depends on WP04"
+      },
+      {
+        "wp_a": "WP19",
+        "wp_b": "WP18",
+        "rule": "dependency",
+        "evidence": "WP19 depends on WP18"
+      },
+      {
+        "wp_a": "WP20",
+        "wp_b": "WP05",
+        "rule": "dependency",
+        "evidence": "WP20 depends on WP05"
+      },
+      {
+        "wp_a": "WP21",
+        "wp_b": "WP05",
+        "rule": "dependency",
+        "evidence": "WP21 depends on WP05"
+      },
+      {
+        "wp_a": "WP22",
+        "wp_b": "WP05",
+        "rule": "dependency",
+        "evidence": "WP22 depends on WP05"
+      },
+      {
+        "wp_a": "WP23",
+        "wp_b": "WP05",
+        "rule": "dependency",
+        "evidence": "WP23 depends on WP05"
+      },
+      {
+        "wp_a": "WP24",
+        "wp_b": "WP18",
+        "rule": "dependency",
+        "evidence": "WP24 depends on WP18"
+      }
+    ],
+    "total_merges": 23,
+    "independent_wps_collapsed": 0,
+    "by_rule": {
+      "dependency": 23
+    }
+  }
+}

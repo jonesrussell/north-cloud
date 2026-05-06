@@ -6,7 +6,7 @@ requirement_refs:
 - FR-009
 planning_base_branch: main
 merge_target_branch: main
-branch_strategy: lane-worktree-from-main
+branch_strategy: Planning artifacts for this feature were generated on main. During /spec-kitty.implement this WP may branch from a dependency-specific base, but completed changes must merge back into main unless the human explicitly redirects the landing branch.
 subtasks:
 - T005
 - T006
@@ -17,14 +17,13 @@ history:
 - at: '2026-05-06T20:51:29Z'
   event: created
   by: spec-kitty.tasks
-authoritative_surface: /home/jones/dev/indigenous-taxonomy/
+authoritative_surface: ../indigenous-taxonomy/
 execution_mode: code_change
 mission_id: 01KQZC7A7SJJZ6EKHZ9JW3AZJG
 mission_slug: community-alert-pipeline-01KQZC7A
 owned_files:
-- /home/jones/dev/indigenous-taxonomy/schema/regions.yaml
-- /home/jones/dev/indigenous-taxonomy/generated/go/taxonomy/regions.go
-- /home/jones/dev/indigenous-taxonomy/generated/go/taxonomy/regions_test.go
+- ../indigenous-taxonomy/schema/regions.yaml
+- ../indigenous-taxonomy/generated/go/taxonomy/regions_test.go
 priority: P1
 tags: []
 ---
@@ -43,7 +42,7 @@ Extend `schema/regions.yaml` with city-level children under existing province no
 
 ## Branch Strategy
 
-Same as WP01 — cross-repo work in `/home/jones/dev/indigenous-taxonomy/`. WP02 can run in parallel with WP01; both extend the schema directory but touch different YAML files.
+Same as WP01 — cross-repo work in `../indigenous-taxonomy/`. WP02 can run in parallel with WP01; both extend the schema directory but touch different YAML files.
 
 ## Subtasks
 
@@ -52,7 +51,7 @@ Same as WP01 — cross-repo work in `/home/jones/dev/indigenous-taxonomy/`. WP02
 **Purpose**: Add city-level slugs under the relevant provincial parent so alerts originating from a specific city can be routed precisely.
 
 **Steps**:
-1. Read `/home/jones/dev/indigenous-taxonomy/schema/regions.yaml` to learn the existing structure (uses `children:` keys for hierarchy).
+1. Read `../indigenous-taxonomy/schema/regions.yaml` to learn the existing structure (uses `children:` keys for hierarchy).
 2. Add the following city children under their respective provinces:
    - `canada:manitoba:winnipeg` (under `canada:manitoba`)
    - `canada:ontario:toronto`, `canada:ontario:ottawa` (under `canada:ontario`)
@@ -63,7 +62,7 @@ Same as WP01 — cross-repo work in `/home/jones/dev/indigenous-taxonomy/`. WP02
 4. Preserve the YAML's existing ordering and indentation.
 
 **Files**:
-- `/home/jones/dev/indigenous-taxonomy/schema/regions.yaml` (modified, +~30 lines).
+- `../indigenous-taxonomy/schema/regions.yaml` (modified, +~30 lines).
 
 **Validation**:
 - YAML loads cleanly.
@@ -85,7 +84,7 @@ Same as WP01 — cross-repo work in `/home/jones/dev/indigenous-taxonomy/`. WP02
 4. The mission spec deliberately limits this to "one sample per active treaty area" to establish the pattern; broader enumeration is in the post-mission backlog.
 
 **Files**:
-- `/home/jones/dev/indigenous-taxonomy/schema/regions.yaml` (modified, +~10 lines).
+- `../indigenous-taxonomy/schema/regions.yaml` (modified, +~10 lines).
 
 **Validation**:
 - Slug pattern is consistent (`canada:{province}:{community}-fn` for First Nations; future entries can introduce `-mn` for Métis Nations or `-inuit` for Inuit communities).
@@ -101,14 +100,14 @@ Same as WP01 — cross-repo work in `/home/jones/dev/indigenous-taxonomy/`. WP02
 
 **Steps**:
 1. Run `python scripts/generate.py` (or canonical generator command).
-2. Verify the regenerated `/home/jones/dev/indigenous-taxonomy/generated/go/taxonomy/regions.go` includes:
+2. Verify the regenerated `../indigenous-taxonomy/generated/go/taxonomy/regions.go` includes:
    - All existing constants unchanged.
    - New constants for each city and community slug.
    - `AllRegions` slice expanded.
 3. Run `gofmt -w` and `go vet`.
 
 **Files**:
-- `/home/jones/dev/indigenous-taxonomy/generated/go/taxonomy/regions.go` (regenerated, ~22 entries → ~30 entries).
+- `../indigenous-taxonomy/generated/go/taxonomy/regions.go` (regenerated, ~22 entries → ~30 entries).
 
 **Validation**:
 - `go build ./generated/go/taxonomy/...` succeeds.
@@ -123,7 +122,7 @@ Same as WP01 — cross-repo work in `/home/jones/dev/indigenous-taxonomy/`. WP02
 **Purpose**: Make sure existing tests still pass with the new region count and new constants.
 
 **Steps**:
-1. Find the existing region test file (likely `/home/jones/dev/indigenous-taxonomy/generated/go/taxonomy/regions_test.go`).
+1. Find the existing region test file (likely `../indigenous-taxonomy/generated/go/taxonomy/regions_test.go`).
 2. If a hardcoded `len(AllRegions) == N` assertion exists, update it (or refactor to assert "≥ N for known constants" rather than an exact count).
 3. Add tests for the new city and community constants:
    - `IsValidRegion("canada:manitoba:winnipeg")` returns true.
@@ -132,7 +131,7 @@ Same as WP01 — cross-repo work in `/home/jones/dev/indigenous-taxonomy/`. WP02
 4. Use `t.Helper()` in helpers; coverage ≥80% on changed file.
 
 **Files**:
-- `/home/jones/dev/indigenous-taxonomy/generated/go/taxonomy/regions_test.go` (modified, +~30 lines).
+- `../indigenous-taxonomy/generated/go/taxonomy/regions_test.go` (modified, +~30 lines).
 
 **Validation**:
 - `go test ./generated/go/taxonomy/... -run TestRegion` passes.

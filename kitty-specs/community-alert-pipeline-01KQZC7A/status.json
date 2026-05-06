@@ -1,0 +1,196 @@
+{
+  "event_count": 25,
+  "last_event_id": "01KQZJP3GT15XX6KA5XCH288SW",
+  "materialized_at": "2026-05-06T21:21:44.986121+00:00",
+  "mission_number": "",
+  "mission_slug": "community-alert-pipeline-01KQZC7A",
+  "mission_type": "software-dev",
+  "summary": {
+    "approved": 0,
+    "blocked": 0,
+    "canceled": 0,
+    "claimed": 0,
+    "done": 0,
+    "for_review": 0,
+    "in_progress": 0,
+    "in_review": 0,
+    "planned": 25
+  },
+  "work_packages": {
+    "WP01": {
+      "actor": "finalize-tasks",
+      "force_count": 1,
+      "lane": "planned",
+      "last_event_id": "01KQZJP26ETFYNY6EBYC197388",
+      "last_transition_at": "2026-05-06T21:21:43.630829+00:00"
+    },
+    "WP02": {
+      "actor": "finalize-tasks",
+      "force_count": 1,
+      "lane": "planned",
+      "last_event_id": "01KQZJP2T8H8PR9ZY7PBPGRTW1",
+      "last_transition_at": "2026-05-06T21:21:44.264112+00:00"
+    },
+    "WP03": {
+      "actor": "finalize-tasks",
+      "force_count": 1,
+      "lane": "planned",
+      "last_event_id": "01KQZJP2V8TT6BDKZ1ZFAAABV8",
+      "last_transition_at": "2026-05-06T21:21:44.296626+00:00"
+    },
+    "WP04": {
+      "actor": "finalize-tasks",
+      "force_count": 1,
+      "lane": "planned",
+      "last_event_id": "01KQZJP2VYF5W8EEQVVBZT4B43",
+      "last_transition_at": "2026-05-06T21:21:44.318719+00:00"
+    },
+    "WP05": {
+      "actor": "finalize-tasks",
+      "force_count": 1,
+      "lane": "planned",
+      "last_event_id": "01KQZJP2X2REWY323CTKRB7SDM",
+      "last_transition_at": "2026-05-06T21:21:44.354597+00:00"
+    },
+    "WP06": {
+      "actor": "finalize-tasks",
+      "force_count": 1,
+      "lane": "planned",
+      "last_event_id": "01KQZJP2XR4MYYK9T7YEPDY3CS",
+      "last_transition_at": "2026-05-06T21:21:44.376379+00:00"
+    },
+    "WP07": {
+      "actor": "finalize-tasks",
+      "force_count": 1,
+      "lane": "planned",
+      "last_event_id": "01KQZJP2YNDEPH9N573DT1XC96",
+      "last_transition_at": "2026-05-06T21:21:44.405242+00:00"
+    },
+    "WP08": {
+      "actor": "finalize-tasks",
+      "force_count": 1,
+      "lane": "planned",
+      "last_event_id": "01KQZJP2ZG12CYKH8KDEV66HVV",
+      "last_transition_at": "2026-05-06T21:21:44.432490+00:00"
+    },
+    "WP09": {
+      "actor": "finalize-tasks",
+      "force_count": 1,
+      "lane": "planned",
+      "last_event_id": "01KQZJP30KHNFE7TRXBQ09NYKC",
+      "last_transition_at": "2026-05-06T21:21:44.467815+00:00"
+    },
+    "WP10": {
+      "actor": "finalize-tasks",
+      "force_count": 1,
+      "lane": "planned",
+      "last_event_id": "01KQZJP31GSKN19Y1QDR6RVP23",
+      "last_transition_at": "2026-05-06T21:21:44.496226+00:00"
+    },
+    "WP11": {
+      "actor": "finalize-tasks",
+      "force_count": 1,
+      "lane": "planned",
+      "last_event_id": "01KQZJP32V9G7RMZ5VZRAHJKP2",
+      "last_transition_at": "2026-05-06T21:21:44.539751+00:00"
+    },
+    "WP12": {
+      "actor": "finalize-tasks",
+      "force_count": 1,
+      "lane": "planned",
+      "last_event_id": "01KQZJP34GDKZBY6C94CG426CX",
+      "last_transition_at": "2026-05-06T21:21:44.592889+00:00"
+    },
+    "WP13": {
+      "actor": "finalize-tasks",
+      "force_count": 1,
+      "lane": "planned",
+      "last_event_id": "01KQZJP35EX5ZTB5VDG5EHAKXZ",
+      "last_transition_at": "2026-05-06T21:21:44.622548+00:00"
+    },
+    "WP14": {
+      "actor": "finalize-tasks",
+      "force_count": 1,
+      "lane": "planned",
+      "last_event_id": "01KQZJP36G7CMEPN8Z9MPDJE2Y",
+      "last_transition_at": "2026-05-06T21:21:44.656470+00:00"
+    },
+    "WP15": {
+      "actor": "finalize-tasks",
+      "force_count": 1,
+      "lane": "planned",
+      "last_event_id": "01KQZJP37FRJP9AH2C8NSQ0DHD",
+      "last_transition_at": "2026-05-06T21:21:44.687172+00:00"
+    },
+    "WP16": {
+      "actor": "finalize-tasks",
+      "force_count": 1,
+      "lane": "planned",
+      "last_event_id": "01KQZJP38C1VM2S6FG6SA4HKVB",
+      "last_transition_at": "2026-05-06T21:21:44.716044+00:00"
+    },
+    "WP17": {
+      "actor": "finalize-tasks",
+      "force_count": 1,
+      "lane": "planned",
+      "last_event_id": "01KQZJP394DAVHQRFQTX99HN6T",
+      "last_transition_at": "2026-05-06T21:21:44.740906+00:00"
+    },
+    "WP18": {
+      "actor": "finalize-tasks",
+      "force_count": 1,
+      "lane": "planned",
+      "last_event_id": "01KQZJP3A58C50A6SHDGZQHN7Z",
+      "last_transition_at": "2026-05-06T21:21:44.773491+00:00"
+    },
+    "WP19": {
+      "actor": "finalize-tasks",
+      "force_count": 1,
+      "lane": "planned",
+      "last_event_id": "01KQZJP3AYH9CDC1RFFZ6MGY2E",
+      "last_transition_at": "2026-05-06T21:21:44.798194+00:00"
+    },
+    "WP20": {
+      "actor": "finalize-tasks",
+      "force_count": 1,
+      "lane": "planned",
+      "last_event_id": "01KQZJP3BZSC4YXMZZGSF6KEW8",
+      "last_transition_at": "2026-05-06T21:21:44.831020+00:00"
+    },
+    "WP21": {
+      "actor": "finalize-tasks",
+      "force_count": 1,
+      "lane": "planned",
+      "last_event_id": "01KQZJP3CT907KDAJBGSSGFEW1",
+      "last_transition_at": "2026-05-06T21:21:44.858351+00:00"
+    },
+    "WP22": {
+      "actor": "finalize-tasks",
+      "force_count": 1,
+      "lane": "planned",
+      "last_event_id": "01KQZJP3DQKGBYM83XWPMJF8VP",
+      "last_transition_at": "2026-05-06T21:21:44.887752+00:00"
+    },
+    "WP23": {
+      "actor": "finalize-tasks",
+      "force_count": 1,
+      "lane": "planned",
+      "last_event_id": "01KQZJP3EMPFNGRVAMJX1CVFXX",
+      "last_transition_at": "2026-05-06T21:21:44.916912+00:00"
+    },
+    "WP24": {
+      "actor": "finalize-tasks",
+      "force_count": 1,
+      "lane": "planned",
+      "last_event_id": "01KQZJP3FKKA24FX8S4GCZYJ5X",
+      "last_transition_at": "2026-05-06T21:21:44.947249+00:00"
+    },
+    "WP25": {
+      "actor": "finalize-tasks",
+      "force_count": 1,
+      "lane": "planned",
+      "last_event_id": "01KQZJP3GT15XX6KA5XCH288SW",
+      "last_transition_at": "2026-05-06T21:21:44.986121+00:00"
+    }
+  }
+}

@@ -23,7 +23,7 @@ requirement_refs:
 - NFR-008
 planning_base_branch: main
 merge_target_branch: main
-branch_strategy: lane-worktree-from-main
+branch_strategy: Planning artifacts for this feature were generated on main. During /spec-kitty.implement this WP may branch from a dependency-specific base, but completed changes must merge back into main unless the human explicitly redirects the landing branch.
 subtasks:
 - T061
 - T062
@@ -41,7 +41,9 @@ execution_mode: code_change
 mission_id: 01KQZC7A7SJJZ6EKHZ9JW3AZJG
 mission_slug: community-alert-pipeline-01KQZC7A
 owned_files:
-- alert-crawler/internal/runner/**
+- alert-crawler/internal/runner/runner.go
+- alert-crawler/internal/runner/runner_test.go
+- alert-crawler/internal/runner/mocks_test.go
 - alert-crawler/internal/observability/**
 priority: P1
 tags: []

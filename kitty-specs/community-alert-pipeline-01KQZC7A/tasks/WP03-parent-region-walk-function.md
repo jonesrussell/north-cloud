@@ -9,7 +9,7 @@ requirement_refs:
 - FR-010
 planning_base_branch: main
 merge_target_branch: main
-branch_strategy: lane-worktree-from-main
+branch_strategy: Planning artifacts for this feature were generated on main. During /spec-kitty.implement this WP may branch from a dependency-specific base, but completed changes must merge back into main unless the human explicitly redirects the landing branch.
 subtasks:
 - T009
 - T010
@@ -19,14 +19,14 @@ history:
 - at: '2026-05-06T20:51:29Z'
   event: created
   by: spec-kitty.tasks
-authoritative_surface: /home/jones/dev/indigenous-taxonomy/
+authoritative_surface: ../indigenous-taxonomy/
 execution_mode: code_change
 mission_id: 01KQZC7A7SJJZ6EKHZ9JW3AZJG
 mission_slug: community-alert-pipeline-01KQZC7A
 owned_files:
-- /home/jones/dev/indigenous-taxonomy/scripts/generate.py
-- /home/jones/dev/indigenous-taxonomy/generated/go/taxonomy/regions.go
-- /home/jones/dev/indigenous-taxonomy/generated/go/taxonomy/parent_region_test.go
+- ../indigenous-taxonomy/scripts/generate.py
+- ../indigenous-taxonomy/generated/go/taxonomy/regions.go
+- ../indigenous-taxonomy/generated/go/taxonomy/parent_region_test.go
 priority: P1
 tags: []
 ---
@@ -54,14 +54,14 @@ Same as WP01/WP02 — cross-repo. Depends on WP01 and WP02 for region/treaty dat
 **Purpose**: Teach the generator to walk the YAML `children:` structure and produce an inverse map (child → parent) emitted as a Go map literal.
 
 **Steps**:
-1. Read `/home/jones/dev/indigenous-taxonomy/scripts/generate.py`. Find the regions-generation function added or extended in WP02.
+1. Read `../indigenous-taxonomy/scripts/generate.py`. Find the regions-generation function added or extended in WP02.
 2. Add a `build_parent_map(regions_yaml) -> dict[str, str]` helper that walks the `children:` tree and builds a flat dict mapping each child slug to its direct parent slug.
 3. Top-level entries (e.g., `canada`) have no parent. The map should NOT contain those keys (the function returns `(false, "")` for unknown lookups).
 4. Emit the parent map as a Go `var regionParents = map[Region]Region{...}` declaration, sorted by key for deterministic output.
 5. Emit a `ParentRegion(child Region) (Region, bool)` function that wraps the map lookup.
 
 **Files**:
-- `/home/jones/dev/indigenous-taxonomy/scripts/generate.py` (modified, +~40 lines).
+- `../indigenous-taxonomy/scripts/generate.py` (modified, +~40 lines).
 
 **Validation**:
 - The generated map is sorted (so `git diff` is stable across regenerations).
@@ -85,7 +85,7 @@ Same as WP01/WP02 — cross-repo. Depends on WP01 and WP02 for region/treaty dat
 3. Run `gofmt -w` and `go vet`.
 
 **Files**:
-- `/home/jones/dev/indigenous-taxonomy/generated/go/taxonomy/regions.go` (regenerated, +~50 lines for the parent map and function).
+- `../indigenous-taxonomy/generated/go/taxonomy/regions.go` (regenerated, +~50 lines for the parent map and function).
 
 **Validation**:
 - `go build ./generated/go/taxonomy/...` succeeds.
@@ -97,7 +97,7 @@ Same as WP01/WP02 — cross-repo. Depends on WP01 and WP02 for region/treaty dat
 **Purpose**: Verify `ParentRegion` returns correct ancestors at every tier of the hierarchy.
 
 **Steps**:
-1. Create `/home/jones/dev/indigenous-taxonomy/generated/go/taxonomy/parent_region_test.go`.
+1. Create `../indigenous-taxonomy/generated/go/taxonomy/parent_region_test.go`.
 2. Test cases:
    - **Leaf → province**: `ParentRegion("canada:manitoba:winnipeg")` → `("canada:manitoba", true)`.
    - **Community → province**: `ParentRegion("canada:manitoba:sagkeeng-fn")` → `("canada:manitoba", true)`.
@@ -109,7 +109,7 @@ Same as WP01/WP02 — cross-repo. Depends on WP01 and WP02 for region/treaty dat
 4. Coverage on the changed file ≥80%.
 
 **Files**:
-- `/home/jones/dev/indigenous-taxonomy/generated/go/taxonomy/parent_region_test.go` (new, ~80 lines).
+- `../indigenous-taxonomy/generated/go/taxonomy/parent_region_test.go` (new, ~80 lines).
 
 **Validation**:
 - `go test ./generated/go/taxonomy/... -run TestParentRegion` passes.
@@ -143,4 +143,4 @@ Same as WP01/WP02 — cross-repo. Depends on WP01 and WP02 for region/treaty dat
 spec-kitty agent action implement WP03 --agent <name>
 ```
 
-Depends on WP01 and WP02. The agent should wait until those are merged in `/home/jones/dev/indigenous-taxonomy/` before regenerating, since WP03's regenerated `regions.go` must include all WP02 entries.
+Depends on WP01 and WP02. The agent should wait until those are merged in `../indigenous-taxonomy/` before regenerating, since WP03's regenerated `regions.go` must include all WP02 entries.

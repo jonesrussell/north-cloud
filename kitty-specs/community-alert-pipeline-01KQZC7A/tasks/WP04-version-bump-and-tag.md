@@ -10,7 +10,7 @@ requirement_refs:
 - FR-009
 planning_base_branch: main
 merge_target_branch: main
-branch_strategy: lane-worktree-from-main
+branch_strategy: Planning artifacts for this feature were generated on main. During /spec-kitty.implement this WP may branch from a dependency-specific base, but completed changes must merge back into main unless the human explicitly redirects the landing branch.
 subtasks:
 - T012
 - T013
@@ -21,15 +21,15 @@ history:
 - at: '2026-05-06T20:51:29Z'
   event: created
   by: spec-kitty.tasks
-authoritative_surface: /home/jones/dev/indigenous-taxonomy/
+authoritative_surface: ../indigenous-taxonomy/
 execution_mode: code_change
 mission_id: 01KQZC7A7SJJZ6EKHZ9JW3AZJG
 mission_slug: community-alert-pipeline-01KQZC7A
 owned_files:
-- /home/jones/dev/indigenous-taxonomy/generated/go/taxonomy/version.go
-- /home/jones/dev/indigenous-taxonomy/go.mod
-- /home/jones/dev/indigenous-taxonomy/CHANGELOG.md
-- /home/jones/dev/indigenous-taxonomy/tests/**
+- ../indigenous-taxonomy/generated/go/taxonomy/version.go
+- ../indigenous-taxonomy/go.mod
+- ../indigenous-taxonomy/CHANGELOG.md
+- ../indigenous-taxonomy/tests/**
 priority: P1
 tags: []
 ---
@@ -48,7 +48,7 @@ Audit the existing test suite for hardcoded counter assertions (RR-004), bump `t
 
 ## Branch Strategy
 
-Cross-repo. WP04 is the consolidation step for Phase A — it depends on WP01, WP02, and WP03 having merged into `/home/jones/dev/indigenous-taxonomy/main`. The PR carries the entire Phase A delta (all four WPs); the `git tag v1.1.0` is applied after the PR merges.
+Cross-repo. WP04 is the consolidation step for Phase A — it depends on WP01, WP02, and WP03 having merged into `../indigenous-taxonomy/main`. The PR carries the entire Phase A delta (all four WPs); the `git tag v1.1.0` is applied after the PR merges.
 
 ## Subtasks
 
@@ -57,9 +57,9 @@ Cross-repo. WP04 is the consolidation step for Phase A — it depends on WP01, W
 **Purpose**: RR-004 mitigation. Find any `len(All*)` style assertions that hardcode the pre-mission count and fix them to either match the new counts or refactor to "contains all known constants" assertions.
 
 **Steps**:
-1. Search the entire test surface of `/home/jones/dev/indigenous-taxonomy/`:
+1. Search the entire test surface of `../indigenous-taxonomy/`:
    ```bash
-   grep -rE 'len\((All|all_)[A-Z][a-z]+s\)\s*==\s*[0-9]+' /home/jones/dev/indigenous-taxonomy/tests/ /home/jones/dev/indigenous-taxonomy/generated/
+   grep -rE 'len\((All|all_)[A-Z][a-z]+s\)\s*==\s*[0-9]+' ../indigenous-taxonomy/tests/ ../indigenous-taxonomy/generated/
    ```
 2. For each match, decide:
    - **Update count**: if the test is "smoke checking the package has roughly this many entries", update the count to the new value.
@@ -71,8 +71,8 @@ Cross-repo. WP04 is the consolidation step for Phase A — it depends on WP01, W
 4. Also check Python tests if any exist (`tests/python/`); apply the same audit.
 
 **Files**:
-- Anything found under `/home/jones/dev/indigenous-taxonomy/tests/` (modified as needed).
-- Possibly additional test files in `/home/jones/dev/indigenous-taxonomy/generated/go/taxonomy/*_test.go`.
+- Anything found under `../indigenous-taxonomy/tests/` (modified as needed).
+- Possibly additional test files in `../indigenous-taxonomy/generated/go/taxonomy/*_test.go`.
 
 **Validation**:
 - `go test ./...` passes after all schema and generator changes from WP01–WP03 are merged.
@@ -86,18 +86,18 @@ Cross-repo. WP04 is the consolidation step for Phase A — it depends on WP01, W
 **Purpose**: Reflect the additive change set in the package's stated version. Consumers (alert-crawler in WP19) pin against the released tag.
 
 **Steps**:
-1. Find the version constant in `/home/jones/dev/indigenous-taxonomy/generated/go/taxonomy/version.go`:
+1. Find the version constant in `../indigenous-taxonomy/generated/go/taxonomy/version.go`:
    ```go
    const TaxonomyVersion = "1.0.0"
    ```
    Update to `"1.1.0"`.
 2. Update `SchemaHash` if the package computes one from YAML content. The hash should change automatically when the schema files change (it's content-derived); verify the new hash is committed.
 3. If the generator manages `version.go`, ensure regenerating it produces the bumped version. If `version.go` is hand-edited, the comment header must reflect that.
-4. Update `/home/jones/dev/indigenous-taxonomy/go.mod` if it carries a major-version subdirectory pattern (`v1` already; bump to v1 stays — Go module convention treats v1.x.y as backwards compatible at the major level, so no path change for v1.0 → v1.1).
+4. Update `../indigenous-taxonomy/go.mod` if it carries a major-version subdirectory pattern (`v1` already; bump to v1 stays — Go module convention treats v1.x.y as backwards compatible at the major level, so no path change for v1.0 → v1.1).
 
 **Files**:
-- `/home/jones/dev/indigenous-taxonomy/generated/go/taxonomy/version.go` (modified, ~5 lines).
-- `/home/jones/dev/indigenous-taxonomy/go.mod` (modified only if version subdirectory pattern requires).
+- `../indigenous-taxonomy/generated/go/taxonomy/version.go` (modified, ~5 lines).
+- `../indigenous-taxonomy/go.mod` (modified only if version subdirectory pattern requires).
 
 **Validation**:
 - `go build ./...` clean.
@@ -108,7 +108,7 @@ Cross-repo. WP04 is the consolidation step for Phase A — it depends on WP01, W
 **Purpose**: Record the additive changes for downstream consumers and future maintainers. Required by DIRECTIVE_003 (decision documentation).
 
 **Steps**:
-1. Find or create `/home/jones/dev/indigenous-taxonomy/CHANGELOG.md`.
+1. Find or create `../indigenous-taxonomy/CHANGELOG.md`.
 2. Add a `## v1.1.0 — 2026-05-06` (or whatever date the release lands) section above the prior entries:
    ```markdown
    ## v1.1.0 — 2026-05-06
@@ -128,14 +128,14 @@ Cross-repo. WP04 is the consolidation step for Phase A — it depends on WP01, W
 3. Reference the upstream consumer if useful: "Released to support `alert-crawler` (north-cloud monorepo, mission community-alert-pipeline-01KQZC7A) for sovereignty-aware scope resolution in community safety alerts."
 
 **Files**:
-- `/home/jones/dev/indigenous-taxonomy/CHANGELOG.md` (modified or created, +~30 lines).
+- `../indigenous-taxonomy/CHANGELOG.md` (modified or created, +~30 lines).
 
 **Validation**:
 - Format follows existing changelog style if one exists; otherwise use Keep a Changelog v1.1.0 conventions.
 
 ### T015 — Open PR; tag `v1.1.0` after merge
 
-**Purpose**: Land the entire Phase A delta in `/home/jones/dev/indigenous-taxonomy/main` and tag the release for consumers.
+**Purpose**: Land the entire Phase A delta in `../indigenous-taxonomy/main` and tag the release for consumers.
 
 **Steps**:
 1. Confirm WP01–WP03 commits are present in the cross-repo branch (or as a stack of branches).
@@ -168,7 +168,7 @@ Cross-repo. WP04 is the consolidation step for Phase A — it depends on WP01, W
 ## Definition of Done
 
 - All four subtasks complete.
-- PR merged into `/home/jones/dev/indigenous-taxonomy/main`.
+- PR merged into `../indigenous-taxonomy/main`.
 - `v1.1.0` tag pushed.
 - `go get github.com/jonesrussell/indigenous-taxonomy@v1.1.0` succeeds from a clean Go module.
 - WP19 (the consumer-side pinning step) is now unblocked.
