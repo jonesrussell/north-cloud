@@ -11,9 +11,11 @@ import (
 )
 
 const (
-	defaultUserAgent = "alert-crawler/1.0 (+https://northcloud.one)"
-	defaultTimeout   = 30 * time.Second
-	maxFeedBytes     = 5 * 1024 * 1024 // 5 MB safety cap
+	defaultUserAgent   = "alert-crawler/1.0 (+https://northcloud.one)"
+	defaultTimeout     = 30 * time.Second
+	maxFeedBytes       = 5 * 1024 * 1024 // 5 MB safety cap
+	httpServerErrorMin = 500
+	httpClientErrorMin = 400
 )
 
 // Client is an HTTP client for fetching RSS/Atom feeds with conditional GET support.
@@ -83,7 +85,7 @@ type FetchOutput struct {
 //   - 4xx → wrapped ErrStructural (non-retryable)
 //   - 200 → FetchOutput with body capped at 5 MB
 func (c *Client) Fetch(ctx context.Context, in FetchInput) (*FetchOutput, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, in.Source.FeedURL, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, in.Source.FeedURL, http.NoBody)
 	if err != nil {
 		return nil, fmt.Errorf("build request: %w", err)
 	}
@@ -103,14 +105,14 @@ func (c *Client) Fetch(ctx context.Context, in FetchInput) (*FetchOutput, error)
 	if doErr != nil {
 		return nil, fmt.Errorf("http do: %w", doErr)
 	}
-	defer resp.Body.Close() //nolint:errcheck
+	defer resp.Body.Close()
 
 	switch {
 	case resp.StatusCode == http.StatusNotModified:
 		return nil, ErrNotModified
-	case resp.StatusCode >= 500:
+	case resp.StatusCode >= httpServerErrorMin:
 		return nil, fmt.Errorf("upstream %d: %w", resp.StatusCode, ErrTransient)
-	case resp.StatusCode >= 400:
+	case resp.StatusCode >= httpClientErrorMin:
 		return nil, fmt.Errorf("upstream %d: %w", resp.StatusCode, ErrStructural)
 	}
 
