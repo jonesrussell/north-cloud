@@ -16,8 +16,8 @@ subtasks:
 - T003
 - T004
 phase: A
-shell_pid: "190941"
-agent: "claude:sonnet:implementer:implementer"
+shell_pid: "198739"
+agent: "claude:opus:reviewer:reviewer"
 history:
 - at: '2026-05-06T20:51:29Z'
   event: created
@@ -196,3 +196,4 @@ This WP has no prerequisites. Begin immediately. The agent operates primarily in
 
 - 2026-05-06T21:28:46Z – claude:sonnet:implementer:implementer – shell_pid=190941 – Assigned agent via action command
 - 2026-05-06T21:35:21Z – claude:sonnet:implementer:implementer – shell_pid=190941 – Ready for review: Treaty namespace v1.1.0 additions committed to indigenous-taxonomy@98bf57c
+- 2026-05-06T21:36:45Z – claude:opus:reviewer:reviewer – shell_pid=198739 – Started review via action command
