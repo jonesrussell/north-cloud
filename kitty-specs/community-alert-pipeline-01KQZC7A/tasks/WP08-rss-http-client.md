@@ -246,3 +246,4 @@ Depends on WP05, WP06. Parallel-safe with WP09–WP14.
 ## Activity Log
 
 - 2026-05-06T22:28:15Z – claude:sonnet:implementer:implementer – shell_pid=236744 – Started implementation via action command
+- 2026-05-06T22:30:45Z – claude:sonnet:implementer:implementer – shell_pid=236744 – RSS HTTP client with conditional GET
