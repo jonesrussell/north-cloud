@@ -287,3 +287,4 @@ Depends on WP05, WP06.
 ## Activity Log
 
 - 2026-05-06T22:21:25Z – claude:sonnet:implementer:implementer – shell_pid=229458 – Started implementation via action command
+- 2026-05-06T22:25:28Z – claude:sonnet:implementer:implementer – shell_pid=229458 – Config loaded via infraconfig + RR-007 pitfall test
