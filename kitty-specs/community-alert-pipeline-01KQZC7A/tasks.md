@@ -58,13 +58,13 @@ Phase A and Phase B execute **in parallel** because alert-crawler's `go.mod` car
 | T013 | Update `taxonomy/version.go` and `go.mod` to v1.1.0 | WP04 | | [D] |
 | T014 | Update `CHANGELOG.md` with additive changes | WP04 | | [D] |
 | T015 | Open PR; tag `v1.1.0` after merge | WP04 | | [D] |
-| T016 | Create `alert-crawler/` directory with `go.mod` (includes `replace` directive) | WP05 | |
-| T017 | Create `main.go` skeleton with phase-order comments | WP05 | |
-| T018 | Create `config.yml` (defaults blank where `SetDefaults` applies) | WP05 | |
-| T019 | Create per-service `Taskfile.yml` (build, run, test, lint, vuln, clean) | WP05 | |
-| T020 | Create multi-stage `Dockerfile` (Alpine, uid 1000 non-root user, CGO enabled) | WP05 | |
-| T021 | Create `.layers` (L0 config/domain; L1 adapter/catalogue/elasticsearch/redis/severity/scope/observability; L2 runner) | WP05 | |
-| T022 | Create `alert-crawler/CLAUDE.md` skeleton with placeholders for gotchas | WP05 | |
+| T016 | Create `alert-crawler/` directory with `go.mod` (includes `replace` directive) | WP05 | | [D] |
+| T017 | Create `main.go` skeleton with phase-order comments | WP05 | | [D] |
+| T018 | Create `config.yml` (defaults blank where `SetDefaults` applies) | WP05 | | [D] |
+| T019 | Create per-service `Taskfile.yml` (build, run, test, lint, vuln, clean) | WP05 | | [D] |
+| T020 | Create multi-stage `Dockerfile` (Alpine, uid 1000 non-root user, CGO enabled) | WP05 | | [D] |
+| T021 | Create `.layers` (L0 config/domain; L1 adapter/catalogue/elasticsearch/redis/severity/scope/observability; L2 runner) | WP05 | | [D] |
+| T022 | Create `alert-crawler/CLAUDE.md` skeleton with placeholders for gotchas | WP05 | | [D] |
 | T023 | Create `internal/domain/alert.go` (Alert envelope) | WP06 | |
 | T024 | Create `internal/domain/hazard.go` (HarmReductionHazard, Substance) | WP06 | |
 | T025 | Create `internal/domain/source.go` (AlertSource, AcquisitionStrategy enum) | WP06 | |
@@ -264,13 +264,13 @@ Phase A and Phase B execute **in parallel** because alert-crawler's `go.mod` car
 
 **Subtasks**:
 
-- [ ] T016 Create `alert-crawler/` directory with `go.mod` (includes `replace` directive) (WP05)
-- [ ] T017 Create `main.go` skeleton with phase-order comments (WP05)
-- [ ] T018 Create `config.yml` (defaults blank where `SetDefaults` applies) (WP05)
-- [ ] T019 Create per-service `Taskfile.yml` (build, run, test, lint, vuln, clean) (WP05)
-- [ ] T020 Create multi-stage `Dockerfile` (Alpine, uid 1000 non-root user, CGO enabled) (WP05)
-- [ ] T021 Create `.layers` (L0 config/domain; L1 adapter/catalogue/elasticsearch/redis/severity/scope/observability; L2 runner) (WP05)
-- [ ] T022 Create `alert-crawler/CLAUDE.md` skeleton with placeholders for gotchas (WP05)
+- [x] T016 Create `alert-crawler/` directory with `go.mod` (includes `replace` directive) (WP05)
+- [x] T017 Create `main.go` skeleton with phase-order comments (WP05)
+- [x] T018 Create `config.yml` (defaults blank where `SetDefaults` applies) (WP05)
+- [x] T019 Create per-service `Taskfile.yml` (build, run, test, lint, vuln, clean) (WP05)
+- [x] T020 Create multi-stage `Dockerfile` (Alpine, uid 1000 non-root user, CGO enabled) (WP05)
+- [x] T021 Create `.layers` (L0 config/domain; L1 adapter/catalogue/elasticsearch/redis/severity/scope/observability; L2 runner) (WP05)
+- [x] T022 Create `alert-crawler/CLAUDE.md` skeleton with placeholders for gotchas (WP05)
 
 **Dependencies**: none.
 
