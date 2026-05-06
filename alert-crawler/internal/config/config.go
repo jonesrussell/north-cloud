@@ -22,25 +22,25 @@ import (
 
 // ServiceConfig holds basic service identity configuration.
 type ServiceConfig struct {
-	Name string `yaml:"name" env:"SERVICE_NAME"`
+	Name string `env:"SERVICE_NAME" yaml:"name"`
 }
 
 // DatabaseConfig holds SQLite catalogue database configuration.
 type DatabaseConfig struct {
-	Path           string `yaml:"path"            env:"ALERT_DB_PATH"`
-	MigrationsPath string `yaml:"migrations_path" env:"ALERT_DB_MIGRATIONS_PATH"`
+	Path           string `env:"ALERT_DB_PATH"            yaml:"path"`
+	MigrationsPath string `env:"ALERT_DB_MIGRATIONS_PATH" yaml:"migrations_path"`
 }
 
 // ESConfig holds Elasticsearch index configuration for alert-crawler.
 type ESConfig struct {
-	URL   string `yaml:"url"   env:"ELASTICSEARCH_URL"`
-	Index string `yaml:"index" env:"ALERT_ES_INDEX"`
+	URL   string `env:"ELASTICSEARCH_URL" yaml:"url"`
+	Index string `env:"ALERT_ES_INDEX"    yaml:"index"`
 }
 
 // RedisConfig holds Redis pub/sub configuration for alert-crawler.
 type RedisConfig struct {
-	URL     string `yaml:"url"     env:"REDIS_URL"`
-	Channel string `yaml:"channel" env:"ALERT_REDIS_CHANNEL"`
+	URL     string `env:"REDIS_URL"           yaml:"url"`
+	Channel string `env:"ALERT_REDIS_CHANNEL" yaml:"channel"`
 }
 
 // SeverityConfig maps hazard keyword strings to domain severity levels.
@@ -51,8 +51,8 @@ type SeverityConfig struct {
 
 // ObservabilityConfig holds structured logging configuration.
 type ObservabilityConfig struct {
-	LogLevel  string `yaml:"log_level"  env:"LOG_LEVEL"`
-	LogFormat string `yaml:"log_format" env:"LOG_FORMAT"`
+	LogLevel  string `env:"LOG_LEVEL"  yaml:"log_level"`
+	LogFormat string `env:"LOG_FORMAT" yaml:"log_format"`
 }
 
 // Config is the top-level configuration for alert-crawler.

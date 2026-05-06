@@ -46,7 +46,7 @@ func TestConfigYMLDoesNotCarrySetDefaultsOwnedValues(t *testing.T) {
 	require.NoError(t, yaml.Unmarshal(data, &raw), "config.yml must be valid YAML")
 
 	for _, dotPath := range setDefaultsOwnedPaths {
-		dotPath := dotPath // capture
+		// capture
 
 		t.Run(dotPath, func(t *testing.T) {
 			t.Helper()
