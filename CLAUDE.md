@@ -29,6 +29,7 @@ When modifying files, read the relevant service CLAUDE.md first. Deep specs in `
 | `search-frontend/**` | `search-frontend/CLAUDE.md` | `docs/specs/search-frontend.md` |
 | `render-worker/**` | `render-worker/CLAUDE.md` | `docs/specs/content-acquisition.md` |
 | `signal-crawler/**` | `signal-crawler/CLAUDE.md` | `docs/specs/lead-pipeline.md` (sprint design: `docs/superpowers/specs/2026-04-05-signal-crawler-sprint-design.md`) |
+| `alert-crawler/**` | `alert-crawler/CLAUDE.md` | `kitty-specs/community-alert-pipeline-01KQZC7A/spec.md` (canonical) — pointer at `docs/specs/community-alert-pipeline.md` |
 | `classifier/**/need_signal*`, `publisher/**/claudriel_lead*`, `publisher/**/leads_export*`, `infrastructure/signal/**` | — | `docs/specs/lead-pipeline.md` |
 | `docs/specs/**`, `.claude/**`, `**/CLAUDE.md` | updating-codified-context | — |
 | `docker-compose*.yml`, `Taskfile.yml` | `DOCKER.md` | — |

@@ -47,41 +47,46 @@ Cloudflare-block risk and mitigation deferral.
 
 ### RR-007 — config.yml overrides SetDefaults silently
 
-Non-empty values in `config.yml` prevent `config.go` `SetDefaults()` from applying.
-If you change a default URL or value in code, also update `config.yml` to leave that
-field blank (`""`), or the code default is never reached. This is the same pattern
-as signal-crawler (see root CLAUDE.md troubleshooting section).
+`infrastructure/config.LoadWithDefaults[T]` merges YAML BEFORE applying SetDefaults. A non-empty
+YAML field silently shadows SetDefaults's value. As a result, a code-side default change has no
+effect if the YAML field carries an old value. Mitigation: keep `config.yml` mostly comments;
+only uncomment fields you intend to override per-environment. Unit test
+`internal/config/pitfall_test.go` enforces this.
 
 ### ES mapping is in-service (single-writer rationale)
 
-alert-crawler owns its own ES index mapping (`alert_classified_content`).
-No other service writes to this index. Keeping the mapping in-service avoids the
-cross-service coupling that would be required if index-manager managed it.
-Reindex path: update mapping in `internal/elasticsearch/`, restart service, run
-`task migrate:alert-crawler` once that task exists (WP17+).
+The `community_alerts` ES index is single-writer (alert-crawler is the only producer). Per the
+resolved charter tension (`kitty-specs/community-alert-pipeline-01KQZC7A/plan.md` section 1,
+approved 2026-05-06), the mapping lives in `internal/elasticsearch/mapping.json` and is applied
+via idempotent `EnsureIndex` (HEAD -> PUT on 404) at startup. The `index-manager` service is NOT
+involved. Charter rule "ES mapping changes go through index-manager" applies to shared indices
+(`*_classified_content` family).
 
 ### go.mod replace directive must be removed before merge (WP19)
 
-The `replace github.com/jonesrussell/indigenous-taxonomy => ../../indigenous-taxonomy`
-directive enables parallel-dev without publishing every change. WP19 will replace it
-with a real `v1.1.0` pin. Do NOT remove it before WP19 is approved.
+During Phase B (parallel dev with the indigenous-taxonomy v1.1.0 release), `go.mod` carries a
+`replace github.com/jonesrussell/indigenous-taxonomy => ../indigenous-taxonomy` directive. WP19
+removes it and pins `v1.1.0`. CI build fails fast if `replace` is left in.
 
 Also: the `replace github.com/jonesrussell/north-cloud/infrastructure => ../infrastructure`
 directive follows the same pattern as all other north-cloud services and stays permanently.
 
 ### Rescission semantics: parser-degraded items NEVER auto-rescinded
 
-If an alert item fails to parse cleanly (missing GUID, malformed date, empty title),
-it is logged and skipped — it does NOT trigger rescission of a previously published
-alert. Rescission is only triggered by an explicit `<rescind>` element or an item
-with `status: cancelled` in the feed. This prevents flapping during feed degradation.
+Parser-degraded items (`parse_quality: degraded`) are persisted as alerts with the flag visible to
+operators. They are NEVER auto-rescinded due to the parse failure. Rescission only happens when an
+alert is ABSENT from the upstream feed on a subsequent poll (catalogue diff in runner). This is
+per TC-010.
+
+Parser-failed items (`parse_quality: failed`) - required fields missing - are SKIPPED entirely and
+never enter the catalogue. Failed parses emit a `parse_failure_total` metric.
 
 ### SQLite catalogue rebuild path
 
-If `data/alerts.db` is corrupt or missing, the service creates a fresh one on startup.
-Historical alert state is lost — items that were previously published will be re-published
-on the next run. This is acceptable; downstream consumers must be idempotent.
-To rebuild manually: `rm data/alerts.db && task run:dry` to verify before a live run.
+On startup, if `data/state.db` is missing or empty, alert-crawler can rebuild the active-alert
+catalogue from ES (`lifecycle_state == "active"` query). The rebuild is idempotent and does NOT
+emit `created` events for the rebuilt entries (they already exist downstream). Rebuild is triggered
+by passing `--rebuild` flag or auto-detected from row count == 0.
 
 ### Docker volume ownership uid 1000
 
@@ -89,6 +94,12 @@ The container runs as uid 1000 (`alert-crawler` user). Host-mounted volumes (e.g
 must be owned by uid 1000 on the host. In Ansible `file:` tasks, use `owner: "1000"` —
 NOT `owner: "{{ deploy_user }}"` which maps to uid 1001 and causes "unable to open
 database file" errors at runtime. See root CLAUDE.md "Non-root container volume ownership".
+
+### First-deploy backfill burst
+
+Backfill subcommand emits up to 20 `created` lifecycle events on first deploy (TC-011). Downstream
+consumers must handle this burst (rate-limit consumer-side if needed). Out of mission scope;
+flagged as PR-002.
 
 ## Development
 
