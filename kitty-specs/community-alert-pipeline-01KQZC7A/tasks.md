@@ -148,12 +148,12 @@ Phase A and Phase B execute **in parallel** because alert-crawler's `go.mod` car
 | T103 | NFR-006 idempotency harness: 100-cycle replay; assert 0 spurious lifecycle events | WP24 | | [D] |
 | T104 | NFR-009 blast-radius harness: synthetic alert-crawler crash; assert lead pipeline unaffected | WP24 | | [D] |
 | T105 | First-deploy backfill rehearsal (D.3): run backfill against staging or sandbox; verify 20 `created` events | WP24 | | [D] |
-| T106 | Run `task lint:force` clean; address any drift findings | WP25 | |
-| T107 | Run `task test` and `task test:alert-crawler -- -tags integration` clean | WP25 | |
-| T108 | Run `task drift:check`, `task ports:check`, `task layers:check` clean | WP25 | |
-| T109 | Verify lefthook pre-commit and pre-push pass without `--no-verify` | WP25 | |
+| T106 | Run `task lint:force` clean; address any drift findings | WP25 | | [D] |
+| T107 | Run `task test` and `task test:alert-crawler -- -tags integration` clean | WP25 | | [D] |
+| T108 | Run `task drift:check`, `task ports:check`, `task layers:check` clean | WP25 | | [D] |
+| T109 | Verify lefthook pre-commit and pre-push pass without `--no-verify` | WP25 | | [D] |
 | T110 | Manual smoke test: end-to-end against staging (publish → consume) | WP25 | |
-| T111 | File GitHub issue: "Migrate classifier and publisher to import indigenous-taxonomy directly" with R-004 context | WP25 | |
+| T111 | File GitHub issue: "Migrate classifier and publisher to import indigenous-taxonomy directly" with R-004 context | WP25 | | [D] |
 
 ## Work Packages
 
@@ -738,12 +738,12 @@ Phase A and Phase B execute **in parallel** because alert-crawler's `go.mod` car
 
 **Subtasks**:
 
-- [ ] T106 Run `task lint:force` clean; address any drift findings (WP25)
-- [ ] T107 Run `task test` and `task test:alert-crawler -- -tags integration` clean (WP25)
-- [ ] T108 Run `task drift:check`, `task ports:check`, `task layers:check` clean (WP25)
-- [ ] T109 Verify lefthook pre-commit and pre-push pass without `--no-verify` (WP25)
+- [x] T106 Run `task lint:force` clean; address any drift findings (WP25)
+- [x] T107 Run `task test` and `task test:alert-crawler -- -tags integration` clean (WP25)
+- [x] T108 Run `task drift:check`, `task ports:check`, `task layers:check` clean (WP25)
+- [x] T109 Verify lefthook pre-commit and pre-push pass without `--no-verify` (WP25)
 - [ ] T110 Manual smoke test: end-to-end against staging (publish → consume) (WP25)
-- [ ] T111 File GitHub issue: "Migrate classifier and publisher to import indigenous-taxonomy directly" with R-004 context (WP25)
+- [x] T111 File GitHub issue: "Migrate classifier and publisher to import indigenous-taxonomy directly" with R-004 context (WP25)
 
 **Dependencies**: WP19, WP20, WP21, WP22, WP23, WP24.
 
