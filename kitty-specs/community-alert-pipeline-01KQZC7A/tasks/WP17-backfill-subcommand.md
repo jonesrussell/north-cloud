@@ -15,8 +15,8 @@ subtasks:
 - T073
 - T074
 phase: B
-agent: "claude:sonnet:implementer:implementer"
-shell_pid: "343931"
+agent: "claude:opus:reviewer:reviewer"
+shell_pid: "355687"
 history:
 - at: '2026-05-06T20:51:29Z'
   event: created
@@ -203,3 +203,4 @@ Depends on WP15, WP16.
 
 - 2026-05-07T00:05:00Z – claude:sonnet:implementer:implementer – shell_pid=343931 – Started implementation via action command
 - 2026-05-07T00:11:09Z – claude:sonnet:implementer:implementer – shell_pid=343931 – Backfill: idempotent top-20, end-to-end smoke updated
+- 2026-05-07T00:11:46Z – claude:opus:reviewer:reviewer – shell_pid=355687 – Started review via action command
