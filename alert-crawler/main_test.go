@@ -11,8 +11,10 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -191,10 +193,49 @@ func TestSmoke_RunnerEndToEnd(t *testing.T) {
 	assert.Equal(t, 1, pub.count(), "expected one lifecycle event published to Redis")
 }
 
-// TestSmoke_BackfillStub verifies that Backfill returns the WP17 placeholder error.
-func TestSmoke_BackfillStub(t *testing.T) {
+// rssNItems returns a valid RSS 2.0 feed body with n unique items.
+func rssNItems(n int) []byte {
+	var b strings.Builder
+	b.WriteString(`<?xml version="1.0" encoding="UTF-8"?><rss version="2.0"><channel><title>Backfill Test</title>`)
+	for i := range n {
+		guid := fmt.Sprintf("https://example.com/alerts/bf-%04d", i+1)
+		fmt.Fprintf(&b,
+			`<item><title>Backfill Alert %d</title><link>%s</link><guid>%s</guid>`+
+				`<pubDate>Tue, 06 May 2026 10:00:00 +0000</pubDate>`+
+				`<description>Opioid supply warning. Fentanyl detected.</description></item>`,
+			i+1, guid, guid,
+		)
+	}
+	b.WriteString(`</channel></rss>`)
+	return []byte(b.String())
+}
+
+// TestSmoke_BackfillEndToEnd verifies that:
+//  1. A first Backfill call with 20-item feed writes 20 docs to ES and emits
+//     20 EventCreated events.
+//  2. A second Backfill call (idempotency check) against the same feed produces
+//     no additional ES writes and no additional events.
+func TestSmoke_BackfillEndToEnd(t *testing.T) {
 	t.Parallel()
 
+	const itemCount = 20
+
+	feedBody := rssNItems(itemCount)
+
+	// Start mock RSS server — always returns the same feed.
+	rssSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/rss+xml")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write(feedBody)
+	}))
+	defer rssSrv.Close()
+
+	// Start mock ES server.
+	esHandler := &mockESHandler{}
+	esSrv := httptest.NewServer(esHandler)
+	defer esSrv.Close()
+
+	// Build the full dependency graph.
 	log, err := infralogger.New(infralogger.Config{Level: "error", Format: "json"})
 	require.NoError(t, err)
 
@@ -203,20 +244,48 @@ func TestSmoke_BackfillStub(t *testing.T) {
 	require.NoError(t, storeErr)
 	t.Cleanup(func() { _ = store.Close() })
 
+	indexer := elasticsearch.New(elasticsearch.Config{
+		BaseURL: esSrv.URL,
+		Index:   "alert_classified_content",
+	})
+	require.NoError(t, indexer.EnsureIndex(context.Background()))
+
+	pub := &mockRedisPublisher{}
 	metrics := observability.New(log)
+	resolver := scope.New()
+	sevTable := severity.NewTable(nil)
+	sevInfer := func(h domain.Hazard) domain.Severity { return severity.Infer(h, sevTable) }
+
+	src := domain.AlertSource{
+		ID:      "backfill-smoke-source",
+		FeedURL: rssSrv.URL,
+		Enabled: true,
+	}
+
+	fetcher := rss.New(rss.WithHTTPClient(rssSrv.Client()))
 
 	r := runner.New(runner.Dependencies{
-		Fetch:    nil,
-		Store:    store,
-		Indexer:  nil,
-		Pub:      nil,
-		Resolver: scope.New(),
-		SevInfer: func(h domain.Hazard) domain.Severity { return domain.SeverityMedium },
-		Metrics:  metrics,
-		Sources:  nil,
+		Fetch:         fetcher,
+		Store:         store,
+		Indexer:       indexer,
+		Pub:           pub,
+		Resolver:      resolver,
+		SevInfer:      sevInfer,
+		Metrics:       metrics,
+		Sources:       []domain.AlertSource{src},
+		DefaultExpiry: defaultExpiry,
+		Now:           func() time.Time { return time.Date(2026, 5, 6, 12, 0, 0, 0, time.UTC) },
 	})
 
-	backfillErr := r.Backfill(context.Background())
-	require.Error(t, backfillErr)
-	assert.Contains(t, backfillErr.Error(), "WP17")
+	// First backfill: all items are new.
+	require.NoError(t, r.Backfill(context.Background()))
+	assert.Equal(t, itemCount, esHandler.indexedCount(), "first backfill: expected %d ES writes", itemCount)
+	assert.Equal(t, itemCount, pub.count(), "first backfill: expected %d EventCreated events", itemCount)
+
+	// Second backfill: all items already in catalogue — must be a no-op.
+	countBefore := esHandler.indexedCount()
+	eventsBefore := pub.count()
+	require.NoError(t, r.Backfill(context.Background()))
+	assert.Equal(t, countBefore, esHandler.indexedCount(), "second backfill must not write additional ES docs")
+	assert.Equal(t, eventsBefore, pub.count(), "second backfill must not emit additional events")
 }

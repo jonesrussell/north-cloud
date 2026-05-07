@@ -321,13 +321,6 @@ type hashInput struct {
 	ParseQuality domain.ParseQuality `json:"parse_quality"`
 }
 
-// Backfill re-indexes previously active alerts from Elasticsearch into the
-// catalogue. This method is a stub; full implementation is delivered in WP17.
-// It exists here so that main.go compiles with the --backfill flag wired.
-func (r *Runner) Backfill(_ context.Context) error {
-	return errors.New("backfill not implemented yet (WP17)")
-}
-
 // contentHash returns a hex-encoded SHA-256 of the alert's mutable content fields.
 func contentHash(a domain.Alert) string {
 	in := hashInput{
