@@ -112,7 +112,7 @@ snapshot_images() {
   if [ -n "$services" ]; then
     svc_list="$services"
   else
-    svc_list="auth crawler source-manager classifier publisher index-manager pipeline search-service rfp-ingestor click-tracker dashboard"
+    svc_list="auth crawler source-manager classifier publisher index-manager pipeline search-service rfp-ingestor click-tracker alert-crawler dashboard"
   fi
 
   rm -f "$SNAPSHOT_FILE"
@@ -538,7 +538,7 @@ check_health() {
 if [ -n "$RESTART_SERVICES" ]; then
   SERVICES_TO_CHECK="$RESTART_SERVICES"
 elif [ -z "$SERVICES_TO_UPDATE" ] && [ -z "${MIGRATION_FAILED_SERVICES:-}" ]; then
-  SERVICES_TO_CHECK="auth crawler source-manager classifier publisher index-manager pipeline search-service rfp-ingestor click-tracker"
+  SERVICES_TO_CHECK="auth crawler source-manager classifier publisher index-manager pipeline search-service rfp-ingestor click-tracker alert-crawler"
 else
   SERVICES_TO_CHECK="$SERVICES_TO_UPDATE"
 fi
@@ -579,6 +579,9 @@ for svc in $SERVICES_TO_CHECK; do
       check_health "click-tracker" "/health" "8093" 10 || { FAILED_CHECKS=$((FAILED_CHECKS + 1)); FAILED_SERVICES="$FAILED_SERVICES $svc"; }
       ;;
     # Oneshot services (triggered by systemd timer, exit immediately)
+    alert-crawler)
+      echo -e "  Skipping $svc (oneshot service, no health endpoint)"
+      ;;
     signal-crawler)
       echo -e "  Skipping $svc (oneshot service, no health endpoint)"
       ;;

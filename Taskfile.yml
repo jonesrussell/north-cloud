@@ -5,6 +5,10 @@ version: '3'
 
 includes:
 
+  alert-crawler:
+    taskfile: ./alert-crawler/Taskfile.yml
+    dir: ./alert-crawler
+
   ai-observer:
     taskfile: ./ai-observer/Taskfile.yml
     dir: ./ai-observer
@@ -539,6 +543,7 @@ tasks:
   vuln:
     desc: "Run vulnerability check for all Go microservices"
     cmds:
+      - task alert-crawler:vuln
       - task ai-observer:vuln
       - task auth:vuln
       - task classifier:vuln
@@ -551,6 +556,11 @@ tasks:
       - task search:vuln
       - task signal-producer:vuln
       - task source-manager:vuln
+
+  vuln:alert-crawler:
+    desc: "Run vulnerability check for alert-crawler service"
+    cmds:
+      - task alert-crawler:vuln
 
   vuln:ai-observer:
     desc: "Run vulnerability check for ai-observer service"
