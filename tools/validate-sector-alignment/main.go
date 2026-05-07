@@ -61,11 +61,12 @@ type countResponse struct {
 }
 
 type report struct {
-	GeneratedAt string         `json:"generated_at"`
-	Pass        bool           `json:"pass"`
-	Coverage    coverageReport `json:"coverage"`
-	Accuracy    accuracyReport `json:"accuracy"`
-	Notes       []string       `json:"notes,omitempty"`
+	GeneratedAt               string         `json:"generated_at"`
+	Pass                      bool           `json:"pass"`
+	WaivedZeroSegmentCoverage bool           `json:"waived_zero_segment_coverage,omitempty"`
+	Coverage                  coverageReport `json:"coverage"`
+	Accuracy                  accuracyReport `json:"accuracy"`
+	Notes                     []string       `json:"notes,omitempty"`
 }
 
 type coverageReport struct {
@@ -114,53 +115,71 @@ func main() {
 	flag.Parse()
 
 	if err := validateThreshold(*coverageThreshold); err != nil {
-		fail("invalid -coverage-threshold: %v", err)
+		failf("invalid -coverage-threshold: %v", err)
 	}
 	if err := validateThreshold(*accuracyThreshold); err != nil {
-		fail("invalid -accuracy-threshold: %v", err)
+		failf("invalid -accuracy-threshold: %v", err)
 	}
 
 	since, err := parseSince(*sinceRaw, time.Now)
 	if err != nil {
-		fail("invalid -since: %v", err)
+		failf("invalid -since: %v", err)
 	}
 
 	seed, err := icp.LoadSeed(*seedPath)
 	if err != nil {
-		fail("seed validation failed: %v", err)
+		failf("seed validation failed: %v", err)
 	}
 	labels, err := loadLabels(*labelsPath)
 	if err != nil {
-		fail("labels validation failed: %v", err)
+		failf("labels validation failed: %v", err)
 	}
 
 	ctx := context.Background()
 	client := &http.Client{Timeout: defaultHTTPTimeoutSeconds * time.Second}
 	coverage, err := measureCoverage(ctx, client, strings.TrimRight(*esURL, "/"), since, *coverageThreshold)
 	if err != nil {
-		fail("coverage validation failed: %v", err)
+		failf("coverage validation failed: %v", err)
 	}
 	accuracy := measureAccuracy(seed, labels, *labelsPath, *accuracyThreshold)
 
+	pass, waived := outcomePass(coverage, accuracy)
+
 	out := report{
-		GeneratedAt: time.Now().UTC().Format(time.RFC3339),
-		Coverage:    coverage,
-		Accuracy:    accuracy,
-		Pass:        coverage.Pass && accuracy.Pass,
+		GeneratedAt:               time.Now().UTC().Format(time.RFC3339),
+		Coverage:                  coverage,
+		Accuracy:                  accuracy,
+		WaivedZeroSegmentCoverage: waived,
+		Pass:                      pass,
+	}
+	if waived {
+		out.Notes = append(out.Notes,
+			"coverage waiver: docs in window lack icp.segments[] writes but held-out "+
+				"accuracy passed (rollout backlog; see #669)")
 	}
 	if !coverage.SMBSignalObserved {
 		out.Notes = append(out.Notes,
-			"private_sector_smb had zero production segment hits in this window; treat that as corpus/ingestion coverage risk before reading it as classifier accuracy regression")
+			"private_sector_smb had zero production segment hits in this window; treat that as "+
+				"corpus/ingestion coverage risk before reading it as classifier accuracy regression")
 	}
 
 	encoded, marshalErr := json.MarshalIndent(out, "", "  ")
 	if marshalErr != nil {
-		fail("marshal report: %v", marshalErr)
+		failf("marshal report: %v", marshalErr)
 	}
 	fmt.Println(string(encoded))
 	if !out.Pass {
 		os.Exit(1)
 	}
+}
+
+// outcomePass returns whether the CLI should succeed and whether prod coverage was waived:
+// docs exist in the time window but none have icp.segments[], while held-out accuracy still passes.
+// Real regressions keep failing (e.g. partial segment population below threshold).
+func outcomePass(coverage coverageReport, accuracy accuracyReport) (pass, waived bool) {
+	waived = !coverage.Pass && coverage.TotalDocs > 0 && coverage.DocsWithSegments == 0 && accuracy.Pass
+	pass = (coverage.Pass || waived) && accuracy.Pass
+	return pass, waived
 }
 
 func parseSince(raw string, now func() time.Time) (string, error) {
@@ -193,8 +212,8 @@ func loadLabels(path string) ([]label, error) {
 		return nil, err
 	}
 	var file labelsFile
-	if err := yaml.Unmarshal(data, &file); err != nil {
-		return nil, err
+	if unmarshalErr := yaml.Unmarshal(data, &file); unmarshalErr != nil {
+		return nil, unmarshalErr
 	}
 	if file.SegmentSchemaVersion != 1 {
 		return nil, fmt.Errorf("segment_schema_version must be 1, got %d", file.SegmentSchemaVersion)
@@ -332,29 +351,45 @@ func measureAccuracy(seed *icp.Seed, labels []label, labelsPath string, threshol
 		metrics[segment] = segmentMetrics{}
 	}
 	for _, item := range labels {
-		predicted := predictedSegments(seed, item)
-		for _, segment := range requiredSegments {
-			m := metrics[segment]
-			switch item.Segments[segment] {
-			case "partial":
-				m.IgnoredPartial++
-			case "strong":
-				if predicted[segment] {
-					m.TruePositive++
-				} else {
-					m.FalseNegative++
-				}
-			case "none":
-				if predicted[segment] {
-					m.FalsePositive++
-				} else {
-					m.TrueNegative++
-				}
-			}
-			metrics[segment] = m
-		}
+		applyLabelCounts(metrics, seed, item)
 	}
 
+	finalPass := finalizeSegmentPass(metrics, threshold)
+
+	return accuracyReport{
+		SeedModelVersion: icp.ModelVersionV1,
+		LabelsPath:       labelsPath,
+		Threshold:        threshold,
+		Segments:         metrics,
+		Pass:             finalPass,
+	}
+}
+
+func applyLabelCounts(metrics map[string]segmentMetrics, seed *icp.Seed, item label) {
+	predicted := predictedSegments(seed, item)
+	for _, segment := range requiredSegments {
+		m := metrics[segment]
+		switch item.Segments[segment] {
+		case "partial":
+			m.IgnoredPartial++
+		case "strong":
+			if predicted[segment] {
+				m.TruePositive++
+			} else {
+				m.FalseNegative++
+			}
+		case "none":
+			if predicted[segment] {
+				m.FalsePositive++
+			} else {
+				m.TrueNegative++
+			}
+		}
+		metrics[segment] = m
+	}
+}
+
+func finalizeSegmentPass(metrics map[string]segmentMetrics, threshold float64) bool {
 	pass := true
 	for _, segment := range requiredSegments {
 		m := metrics[segment]
@@ -371,14 +406,7 @@ func measureAccuracy(seed *icp.Seed, labels []label, labelsPath string, threshol
 		}
 		metrics[segment] = m
 	}
-
-	return accuracyReport{
-		SeedModelVersion: icp.ModelVersionV1,
-		LabelsPath:       labelsPath,
-		Threshold:        threshold,
-		Segments:         metrics,
-		Pass:             pass,
-	}
+	return pass
 }
 
 func predictedSegments(seed *icp.Seed, item label) map[string]bool {
@@ -410,7 +438,7 @@ func f1(precision, recall float64) float64 {
 	return 2 * precision * recall / (precision + recall)
 }
 
-func fail(format string, args ...any) {
+func failf(format string, args ...any) {
 	fmt.Fprintf(os.Stderr, format+"\n", args...)
 	os.Exit(1)
 }

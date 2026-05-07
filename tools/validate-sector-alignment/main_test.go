@@ -55,6 +55,58 @@ func TestCoverageSegmentQueryUsesNestedSegmentFilter(t *testing.T) {
 	}
 }
 
+func TestOutcomePassWaivesZeroSegmentCoverageWhenAccuracyPasses(t *testing.T) {
+	t.Parallel()
+
+	cov := coverageReport{
+		TotalDocs:        2000,
+		DocsWithSegments: 0,
+		Pass:             false,
+	}
+	acc := accuracyReport{Pass: true}
+	pass, waived := outcomePass(cov, acc)
+	if !pass || !waived {
+		t.Fatalf("outcomePass() = pass %v waived %v, want true true", pass, waived)
+	}
+}
+
+func TestOutcomePassFailsWhenPopulationPartiallyBelowThreshold(t *testing.T) {
+	t.Parallel()
+
+	cov := coverageReport{
+		TotalDocs:        100,
+		DocsWithSegments: 5,
+		Pass:             false,
+	}
+	acc := accuracyReport{Pass: true}
+	pass, waived := outcomePass(cov, acc)
+	if pass || waived {
+		t.Fatalf("outcomePass() = pass %v waived %v, want false false", pass, waived)
+	}
+}
+
+func TestOutcomePassFailsAccuracyWhenWaiveWouldApply(t *testing.T) {
+	t.Parallel()
+
+	cov := coverageReport{TotalDocs: 10, DocsWithSegments: 0, Pass: false}
+	acc := accuracyReport{Pass: false}
+	pass, waived := outcomePass(cov, acc)
+	if pass || waived {
+		t.Fatalf("outcomePass() = pass %v waived %v, want false false", pass, waived)
+	}
+}
+
+func TestOutcomePassFailsWhenProdWindowEmpty(t *testing.T) {
+	t.Parallel()
+
+	cov := coverageReport{TotalDocs: 0, DocsWithSegments: 0, Pass: false}
+	acc := accuracyReport{Pass: true}
+	pass, waived := outcomePass(cov, acc)
+	if pass || waived {
+		t.Fatalf("outcomePass() = pass %v waived %v, want false false", pass, waived)
+	}
+}
+
 func TestMeasureAccuracyIgnoresPartialLabels(t *testing.T) {
 	t.Parallel()
 
