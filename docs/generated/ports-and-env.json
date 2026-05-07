@@ -971,7 +971,11 @@
       "compose_overlay": "prod",
       "container_port": null,
       "env_vars": [
-        "DB_PATH"
+        "ALERT_DB_PATH",
+        "DB_PATH",
+        "ELASTICSEARCH_URL",
+        "REDIS_PASSWORD",
+        "REDIS_URL"
       ],
       "host_port": null,
       "service": "alert-crawler"

@@ -515,8 +515,6 @@ services:
     depends_on:
       elasticsearch:
         condition: service_healthy
-      redis:
-        condition: service_healthy
 
   signal-crawler:
     build:

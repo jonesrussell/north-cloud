@@ -111,6 +111,21 @@ services:
     image: docker.io/jonesrussell/ai-observer:${AI_OBSERVER_TAG:-latest}
 
   # ------------------------------------------------------------
+  # Alert Crawler (Prod)
+  # ------------------------------------------------------------
+  alert-crawler:
+    <<: *prod-defaults
+    image: docker.io/jonesrussell/alert-crawler:${ALERT_CRAWLER_TAG:-latest}
+    restart: "no"
+    depends_on:
+      - elasticsearch
+    environment:
+      ELASTICSEARCH_URL: http://elasticsearch:9200
+      REDIS_URL: "${REDIS_HOST:-redis}:6379"
+      REDIS_PASSWORD: "${REDIS_PASSWORD:-}"
+      ALERT_DB_PATH: /app/data/state.db
+
+  # ------------------------------------------------------------
   # Squid Proxy (IP Rotation)
   # ------------------------------------------------------------
   # network_mode: host gives Squid direct access to Reserved IPs
