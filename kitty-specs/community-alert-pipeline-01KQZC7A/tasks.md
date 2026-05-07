@@ -136,10 +136,10 @@ Phase A and Phase B execute **in parallel** because alert-crawler's `go.mod` car
 | T091 | Add `alert-crawler` to `GO_SERVICES` in `scripts/detect-changed-services.sh` | WP21 | | [D] |
 | T092 | Add `vuln:alert-crawler` delegation in root `Taskfile.yml` | WP21 | | [D] |
 | T093 | Verify CI workflow detects and tests alert-crawler on diff (manual: open dummy PR, observe CI) | WP21 | | [D] |
-| T094 | Create `alert-crawler.timer.j2` (`OnCalendar=*-*-* *:30:00 UTC`, `Persistent=true`, `RandomizedDelaySec=120`) | WP22 | [P] |
-| T095 | Create `alert-crawler.service.j2` (`Type=oneshot`, `ExecStartPre` image pull, `ExecStart` `docker compose ... run --rm alert-crawler`) | WP22 | |
-| T096 | Add `nc_alert_crawler_schedule` default in `roles/north-cloud/defaults/main.yml` | WP22 | |
-| T097 | Add data-dir creation task with `owner: "1000"` (RR PR-004 mitigation) | WP22 | |
+| T094 | Create `alert-crawler.timer.j2` (`OnCalendar=*-*-* *:30:00 UTC`, `Persistent=true`, `RandomizedDelaySec=120`) | WP22 | [D] |
+| T095 | Create `alert-crawler.service.j2` (`Type=oneshot`, `ExecStartPre` image pull, `ExecStart` `docker compose ... run --rm alert-crawler`) | WP22 | | [D] |
+| T096 | Add `nc_alert_crawler_schedule` default in `roles/north-cloud/defaults/main.yml` | WP22 | | [D] |
+| T097 | Add data-dir creation task with `owner: "1000"` (RR PR-004 mitigation) | WP22 | | [D] |
 | T098 | Add `docs/specs/community-alert-pipeline.md` (or pointer to mission spec) | WP23 | |
 | T099 | Update `tools/drift-detector.sh` mapping for `alert-crawler/**` | WP23 | |
 | T100 | Write `alert-crawler/CLAUDE.md` (config gotcha, mapping ownership, replace removal, rescission, RR PR-004) | WP23 | |
@@ -667,10 +667,10 @@ Phase A and Phase B execute **in parallel** because alert-crawler's `go.mod` car
 
 **Subtasks**:
 
-- [ ] T094 Create `alert-crawler.timer.j2` (`OnCalendar=*-*-* *:30:00 UTC`, `Persistent=true`, `RandomizedDelaySec=120`) (WP22)
-- [ ] T095 Create `alert-crawler.service.j2` (`Type=oneshot`, `ExecStartPre` image pull, `ExecStart` `docker compose ... run --rm alert-crawler`) (WP22)
-- [ ] T096 Add `nc_alert_crawler_schedule` default in `roles/north-cloud/defaults/main.yml` (WP22)
-- [ ] T097 Add data-dir creation task with `owner: "1000"` (RR PR-004 mitigation) (WP22)
+- [x] T094 Create `alert-crawler.timer.j2` (`OnCalendar=*-*-* *:30:00 UTC`, `Persistent=true`, `RandomizedDelaySec=120`) (WP22)
+- [x] T095 Create `alert-crawler.service.j2` (`Type=oneshot`, `ExecStartPre` image pull, `ExecStart` `docker compose ... run --rm alert-crawler`) (WP22)
+- [x] T096 Add `nc_alert_crawler_schedule` default in `roles/north-cloud/defaults/main.yml` (WP22)
+- [x] T097 Add data-dir creation task with `owner: "1000"` (RR PR-004 mitigation) (WP22)
 
 **Dependencies**: WP05, WP20.
 
