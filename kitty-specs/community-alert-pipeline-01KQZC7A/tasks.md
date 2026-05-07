@@ -117,13 +117,13 @@ Phase A and Phase B execute **in parallel** because alert-crawler's `go.mod` car
 | T072 | Reuse runner with `backfill_mode=true` flag; emit `created` for top-20 items | WP17 | | [D] |
 | T073 | Idempotency: re-running backfill is a no-op (catalogue check) | WP17 | | [D] |
 | T074 | Unit tests for backfill mode | WP17 | | [D] |
-| T075 | Set up integration test harness (`//go:build integration`; real ES + Redis + SQLite via existing CI integration harness) | WP18 | |
-| T076 | AS-01: drug supply alert reaches Treaty 1 page (synthetic feed → ES → consumer query) | WP18 | |
-| T077 | AS-02: corrected alert supersedes earlier version (revision_history append + updated event) | WP18 | |
-| T078 | AS-03: rescinded alert disappears within one poll cycle (feed-delta detection) | WP18 | |
-| T079 | AS-04: subscriber recovery after downtime (active-set query from ES alone) | WP18 | |
-| T080 | AS-05: source unreachable for extended period (consecutive_failures gauge; durable store unaffected) | WP18 | |
-| T081 | AS-06: scope vocabulary lookup (Treaty 1 page surfaces a manitoba-scoped alert) | WP18 | |
+| T075 | Set up integration test harness (`//go:build integration`; real ES + Redis + SQLite via existing CI integration harness) | WP18 | | [D] |
+| T076 | AS-01: drug supply alert reaches Treaty 1 page (synthetic feed → ES → consumer query) | WP18 | | [D] |
+| T077 | AS-02: corrected alert supersedes earlier version (revision_history append + updated event) | WP18 | | [D] |
+| T078 | AS-03: rescinded alert disappears within one poll cycle (feed-delta detection) | WP18 | | [D] |
+| T079 | AS-04: subscriber recovery after downtime (active-set query from ES alone) | WP18 | | [D] |
+| T080 | AS-05: source unreachable for extended period (consecutive_failures gauge; durable store unaffected) | WP18 | | [D] |
+| T081 | AS-06: scope vocabulary lookup (Treaty 1 page surfaces a manitoba-scoped alert) | WP18 | | [D] |
 | T082 | Wait for indigenous-taxonomy v1.1.0 tag (gates: WP04 merged) | WP19 | |
 | T083 | Remove `replace` directive from `alert-crawler/go.mod` | WP19 | |
 | T084 | Pin to `github.com/jonesrussell/indigenous-taxonomy v1.1.0` | WP19 | |
@@ -570,13 +570,13 @@ Phase A and Phase B execute **in parallel** because alert-crawler's `go.mod` car
 
 **Subtasks**:
 
-- [ ] T075 Set up integration test harness (`//go:build integration`; real ES + Redis + SQLite via existing CI integration harness) (WP18)
-- [ ] T076 AS-01: drug supply alert reaches Treaty 1 page (synthetic feed → ES → consumer query) (WP18)
-- [ ] T077 AS-02: corrected alert supersedes earlier version (revision_history append + updated event) (WP18)
-- [ ] T078 AS-03: rescinded alert disappears within one poll cycle (feed-delta detection) (WP18)
-- [ ] T079 AS-04: subscriber recovery after downtime (active-set query from ES alone) (WP18)
-- [ ] T080 AS-05: source unreachable for extended period (consecutive_failures gauge; durable store unaffected) (WP18)
-- [ ] T081 AS-06: scope vocabulary lookup (Treaty 1 page surfaces a manitoba-scoped alert) (WP18)
+- [x] T075 Set up integration test harness (`//go:build integration`; real ES + Redis + SQLite via existing CI integration harness) (WP18)
+- [x] T076 AS-01: drug supply alert reaches Treaty 1 page (synthetic feed → ES → consumer query) (WP18)
+- [x] T077 AS-02: corrected alert supersedes earlier version (revision_history append + updated event) (WP18)
+- [x] T078 AS-03: rescinded alert disappears within one poll cycle (feed-delta detection) (WP18)
+- [x] T079 AS-04: subscriber recovery after downtime (active-set query from ES alone) (WP18)
+- [x] T080 AS-05: source unreachable for extended period (consecutive_failures gauge; durable store unaffected) (WP18)
+- [x] T081 AS-06: scope vocabulary lookup (Treaty 1 page surfaces a manitoba-scoped alert) (WP18)
 
 **Dependencies**: WP15, WP16, WP17.
 
