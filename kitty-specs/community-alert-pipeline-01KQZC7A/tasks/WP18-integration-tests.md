@@ -221,3 +221,4 @@ Depends on WP15, WP16, WP17.
 ## Activity Log
 
 - 2026-05-07T00:14:19Z – claude:sonnet:implementer:implementer – shell_pid=359756 – Started implementation via action command
+- 2026-05-07T00:24:56Z – claude:sonnet:implementer:implementer – shell_pid=359756 – Integration harness + AS-01..AS-06 (build tag integration; skip without env)
