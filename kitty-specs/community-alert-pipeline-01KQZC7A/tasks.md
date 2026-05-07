@@ -113,10 +113,10 @@ Phase A and Phase B execute **in parallel** because alert-crawler's `go.mod` car
 | T068 | Add `signal.NotifyContext(SIGINT, SIGTERM)` and graceful shutdown | WP16 | | [D] |
 | T069 | Implement phase order: flags → setup → buildSources → runner → exit; mirrors signal-crawler | WP16 | | [D] |
 | T070 | Smoke test: `task run` boots, polls once against a httptest fixture, exits cleanly | WP16 | | [D] |
-| T071 | Create `cmd/backfill/main.go` (one-shot subcommand) | WP17 | [P] |
-| T072 | Reuse runner with `backfill_mode=true` flag; emit `created` for top-20 items | WP17 | |
-| T073 | Idempotency: re-running backfill is a no-op (catalogue check) | WP17 | |
-| T074 | Unit tests for backfill mode | WP17 | |
+| T071 | Create `cmd/backfill/main.go` (one-shot subcommand) | WP17 | [D] |
+| T072 | Reuse runner with `backfill_mode=true` flag; emit `created` for top-20 items | WP17 | | [D] |
+| T073 | Idempotency: re-running backfill is a no-op (catalogue check) | WP17 | | [D] |
+| T074 | Unit tests for backfill mode | WP17 | | [D] |
 | T075 | Set up integration test harness (`//go:build integration`; real ES + Redis + SQLite via existing CI integration harness) | WP18 | |
 | T076 | AS-01: drug supply alert reaches Treaty 1 page (synthetic feed → ES → consumer query) | WP18 | |
 | T077 | AS-02: corrected alert supersedes earlier version (revision_history append + updated event) | WP18 | |
@@ -547,10 +547,10 @@ Phase A and Phase B execute **in parallel** because alert-crawler's `go.mod` car
 
 **Subtasks**:
 
-- [ ] T071 Create `cmd/backfill/main.go` (one-shot subcommand) (WP17)
-- [ ] T072 Reuse runner with `backfill_mode=true` flag; emit `created` for top-20 items (WP17)
-- [ ] T073 Idempotency: re-running backfill is a no-op (catalogue check) (WP17)
-- [ ] T074 Unit tests for backfill mode (WP17)
+- [x] T071 Create `cmd/backfill/main.go` (one-shot subcommand) (WP17)
+- [x] T072 Reuse runner with `backfill_mode=true` flag; emit `created` for top-20 items (WP17)
+- [x] T073 Idempotency: re-running backfill is a no-op (catalogue check) (WP17)
+- [x] T074 Unit tests for backfill mode (WP17)
 
 **Dependencies**: WP15, WP16.
 
