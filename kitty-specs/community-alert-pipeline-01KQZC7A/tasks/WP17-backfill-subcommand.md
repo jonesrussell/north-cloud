@@ -202,3 +202,4 @@ Depends on WP15, WP16.
 ## Activity Log
 
 - 2026-05-07T00:05:00Z – claude:sonnet:implementer:implementer – shell_pid=343931 – Started implementation via action command
+- 2026-05-07T00:11:09Z – claude:sonnet:implementer:implementer – shell_pid=343931 – Backfill: idempotent top-20, end-to-end smoke updated
