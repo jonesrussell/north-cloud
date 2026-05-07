@@ -313,7 +313,13 @@ linters:
         path: ai-observer/internal/bootstrap/config\.go
       - linters:
           - testpackage
-        path: (internal/(config|logger)/|ai-observer/internal/category/(classifier|drift)/|alert-crawler/internal/runner/).*_test\.go
+        path: (internal/(config|logger)/|ai-observer/internal/category/(classifier|drift)/|alert-crawler/internal/runner/|alert-crawler/integration/).*_test\.go
+      - linters:
+          - forbidigo
+        path: alert-crawler/integration/.*\.go
+      - linters:
+          - forbidigo
+        path: alert-crawler/internal/runner/integration_test\.go
       - linters:
           - canonicalheader
         path: .*/(drupal|publisher)/.*client\.go
