@@ -152,7 +152,7 @@ Phase A and Phase B execute **in parallel** because alert-crawler's `go.mod` car
 | T107 | Run `task test` and `task test:alert-crawler -- -tags integration` clean | WP25 | | [D] |
 | T108 | Run `task drift:check`, `task ports:check`, `task layers:check` clean | WP25 | | [D] |
 | T109 | Verify lefthook pre-commit and pre-push pass without `--no-verify` | WP25 | | [D] |
-| T110 | Manual smoke test: end-to-end against staging (publish → consume) | WP25 | |
+| T110 | Manual smoke test: end-to-end against staging (publish → consume) | WP25 | | [D] |
 | T111 | File GitHub issue: "Migrate classifier and publisher to import indigenous-taxonomy directly" with R-004 context | WP25 | | [D] |
 
 ## Work Packages
@@ -742,7 +742,7 @@ Phase A and Phase B execute **in parallel** because alert-crawler's `go.mod` car
 - [x] T107 Run `task test` and `task test:alert-crawler -- -tags integration` clean (WP25)
 - [x] T108 Run `task drift:check`, `task ports:check`, `task layers:check` clean (WP25)
 - [x] T109 Verify lefthook pre-commit and pre-push pass without `--no-verify` (WP25)
-- [ ] T110 Manual smoke test: end-to-end against staging (publish → consume) (WP25)
+- [x] T110 Manual smoke test: end-to-end against staging (publish → consume) (WP25)
 - [x] T111 File GitHub issue: "Migrate classifier and publisher to import indigenous-taxonomy directly" with R-004 context (WP25)
 
 **Dependencies**: WP19, WP20, WP21, WP22, WP23, WP24.
