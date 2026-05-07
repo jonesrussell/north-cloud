@@ -204,3 +204,4 @@ Depends on WP05.
 ## Activity Log
 
 - 2026-05-07T13:37:41Z – claude:sonnet:implementer:implementer – shell_pid=525388 – Started implementation via action command
+- 2026-05-07T13:39:25Z – claude:sonnet:implementer:implementer – shell_pid=525388 – Ready for review: pointer spec + drift mapping + alert-crawler/root CLAUDE updates; drift check clean
