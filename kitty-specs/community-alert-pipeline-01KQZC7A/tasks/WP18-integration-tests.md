@@ -31,8 +31,8 @@ subtasks:
 - T080
 - T081
 phase: B
-agent: "claude:sonnet:implementer:implementer"
-shell_pid: "359756"
+agent: "claude:opus:reviewer:reviewer"
+shell_pid: "369515"
 history:
 - at: '2026-05-06T20:51:29Z'
   event: created
@@ -222,3 +222,4 @@ Depends on WP15, WP16, WP17.
 
 - 2026-05-07T00:14:19Z – claude:sonnet:implementer:implementer – shell_pid=359756 – Started implementation via action command
 - 2026-05-07T00:24:56Z – claude:sonnet:implementer:implementer – shell_pid=359756 – Integration harness + AS-01..AS-06 (build tag integration; skip without env)
+- 2026-05-07T00:25:53Z – claude:opus:reviewer:reviewer – shell_pid=369515 – Started review via action command
