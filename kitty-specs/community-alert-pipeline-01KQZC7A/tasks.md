@@ -128,10 +128,10 @@ Phase A and Phase B execute **in parallel** because alert-crawler's `go.mod` car
 | T083 | Remove `replace` directive from `alert-crawler/go.mod` | WP19 | | [D] |
 | T084 | Pin to `github.com/jonesrussell/indigenous-taxonomy v1.1.0` | WP19 | | [D] |
 | T085 | Run `go mod tidy`; verify build succeeds without `replace` (CI gate) | WP19 | | [D] |
-| T086 | Add `alert-crawler` service entry to `docker-compose.base.yml` (`restart: "no"`, named volume `alert-crawler-data:/app/data`, no health check) | WP20 | |
-| T087 | Add `alert-crawler-data` named volume declaration | WP20 | |
-| T088 | Verify service brings up cleanly via `docker compose -f docker-compose.base.yml -f docker-compose.dev.yml up alert-crawler` | WP20 | |
-| T089 | Run `task ports:check`; regenerate ports SSOT for new compose entry | WP20 | |
+| T086 | Add `alert-crawler` service entry to `docker-compose.base.yml` (`restart: "no"`, named volume `alert-crawler-data:/app/data`, no health check) | WP20 | | [D] |
+| T087 | Add `alert-crawler-data` named volume declaration | WP20 | | [D] |
+| T088 | Verify service brings up cleanly via `docker compose -f docker-compose.base.yml -f docker-compose.dev.yml up alert-crawler` | WP20 | | [D] |
+| T089 | Run `task ports:check`; regenerate ports SSOT for new compose entry | WP20 | | [D] |
 | T090 | Add `alert-crawler` to oneshot skip list in `scripts/deploy.sh` | WP21 | [P] |
 | T091 | Add `alert-crawler` to `GO_SERVICES` in `scripts/detect-changed-services.sh` | WP21 | |
 | T092 | Add `vuln:alert-crawler` delegation in root `Taskfile.yml` | WP21 | |
@@ -621,10 +621,10 @@ Phase A and Phase B execute **in parallel** because alert-crawler's `go.mod` car
 
 **Subtasks**:
 
-- [ ] T086 Add `alert-crawler` service entry to `docker-compose.base.yml` (`restart: "no"`, named volume, no health check) (WP20)
-- [ ] T087 Add `alert-crawler-data` named volume declaration (WP20)
-- [ ] T088 Verify service brings up cleanly via `docker compose -f docker-compose.base.yml -f docker-compose.dev.yml up alert-crawler` (WP20)
-- [ ] T089 Run `task ports:check`; regenerate ports SSOT for new compose entry (WP20)
+- [x] T086 Add `alert-crawler` service entry to `docker-compose.base.yml` (`restart: "no"`, named volume, no health check) (WP20)
+- [x] T087 Add `alert-crawler-data` named volume declaration (WP20)
+- [x] T088 Verify service brings up cleanly via `docker compose -f docker-compose.base.yml -f docker-compose.dev.yml up alert-crawler` (WP20)
+- [x] T089 Run `task ports:check`; regenerate ports SSOT for new compose entry (WP20)
 
 **Dependencies**: WP05.
 
