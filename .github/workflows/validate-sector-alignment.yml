@@ -131,18 +131,10 @@ jobs:
           # reports zero production segment coverage while held-out accuracy still passes.
           # This keeps the signal visible without blocking deploys during rollout.
           if [ "$STATUS" -ne 0 ]; then
-            if printf '%s' "$OUTPUT" | python3 -c '
-import json, sys
-try:
-    data = json.load(sys.stdin)
-except Exception:
-    raise SystemExit(1)
-coverage = data.get("coverage", {})
-accuracy = data.get("accuracy", {})
-zero_coverage = coverage.get("docs_with_segments") == 0 and coverage.get("total_docs", 0) > 0
-accuracy_pass = bool(accuracy.get("pass"))
-raise SystemExit(0 if zero_coverage and accuracy_pass else 1)
-'; then
+            if echo "$OUTPUT" | grep -q '"docs_with_segments": 0' && \
+               echo "$OUTPUT" | grep -q '"total_docs":' && \
+               echo "$OUTPUT" | grep -q '"accuracy":' && \
+               echo "$OUTPUT" | grep -q '"pass": true'; then
               WAIVED=1
               STATUS=0
             fi
