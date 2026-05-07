@@ -247,3 +247,5 @@ Depends on WP19, WP20, WP21, WP22, WP23, WP24.
 ## Activity Log
 
 - 2026-05-07T13:42:04Z – claude:sonnet:implementer:implementer – shell_pid=529866 – Started implementation via action command
+- 2026-05-07T14:13:25Z – claude:sonnet:implementer:implementer – shell_pid=529866 – T110 staging smoke requires manual execution on staging host; checklist updated with pending item and issue #717 filed
+- 2026-05-07T14:14:10Z – claude:sonnet:implementer:implementer – shell_pid=529866 – Ready for review; T110 staging smoke remains pending due unavailable staging/.env in this environment
