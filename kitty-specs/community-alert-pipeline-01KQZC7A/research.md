@@ -146,6 +146,7 @@ This document resolves the four research items deferred from spec to research ph
 - Migrating classifier and publisher to import `indigenous-taxonomy` directly. (Separate backlog item; flag at end of mission.)
 - Filling in the entire community-slug catalogue for Canada. (Establish pattern with one or two communities per treaty area.)
 - Métis Settlements full enumeration, Inuit nunangat boundaries, modern-treaty territories beyond Numbered Treaties 1-11. (Future expansion.)
+- Follow-on tracker: [#717](https://github.com/jonesrussell/north-cloud/issues/717).
 
 ---
 
