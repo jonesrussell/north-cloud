@@ -9,6 +9,8 @@ The authoritative specification for this subsystem lives in the Spec Kitty missi
 - **Contracts**: [`kitty-specs/community-alert-pipeline-01KQZC7A/contracts/`](../../kitty-specs/community-alert-pipeline-01KQZC7A/contracts/)
 
 The `alert-crawler/` service is the implementation of this spec.
+Recent mission validation additions (NFR harnesses and backfill rehearsal tests) are also tracked
+under this same canonical spec.
 
 ## Why this pointer exists
 
