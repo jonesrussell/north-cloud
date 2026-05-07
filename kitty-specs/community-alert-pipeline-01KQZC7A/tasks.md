@@ -109,10 +109,10 @@ Phase A and Phase B execute **in parallel** because alert-crawler's `go.mod` car
 | T064 | Create `internal/observability/metrics.go` (structured-log emitter for the metric set in plan §4.5) | WP15 | | [D] |
 | T065 | Implement consecutive_failures gauge per source; ≥6 emits operator-actionable signal | WP15 | | [D] |
 | T066 | Unit tests with mocked dependencies; assert each per-poll metric is emitted | WP15 | | [D] |
-| T067 | Wire all dependencies in `main.go` (config, logger, sqlite, ES, redis, catalogue, runner) | WP16 | |
-| T068 | Add `signal.NotifyContext(SIGINT, SIGTERM)` and graceful shutdown | WP16 | |
-| T069 | Implement phase order: flags → setup → buildSources → runner → exit; mirrors signal-crawler | WP16 | |
-| T070 | Smoke test: `task run` boots, polls once against a httptest fixture, exits cleanly | WP16 | |
+| T067 | Wire all dependencies in `main.go` (config, logger, sqlite, ES, redis, catalogue, runner) | WP16 | | [D] |
+| T068 | Add `signal.NotifyContext(SIGINT, SIGTERM)` and graceful shutdown | WP16 | | [D] |
+| T069 | Implement phase order: flags → setup → buildSources → runner → exit; mirrors signal-crawler | WP16 | | [D] |
+| T070 | Smoke test: `task run` boots, polls once against a httptest fixture, exits cleanly | WP16 | | [D] |
 | T071 | Create `cmd/backfill/main.go` (one-shot subcommand) | WP17 | [P] |
 | T072 | Reuse runner with `backfill_mode=true` flag; emit `created` for top-20 items | WP17 | |
 | T073 | Idempotency: re-running backfill is a no-op (catalogue check) | WP17 | |
@@ -524,10 +524,10 @@ Phase A and Phase B execute **in parallel** because alert-crawler's `go.mod` car
 
 **Subtasks**:
 
-- [ ] T067 Wire all dependencies in `main.go` (config, logger, sqlite, ES, redis, catalogue, runner) (WP16)
-- [ ] T068 Add `signal.NotifyContext(SIGINT, SIGTERM)` and graceful shutdown (WP16)
-- [ ] T069 Implement phase order: flags → setup → buildSources → runner → exit; mirrors signal-crawler (WP16)
-- [ ] T070 Smoke test: `task run` boots, polls once against a httptest fixture, exits cleanly (WP16)
+- [x] T067 Wire all dependencies in `main.go` (config, logger, sqlite, ES, redis, catalogue, runner) (WP16)
+- [x] T068 Add `signal.NotifyContext(SIGINT, SIGTERM)` and graceful shutdown (WP16)
+- [x] T069 Implement phase order: flags → setup → buildSources → runner → exit; mirrors signal-crawler (WP16)
+- [x] T070 Smoke test: `task run` boots, polls once against a httptest fixture, exits cleanly (WP16)
 
 **Dependencies**: WP15 and all preceding Phase B WPs.
 
