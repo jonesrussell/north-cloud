@@ -132,10 +132,10 @@ Phase A and Phase B execute **in parallel** because alert-crawler's `go.mod` car
 | T087 | Add `alert-crawler-data` named volume declaration | WP20 | | [D] |
 | T088 | Verify service brings up cleanly via `docker compose -f docker-compose.base.yml -f docker-compose.dev.yml up alert-crawler` | WP20 | | [D] |
 | T089 | Run `task ports:check`; regenerate ports SSOT for new compose entry | WP20 | | [D] |
-| T090 | Add `alert-crawler` to oneshot skip list in `scripts/deploy.sh` | WP21 | [P] |
-| T091 | Add `alert-crawler` to `GO_SERVICES` in `scripts/detect-changed-services.sh` | WP21 | |
-| T092 | Add `vuln:alert-crawler` delegation in root `Taskfile.yml` | WP21 | |
-| T093 | Verify CI workflow detects and tests alert-crawler on diff (manual: open dummy PR, observe CI) | WP21 | |
+| T090 | Add `alert-crawler` to oneshot skip list in `scripts/deploy.sh` | WP21 | [D] |
+| T091 | Add `alert-crawler` to `GO_SERVICES` in `scripts/detect-changed-services.sh` | WP21 | | [D] |
+| T092 | Add `vuln:alert-crawler` delegation in root `Taskfile.yml` | WP21 | | [D] |
+| T093 | Verify CI workflow detects and tests alert-crawler on diff (manual: open dummy PR, observe CI) | WP21 | | [D] |
 | T094 | Create `alert-crawler.timer.j2` (`OnCalendar=*-*-* *:30:00 UTC`, `Persistent=true`, `RandomizedDelaySec=120`) | WP22 | [P] |
 | T095 | Create `alert-crawler.service.j2` (`Type=oneshot`, `ExecStartPre` image pull, `ExecStart` `docker compose ... run --rm alert-crawler`) | WP22 | |
 | T096 | Add `nc_alert_crawler_schedule` default in `roles/north-cloud/defaults/main.yml` | WP22 | |
@@ -644,10 +644,10 @@ Phase A and Phase B execute **in parallel** because alert-crawler's `go.mod` car
 
 **Subtasks**:
 
-- [ ] T090 Add `alert-crawler` to oneshot skip list in `scripts/deploy.sh` (WP21)
-- [ ] T091 Add `alert-crawler` to `GO_SERVICES` in `scripts/detect-changed-services.sh` (WP21)
-- [ ] T092 Add `vuln:alert-crawler` delegation in root `Taskfile.yml` (WP21)
-- [ ] T093 Verify CI workflow detects and tests alert-crawler on diff (manual: open dummy PR, observe CI) (WP21)
+- [x] T090 Add `alert-crawler` to oneshot skip list in `scripts/deploy.sh` (WP21)
+- [x] T091 Add `alert-crawler` to `GO_SERVICES` in `scripts/detect-changed-services.sh` (WP21)
+- [x] T092 Add `vuln:alert-crawler` delegation in root `Taskfile.yml` (WP21)
+- [x] T093 Verify CI workflow detects and tests alert-crawler on diff (manual: open dummy PR, observe CI) (WP21)
 
 **Dependencies**: WP05.
 
