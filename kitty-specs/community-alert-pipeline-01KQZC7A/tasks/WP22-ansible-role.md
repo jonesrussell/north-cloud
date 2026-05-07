@@ -16,6 +16,8 @@ subtasks:
 - T096
 - T097
 phase: C
+agent: "claude:sonnet:implementer:implementer"
+shell_pid: "523843"
 history:
 - at: '2026-05-06T20:51:29Z'
   event: created
@@ -192,3 +194,7 @@ spec-kitty agent action implement WP22 --agent <name>
 ```
 
 Depends on WP05, WP20.
+
+## Activity Log
+
+- 2026-05-07T13:36:12Z – claude:sonnet:implementer:implementer – shell_pid=523843 – Started implementation via action command
