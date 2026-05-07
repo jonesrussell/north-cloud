@@ -20,6 +20,8 @@ subtasks:
 - T047
 - T048
 phase: B
+agent: "claude:opus:reviewer:reviewer"
+shell_pid: "261986"
 history:
 - at: '2026-05-06T20:51:29Z'
   event: created
@@ -242,3 +244,10 @@ spec-kitty agent action implement WP11 --agent <name>
 ```
 
 Depends on WP05, WP06.
+
+## Activity Log
+
+- 2026-05-06T23:01:14Z – claude:sonnet:implementer:implementer – shell_pid=257956 – Started implementation via action command
+- 2026-05-06T23:08:57Z – claude:sonnet:implementer:implementer – shell_pid=257956 – ES indexer + EnsureIndex + Bulk + QueryActive (lint + 81.7% cov)
+- 2026-05-06T23:09:33Z – claude:opus:reviewer:reviewer – shell_pid=261986 – Started review via action command
+- 2026-05-06T23:11:18Z – claude:opus:reviewer:reviewer – shell_pid=261986 – ES indexer approved: 15 tests / 81.7% cov; race-safe EnsureIndex; QueryActiveAlertIDs satisfies catalogue interface

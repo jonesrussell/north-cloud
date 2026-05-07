@@ -7,12 +7,17 @@ requirement_refs:
 planning_base_branch: main
 merge_target_branch: main
 branch_strategy: Planning artifacts for this feature were generated on main. During /spec-kitty.implement this WP may branch from a dependency-specific base, but completed changes must merge back into main unless the human explicitly redirects the landing branch.
+base_branch: kitty/mission-community-alert-pipeline-01KQZC7A
+base_commit: bac3ba4be6cd2ed411dd6b45e80720d170b808c3
+created_at: '2026-05-06T21:28:40.669472+00:00'
 subtasks:
 - T001
 - T002
 - T003
 - T004
 phase: A
+shell_pid: "198739"
+agent: "claude:opus:reviewer:reviewer"
 history:
 - at: '2026-05-06T20:51:29Z'
   event: created
@@ -186,3 +191,10 @@ spec-kitty agent action implement WP01 --agent <name>
 ```
 
 This WP has no prerequisites. Begin immediately. The agent operates primarily in `../indigenous-taxonomy/` for code changes; the spec-kitty lane worktree is informational.
+
+## Activity Log
+
+- 2026-05-06T21:28:46Z – claude:sonnet:implementer:implementer – shell_pid=190941 – Assigned agent via action command
+- 2026-05-06T21:35:21Z – claude:sonnet:implementer:implementer – shell_pid=190941 – Ready for review: Treaty namespace v1.1.0 additions committed to indigenous-taxonomy@98bf57c
+- 2026-05-06T21:36:45Z – claude:opus:reviewer:reviewer – shell_pid=198739 – Started review via action command
+- 2026-05-06T21:39:25Z – claude:opus:reviewer:reviewer – shell_pid=198739 – Review passed: schema/treaties.yaml has all 11 slugs (treaty:1..11) with member_regions metadata; generate.py emits deterministic numeric-sorted output (verified by two consecutive regenerations producing identical bytes); treaties.go provides Treaty type, 11 constants, AllTreaties slice, and IsValidTreaty map-lookup; all 4 unit tests pass; go vet clean; gofmt clean on committed file. Note for follow-up: generator emits raw output that requires gofmt -w post-generation (alignment of TreatyArea1..9 vs TreatyArea10/11). Existing regions.go/categories.go have the same pattern. Worth a future generator-improvement WP to pipe output through gofmt.

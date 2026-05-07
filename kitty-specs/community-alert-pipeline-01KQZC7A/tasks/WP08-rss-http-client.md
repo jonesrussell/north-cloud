@@ -15,6 +15,8 @@ subtasks:
 - T034
 - T035
 phase: B
+agent: "claude:opus:reviewer:reviewer"
+shell_pid: "243020"
 history:
 - at: '2026-05-06T20:51:29Z'
   event: created
@@ -240,3 +242,14 @@ spec-kitty agent action implement WP08 --agent <name>
 ```
 
 Depends on WP05, WP06. Parallel-safe with WP09–WP14.
+
+## Activity Log
+
+- 2026-05-06T22:28:15Z – claude:sonnet:implementer:implementer – shell_pid=236744 – Started implementation via action command
+- 2026-05-06T22:30:45Z – claude:sonnet:implementer:implementer – shell_pid=236744 – RSS HTTP client with conditional GET
+- 2026-05-06T22:31:24Z – claude:opus:reviewer:reviewer – shell_pid=238811 – Started review via action command
+- 2026-05-06T22:34:03Z – claude:opus:reviewer:reviewer – shell_pid=238811 – Rejected: 4 lint violations. Tests/vet/gofmt clean, golangci-lint blocks. See feedback file.
+- 2026-05-06T22:35:04Z – claude:sonnet:implementer:implementer – shell_pid=241377 – Started implementation via action command
+- 2026-05-06T22:37:11Z – claude:sonnet:implementer:implementer – shell_pid=241377 – Cycle 1 fix: 4 lint violations resolved (httpNoBody, nolintlint directive removed, mnd consts httpServerErrorMin/httpClientErrorMin)
+- 2026-05-06T22:37:43Z – claude:opus:reviewer:reviewer – shell_pid=243020 – Started review via action command
+- 2026-05-06T22:39:10Z – claude:opus:reviewer:reviewer – shell_pid=243020 – Approved after cycle 1: 4 lint violations resolved (httpNoBody, whyNoLint, 2x mnd); 0 golangci-lint issues; 9 tests pass at 87.1% cov

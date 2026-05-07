@@ -15,6 +15,8 @@ subtasks:
 - T088
 - T089
 phase: C
+agent: "claude:opus:reviewer:reviewers2"
+shell_pid: "520622"
 history:
 - at: '2026-05-06T20:51:29Z'
   event: created
@@ -180,3 +182,10 @@ spec-kitty agent action implement WP20 --agent <name>
 ```
 
 Depends on WP05.
+
+## Activity Log
+
+- 2026-05-07T13:30:03Z – claude:sonnet:implementer:implementer – shell_pid=515304 – Started implementation via action command
+- 2026-05-07T13:32:22Z – claude:sonnet:implementer:implementer – shell_pid=515304 – Ready for review: compose service + volume added, ports SSOT regenerated, build verified; one-shot run blocked locally by missing .env in worktree
+- 2026-05-07T13:32:30Z – claude:opus:reviewer:reviewers2 – shell_pid=520622 – Started review via action command
+- 2026-05-07T13:35:55Z – claude:opus:reviewer:reviewers2 – shell_pid=520622 – Review passed

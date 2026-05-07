@@ -13,6 +13,8 @@ subtasks:
 - T007
 - T008
 phase: A
+agent: "claude:opus:reviewer:reviewer"
+shell_pid: "203180"
 history:
 - at: '2026-05-06T20:51:29Z'
   event: created
@@ -165,3 +167,10 @@ spec-kitty agent action implement WP02 --agent <name>
 ```
 
 No prerequisites. Parallel-safe with WP01.
+
+## Activity Log
+
+- 2026-05-06T21:40:10Z – claude:sonnet:implementer:implementer – shell_pid=201197 – Started implementation via action command
+- 2026-05-06T21:43:17Z – claude:sonnet:implementer:implementer – shell_pid=201197 – Ready for review: regions.yaml + city/community children
+- 2026-05-06T21:43:51Z – claude:opus:reviewer:reviewer – shell_pid=203180 – Started review via action command
+- 2026-05-06T21:45:24Z – claude:opus:reviewer:reviewer – shell_pid=203180 – Review passed: cities + community samples + regions_test.go all good

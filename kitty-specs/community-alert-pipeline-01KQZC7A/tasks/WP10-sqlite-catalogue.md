@@ -18,6 +18,8 @@ subtasks:
 - T043
 - T044
 phase: B
+agent: "claude:opus:reviewer:reviewer"
+shell_pid: "256800"
 history:
 - at: '2026-05-06T20:51:29Z'
   event: created
@@ -229,3 +231,10 @@ spec-kitty agent action implement WP10 --agent <name>
 ```
 
 Depends on WP05, WP06.
+
+## Activity Log
+
+- 2026-05-06T22:51:50Z – claude:sonnet:implementer:implementer – shell_pid=251290 – Started implementation via action command
+- 2026-05-06T22:58:38Z – claude:sonnet:implementer:implementer – shell_pid=251290 – SQLite catalogue + migrations + rebuild path
+- 2026-05-06T22:59:09Z – claude:opus:reviewer:reviewer – shell_pid=256800 – Started review via action command
+- 2026-05-06T23:00:26Z – claude:opus:reviewer:reviewer – shell_pid=256800 – Catalogue approved: 13 tests / 80.7% cov; rescission semantics verified; embedded migrations; lint clean

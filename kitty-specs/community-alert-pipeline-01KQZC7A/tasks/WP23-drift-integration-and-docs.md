@@ -15,6 +15,8 @@ subtasks:
 - T100
 - T101
 phase: C
+agent: "claude:opus:reviewer:reviewers2"
+shell_pid: "527111"
 history:
 - at: '2026-05-06T20:51:29Z'
   event: created
@@ -198,3 +200,10 @@ spec-kitty agent action implement WP23 --agent <name>
 ```
 
 Depends on WP05.
+
+## Activity Log
+
+- 2026-05-07T13:37:41Z – claude:sonnet:implementer:implementer – shell_pid=525388 – Started implementation via action command
+- 2026-05-07T13:39:25Z – claude:sonnet:implementer:implementer – shell_pid=525388 – Ready for review: pointer spec + drift mapping + alert-crawler/root CLAUDE updates; drift check clean
+- 2026-05-07T13:39:27Z – claude:opus:reviewer:reviewers2 – shell_pid=527111 – Started review via action command
+- 2026-05-07T13:39:40Z – claude:opus:reviewer:reviewers2 – shell_pid=527111 – Review passed

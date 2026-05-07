@@ -15,6 +15,8 @@ subtasks:
 - T010
 - T011
 phase: A
+agent: "claude:opus:reviewer:reviewer"
+shell_pid: "207140"
 history:
 - at: '2026-05-06T20:51:29Z'
   event: created
@@ -144,3 +146,10 @@ spec-kitty agent action implement WP03 --agent <name>
 ```
 
 Depends on WP01 and WP02. The agent should wait until those are merged in `../indigenous-taxonomy/` before regenerating, since WP03's regenerated `regions.go` must include all WP02 entries.
+
+## Activity Log
+
+- 2026-05-06T21:45:53Z – claude:sonnet:implementer:implementer – shell_pid=204261 – Started implementation via action command
+- 2026-05-06T21:48:28Z – claude:sonnet:implementer:implementer – shell_pid=204261 – Ready for review: ParentRegion walk fn + tests
+- 2026-05-06T21:48:59Z – claude:opus:reviewer:reviewer – shell_pid=207140 – Started review via action command
+- 2026-05-06T21:50:09Z – claude:opus:reviewer:reviewer – shell_pid=207140 – Review passed: ParentRegion + 14 tests

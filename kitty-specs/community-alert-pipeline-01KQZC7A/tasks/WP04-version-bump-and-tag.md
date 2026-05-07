@@ -17,6 +17,8 @@ subtasks:
 - T014
 - T015
 phase: A
+agent: "claude:opus:reviewer:reviewer"
+shell_pid: "213114"
 history:
 - at: '2026-05-06T20:51:29Z'
   event: created
@@ -194,3 +196,14 @@ spec-kitty agent action implement WP04 --agent <name>
 ```
 
 Depends on WP01, WP02, WP03. The agent should confirm those are merged before opening the consolidation PR. Note: this WP's "merge" happens in the sibling repo, not in north-cloud. Update the spec-kitty mission state by manually marking the WP done after the tag is pushed.
+
+## Activity Log
+
+- 2026-05-06T21:50:55Z – claude:sonnet:implementer:implementer – shell_pid=207988 – Started implementation via action command
+- 2026-05-06T21:55:32Z – claude:sonnet:implementer:implementer – shell_pid=207988 – v1.1.0 tagged and indexed by proxy.golang.org
+- 2026-05-06T21:56:02Z – claude:opus:reviewer:reviewer – shell_pid=209604 – Started review via action command
+- 2026-05-06T21:59:11Z – claude:opus:reviewer:reviewer – shell_pid=209604 – Moved to planned
+- 2026-05-06T22:00:06Z – claude:sonnet:implementer:implementer – shell_pid=210794 – Started implementation via action command
+- 2026-05-06T22:01:51Z – claude:sonnet:implementer:implementer – shell_pid=210794 – Cycle 1 fix: pyproject.toml bumped to 1.1.0; v1.1.0 retagged in place on commit 63a336f
+- 2026-05-06T22:02:21Z – claude:opus:reviewer:reviewer – shell_pid=213114 – Started review via action command
+- 2026-05-06T22:03:34Z – claude:opus:reviewer:reviewer – shell_pid=213114 – Approved after cycle 1 fix: pyproject.toml = 1.1.0; v1.1.0 retagged on 63a336f; all release artifacts coherent

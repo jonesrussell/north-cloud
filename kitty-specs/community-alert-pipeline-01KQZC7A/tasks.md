@@ -43,117 +43,117 @@ Phase A and Phase B execute **in parallel** because alert-crawler's `go.mod` car
 
 | ID | Description | WP | Parallel |
 |---|---|---|---|
-| T001 | Create `schema/treaties.yaml` (11 treaty entries with member-region metadata) | WP01 | [P] |
-| T002 | Extend `scripts/generate.py` to emit `treaties.go` from `treaties.yaml` | WP01 | |
-| T003 | Generate `taxonomy/treaties.go` (`Treaty` type, 11 constants, `AllTreaties`, `IsValidTreaty`) | WP01 | |
-| T004 | Add unit tests for Treaty namespace | WP01 | |
-| T005 | Extend `schema/regions.yaml` with city children (winnipeg, toronto, ottawa, vancouver, calgary, saskatoon) | WP02 | [P] |
-| T006 | Add sample First Nations community per active treaty (e.g., `canada:manitoba:sagkeeng-fn`) | WP02 | |
-| T007 | Regenerate `taxonomy/regions.go` with new entries | WP02 | |
-| T008 | Update region tests (count assertions; new constant existence) | WP02 | |
-| T009 | Extend `scripts/generate.py` to emit `ParentRegion` lookup table from YAML `children:` | WP03 | |
-| T010 | Generate `ParentRegion(Region) (Region, bool)` in `taxonomy/regions.go` | WP03 | |
-| T011 | Unit tests covering hierarchy walks (leaf → province, province → canada, canada → no parent) | WP03 | |
-| T012 | Audit `tests/` for hardcoded counter assertions (RR-004) | WP04 | |
-| T013 | Update `taxonomy/version.go` and `go.mod` to v1.1.0 | WP04 | |
-| T014 | Update `CHANGELOG.md` with additive changes | WP04 | |
-| T015 | Open PR; tag `v1.1.0` after merge | WP04 | |
-| T016 | Create `alert-crawler/` directory with `go.mod` (includes `replace` directive) | WP05 | |
-| T017 | Create `main.go` skeleton with phase-order comments | WP05 | |
-| T018 | Create `config.yml` (defaults blank where `SetDefaults` applies) | WP05 | |
-| T019 | Create per-service `Taskfile.yml` (build, run, test, lint, vuln, clean) | WP05 | |
-| T020 | Create multi-stage `Dockerfile` (Alpine, uid 1000 non-root user, CGO enabled) | WP05 | |
-| T021 | Create `.layers` (L0 config/domain; L1 adapter/catalogue/elasticsearch/redis/severity/scope/observability; L2 runner) | WP05 | |
-| T022 | Create `alert-crawler/CLAUDE.md` skeleton with placeholders for gotchas | WP05 | |
-| T023 | Create `internal/domain/alert.go` (Alert envelope) | WP06 | |
-| T024 | Create `internal/domain/hazard.go` (HarmReductionHazard, Substance) | WP06 | |
-| T025 | Create `internal/domain/source.go` (AlertSource, AcquisitionStrategy enum) | WP06 | |
-| T026 | Create `internal/domain/lifecycle_event.go` (LifecycleEvent, EventType enum) | WP06 | |
-| T027 | Add unit tests for envelope JSON round-trip and schema conformance | WP06 | |
-| T028 | Create `internal/config/config.go` (Config struct with env tags) | WP07 | |
-| T029 | Create `internal/config/defaults.go` (`SetDefaults` function) | WP07 | |
-| T030 | Wire to `infrastructure/config.LoadWithDefaults[Config]` | WP07 | |
-| T031 | Add SetDefaults pitfall regression test (RR-007) — fields with SetDefaults must be absent from `config.yml` | WP07 | |
-| T032 | Create `internal/adapter/rss/client.go` (HTTP fetch with `If-None-Match` and `If-Modified-Since`) | WP08 | [P] |
-| T033 | Implement `ErrNotModified` on 304 path; ETag and Last-Modified return values | WP08 | |
-| T034 | Configure User-Agent (`alert-crawler/1.0 (+https://northcloud.one)`) and HTTP timeouts | WP08 | |
-| T035 | Unit tests: 304 path, 200 path, 5xx with backoff, network timeout | WP08 | |
-| T036 | Create `internal/adapter/rss/parser.go` (RSS XML parse via `encoding/xml`) | WP09 | [P] |
-| T037 | Implement `<description>` HTML extractor (substance composition, lab source, confirmation date) | WP09 | |
-| T038 | Defensive parsing with `parse_quality` flag (clean/degraded); never auto-rescind on parse failure (TC-010) | WP09 | |
-| T039 | Unit tests with golden RSS fixture (real safersites.ca sample anonymized to a fixture) | WP09 | |
-| T040 | Create `internal/catalogue/schema.sql` (`poll_checkpoint`, `alert_catalogue` tables) | WP10 | [P] |
-| T041 | Add `internal/catalogue/migrations/` with unique numeric prefixes | WP10 | |
-| T042 | Create `internal/catalogue/store.go` (`LoadCheckpoint`, `SaveCheckpoint`, `LookupAlert`, `MarkSeen`, `RescindAbsent`) | WP10 | |
-| T043 | Implement catalogue rebuild-from-ES path (idempotent recovery on startup) | WP10 | |
-| T044 | Unit tests with in-memory SQLite | WP10 | |
-| T045 | Create `internal/elasticsearch/mapping.go` (loads `community_alerts` mapping JSON from contracts/) | WP11 | [P] |
-| T046 | Create `internal/elasticsearch/indexer.go` (raw HTTP; `Index`, `MarkRescinded`, `EnsureIndex`) | WP11 | |
-| T047 | Implement idempotent `EnsureIndex` (HEAD → PUT on 404) | WP11 | |
-| T048 | Unit tests with `httptest.Server` simulating ES responses | WP11 | |
-| T049 | Create `internal/redis/publisher.go` (`LifecycleEvent` JSON serializer + `Publish`) | WP12 | [P] |
-| T050 | Channel name from config (`community_alerts:lifecycle`); publish failures incremented as metrics, not rolled back | WP12 | |
-| T051 | Wrap `infrastructure/redis` client; do not write a bespoke client | WP12 | |
-| T052 | Unit tests with mock Redis client | WP12 | |
-| T053 | Create `internal/severity/table.go` (substance presence → severity floor table) | WP13 | [P] |
-| T054 | Create `internal/severity/infer.go` (`Infer(Hazard) Severity` function) | WP13 | |
-| T055 | Default config table: `carfentanil` → `critical`, `nitazenes` → `high`, `medetomidine`+opioid → `high`, others → `medium` | WP13 | |
-| T056 | Unit tests: highest-severity substance wins; empty hazard returns `medium` floor | WP13 | |
-| T057 | Create `internal/scope/resolver.go` (imports `taxonomy.ParentRegion`) | WP14 | [P] |
-| T058 | Implement default-scope expansion per source (e.g., `mhrn` defaults to `[treaty:1, canada:manitoba]`) | WP14 | |
-| T059 | Implement location-name → city slug inference (e.g., "Winnipeg" → `canada:manitoba:winnipeg`) | WP14 | |
-| T060 | Unit tests: hierarchy resolution; missing taxonomy token logs metric and continues | WP14 | |
-| T061 | Create `internal/runner/runner.go` (poll cycle: load → fetch → parse → diff → resolve → infer → write ES → publish → save) | WP15 | |
-| T062 | Implement rescission detection via `RescindAbsent` after fetch loop | WP15 | |
-| T063 | Implement error classification (transient → backoff; structural → parse_failure metric) | WP15 | |
-| T064 | Create `internal/observability/metrics.go` (structured-log emitter for the metric set in plan §4.5) | WP15 | |
-| T065 | Implement consecutive_failures gauge per source; ≥6 emits operator-actionable signal | WP15 | |
-| T066 | Unit tests with mocked dependencies; assert each per-poll metric is emitted | WP15 | |
-| T067 | Wire all dependencies in `main.go` (config, logger, sqlite, ES, redis, catalogue, runner) | WP16 | |
-| T068 | Add `signal.NotifyContext(SIGINT, SIGTERM)` and graceful shutdown | WP16 | |
-| T069 | Implement phase order: flags → setup → buildSources → runner → exit; mirrors signal-crawler | WP16 | |
-| T070 | Smoke test: `task run` boots, polls once against a httptest fixture, exits cleanly | WP16 | |
-| T071 | Create `cmd/backfill/main.go` (one-shot subcommand) | WP17 | [P] |
-| T072 | Reuse runner with `backfill_mode=true` flag; emit `created` for top-20 items | WP17 | |
-| T073 | Idempotency: re-running backfill is a no-op (catalogue check) | WP17 | |
-| T074 | Unit tests for backfill mode | WP17 | |
-| T075 | Set up integration test harness (`//go:build integration`; real ES + Redis + SQLite via existing CI integration harness) | WP18 | |
-| T076 | AS-01: drug supply alert reaches Treaty 1 page (synthetic feed → ES → consumer query) | WP18 | |
-| T077 | AS-02: corrected alert supersedes earlier version (revision_history append + updated event) | WP18 | |
-| T078 | AS-03: rescinded alert disappears within one poll cycle (feed-delta detection) | WP18 | |
-| T079 | AS-04: subscriber recovery after downtime (active-set query from ES alone) | WP18 | |
-| T080 | AS-05: source unreachable for extended period (consecutive_failures gauge; durable store unaffected) | WP18 | |
-| T081 | AS-06: scope vocabulary lookup (Treaty 1 page surfaces a manitoba-scoped alert) | WP18 | |
-| T082 | Wait for indigenous-taxonomy v1.1.0 tag (gates: WP04 merged) | WP19 | |
-| T083 | Remove `replace` directive from `alert-crawler/go.mod` | WP19 | |
-| T084 | Pin to `github.com/jonesrussell/indigenous-taxonomy v1.1.0` | WP19 | |
-| T085 | Run `go mod tidy`; verify build succeeds without `replace` (CI gate) | WP19 | |
-| T086 | Add `alert-crawler` service entry to `docker-compose.base.yml` (`restart: "no"`, named volume `alert-crawler-data:/app/data`, no health check) | WP20 | |
-| T087 | Add `alert-crawler-data` named volume declaration | WP20 | |
-| T088 | Verify service brings up cleanly via `docker compose -f docker-compose.base.yml -f docker-compose.dev.yml up alert-crawler` | WP20 | |
-| T089 | Run `task ports:check`; regenerate ports SSOT for new compose entry | WP20 | |
-| T090 | Add `alert-crawler` to oneshot skip list in `scripts/deploy.sh` | WP21 | [P] |
-| T091 | Add `alert-crawler` to `GO_SERVICES` in `scripts/detect-changed-services.sh` | WP21 | |
-| T092 | Add `vuln:alert-crawler` delegation in root `Taskfile.yml` | WP21 | |
-| T093 | Verify CI workflow detects and tests alert-crawler on diff (manual: open dummy PR, observe CI) | WP21 | |
-| T094 | Create `alert-crawler.timer.j2` (`OnCalendar=*-*-* *:30:00 UTC`, `Persistent=true`, `RandomizedDelaySec=120`) | WP22 | [P] |
-| T095 | Create `alert-crawler.service.j2` (`Type=oneshot`, `ExecStartPre` image pull, `ExecStart` `docker compose ... run --rm alert-crawler`) | WP22 | |
-| T096 | Add `nc_alert_crawler_schedule` default in `roles/north-cloud/defaults/main.yml` | WP22 | |
-| T097 | Add data-dir creation task with `owner: "1000"` (RR PR-004 mitigation) | WP22 | |
-| T098 | Add `docs/specs/community-alert-pipeline.md` (or pointer to mission spec) | WP23 | |
-| T099 | Update `tools/drift-detector.sh` mapping for `alert-crawler/**` | WP23 | |
-| T100 | Write `alert-crawler/CLAUDE.md` (config gotcha, mapping ownership, replace removal, rescission, RR PR-004) | WP23 | |
-| T101 | Update repo-root `CLAUDE.md` orchestration table to include `alert-crawler/**` | WP23 | |
-| T102 | NFR-001 latency harness: synthetic upstream publish; assert 95% ≤60min, 99% ≤120min | WP24 | |
-| T103 | NFR-006 idempotency harness: 100-cycle replay; assert 0 spurious lifecycle events | WP24 | |
-| T104 | NFR-009 blast-radius harness: synthetic alert-crawler crash; assert lead pipeline unaffected | WP24 | |
-| T105 | First-deploy backfill rehearsal (D.3): run backfill against staging or sandbox; verify 20 `created` events | WP24 | |
-| T106 | Run `task lint:force` clean; address any drift findings | WP25 | |
-| T107 | Run `task test` and `task test:alert-crawler -- -tags integration` clean | WP25 | |
-| T108 | Run `task drift:check`, `task ports:check`, `task layers:check` clean | WP25 | |
-| T109 | Verify lefthook pre-commit and pre-push pass without `--no-verify` | WP25 | |
-| T110 | Manual smoke test: end-to-end against staging (publish → consume) | WP25 | |
-| T111 | File GitHub issue: "Migrate classifier and publisher to import indigenous-taxonomy directly" with R-004 context | WP25 | |
+| T001 | Create `schema/treaties.yaml` (11 treaty entries with member-region metadata) | WP01 | [P] | [D] |
+| T002 | Extend `scripts/generate.py` to emit `treaties.go` from `treaties.yaml` | WP01 | | [D] |
+| T003 | Generate `taxonomy/treaties.go` (`Treaty` type, 11 constants, `AllTreaties`, `IsValidTreaty`) | WP01 | | [D] |
+| T004 | Add unit tests for Treaty namespace | WP01 | | [D] |
+| T005 | Extend `schema/regions.yaml` with city children (winnipeg, toronto, ottawa, vancouver, calgary, saskatoon) | WP02 | [D] |
+| T006 | Add sample First Nations community per active treaty (e.g., `canada:manitoba:sagkeeng-fn`) | WP02 | | [D] |
+| T007 | Regenerate `taxonomy/regions.go` with new entries | WP02 | | [D] |
+| T008 | Update region tests (count assertions; new constant existence) | WP02 | | [D] |
+| T009 | Extend `scripts/generate.py` to emit `ParentRegion` lookup table from YAML `children:` | WP03 | | [D] |
+| T010 | Generate `ParentRegion(Region) (Region, bool)` in `taxonomy/regions.go` | WP03 | | [D] |
+| T011 | Unit tests covering hierarchy walks (leaf → province, province → canada, canada → no parent) | WP03 | | [D] |
+| T012 | Audit `tests/` for hardcoded counter assertions (RR-004) | WP04 | | [D] |
+| T013 | Update `taxonomy/version.go` and `go.mod` to v1.1.0 | WP04 | | [D] |
+| T014 | Update `CHANGELOG.md` with additive changes | WP04 | | [D] |
+| T015 | Open PR; tag `v1.1.0` after merge | WP04 | | [D] |
+| T016 | Create `alert-crawler/` directory with `go.mod` (includes `replace` directive) | WP05 | | [D] |
+| T017 | Create `main.go` skeleton with phase-order comments | WP05 | | [D] |
+| T018 | Create `config.yml` (defaults blank where `SetDefaults` applies) | WP05 | | [D] |
+| T019 | Create per-service `Taskfile.yml` (build, run, test, lint, vuln, clean) | WP05 | | [D] |
+| T020 | Create multi-stage `Dockerfile` (Alpine, uid 1000 non-root user, CGO enabled) | WP05 | | [D] |
+| T021 | Create `.layers` (L0 config/domain; L1 adapter/catalogue/elasticsearch/redis/severity/scope/observability; L2 runner) | WP05 | | [D] |
+| T022 | Create `alert-crawler/CLAUDE.md` skeleton with placeholders for gotchas | WP05 | | [D] |
+| T023 | Create `internal/domain/alert.go` (Alert envelope) | WP06 | | [D] |
+| T024 | Create `internal/domain/hazard.go` (HarmReductionHazard, Substance) | WP06 | | [D] |
+| T025 | Create `internal/domain/source.go` (AlertSource, AcquisitionStrategy enum) | WP06 | | [D] |
+| T026 | Create `internal/domain/lifecycle_event.go` (LifecycleEvent, EventType enum) | WP06 | | [D] |
+| T027 | Add unit tests for envelope JSON round-trip and schema conformance | WP06 | | [D] |
+| T028 | Create `internal/config/config.go` (Config struct with env tags) | WP07 | | [D] |
+| T029 | Create `internal/config/defaults.go` (`SetDefaults` function) | WP07 | | [D] |
+| T030 | Wire to `infrastructure/config.LoadWithDefaults[Config]` | WP07 | | [D] |
+| T031 | Add SetDefaults pitfall regression test (RR-007) — fields with SetDefaults must be absent from `config.yml` | WP07 | | [D] |
+| T032 | Create `internal/adapter/rss/client.go` (HTTP fetch with `If-None-Match` and `If-Modified-Since`) | WP08 | [D] |
+| T033 | Implement `ErrNotModified` on 304 path; ETag and Last-Modified return values | WP08 | | [D] |
+| T034 | Configure User-Agent (`alert-crawler/1.0 (+https://northcloud.one)`) and HTTP timeouts | WP08 | | [D] |
+| T035 | Unit tests: 304 path, 200 path, 5xx with backoff, network timeout | WP08 | | [D] |
+| T036 | Create `internal/adapter/rss/parser.go` (RSS XML parse via `encoding/xml`) | WP09 | [D] |
+| T037 | Implement `<description>` HTML extractor (substance composition, lab source, confirmation date) | WP09 | | [D] |
+| T038 | Defensive parsing with `parse_quality` flag (clean/degraded); never auto-rescind on parse failure (TC-010) | WP09 | | [D] |
+| T039 | Unit tests with golden RSS fixture (real safersites.ca sample anonymized to a fixture) | WP09 | | [D] |
+| T040 | Create `internal/catalogue/schema.sql` (`poll_checkpoint`, `alert_catalogue` tables) | WP10 | [D] |
+| T041 | Add `internal/catalogue/migrations/` with unique numeric prefixes | WP10 | | [D] |
+| T042 | Create `internal/catalogue/store.go` (`LoadCheckpoint`, `SaveCheckpoint`, `LookupAlert`, `MarkSeen`, `RescindAbsent`) | WP10 | | [D] |
+| T043 | Implement catalogue rebuild-from-ES path (idempotent recovery on startup) | WP10 | | [D] |
+| T044 | Unit tests with in-memory SQLite | WP10 | | [D] |
+| T045 | Create `internal/elasticsearch/mapping.go` (loads `community_alerts` mapping JSON from contracts/) | WP11 | [D] |
+| T046 | Create `internal/elasticsearch/indexer.go` (raw HTTP; `Index`, `MarkRescinded`, `EnsureIndex`) | WP11 | | [D] |
+| T047 | Implement idempotent `EnsureIndex` (HEAD → PUT on 404) | WP11 | | [D] |
+| T048 | Unit tests with `httptest.Server` simulating ES responses | WP11 | | [D] |
+| T049 | Create `internal/redis/publisher.go` (`LifecycleEvent` JSON serializer + `Publish`) | WP12 | [D] |
+| T050 | Channel name from config (`community_alerts:lifecycle`); publish failures incremented as metrics, not rolled back | WP12 | | [D] |
+| T051 | Wrap `infrastructure/redis` client; do not write a bespoke client | WP12 | | [D] |
+| T052 | Unit tests with mock Redis client | WP12 | | [D] |
+| T053 | Create `internal/severity/table.go` (substance presence → severity floor table) | WP13 | [D] |
+| T054 | Create `internal/severity/infer.go` (`Infer(Hazard) Severity` function) | WP13 | | [D] |
+| T055 | Default config table: `carfentanil` → `critical`, `nitazenes` → `high`, `medetomidine`+opioid → `high`, others → `medium` | WP13 | | [D] |
+| T056 | Unit tests: highest-severity substance wins; empty hazard returns `medium` floor | WP13 | | [D] |
+| T057 | Create `internal/scope/resolver.go` (imports `taxonomy.ParentRegion`) | WP14 | [D] |
+| T058 | Implement default-scope expansion per source (e.g., `mhrn` defaults to `[treaty:1, canada:manitoba]`) | WP14 | | [D] |
+| T059 | Implement location-name → city slug inference (e.g., "Winnipeg" → `canada:manitoba:winnipeg`) | WP14 | | [D] |
+| T060 | Unit tests: hierarchy resolution; missing taxonomy token logs metric and continues | WP14 | | [D] |
+| T061 | Create `internal/runner/runner.go` (poll cycle: load → fetch → parse → diff → resolve → infer → write ES → publish → save) | WP15 | | [D] |
+| T062 | Implement rescission detection via `RescindAbsent` after fetch loop | WP15 | | [D] |
+| T063 | Implement error classification (transient → backoff; structural → parse_failure metric) | WP15 | | [D] |
+| T064 | Create `internal/observability/metrics.go` (structured-log emitter for the metric set in plan §4.5) | WP15 | | [D] |
+| T065 | Implement consecutive_failures gauge per source; ≥6 emits operator-actionable signal | WP15 | | [D] |
+| T066 | Unit tests with mocked dependencies; assert each per-poll metric is emitted | WP15 | | [D] |
+| T067 | Wire all dependencies in `main.go` (config, logger, sqlite, ES, redis, catalogue, runner) | WP16 | | [D] |
+| T068 | Add `signal.NotifyContext(SIGINT, SIGTERM)` and graceful shutdown | WP16 | | [D] |
+| T069 | Implement phase order: flags → setup → buildSources → runner → exit; mirrors signal-crawler | WP16 | | [D] |
+| T070 | Smoke test: `task run` boots, polls once against a httptest fixture, exits cleanly | WP16 | | [D] |
+| T071 | Create `cmd/backfill/main.go` (one-shot subcommand) | WP17 | [D] |
+| T072 | Reuse runner with `backfill_mode=true` flag; emit `created` for top-20 items | WP17 | | [D] |
+| T073 | Idempotency: re-running backfill is a no-op (catalogue check) | WP17 | | [D] |
+| T074 | Unit tests for backfill mode | WP17 | | [D] |
+| T075 | Set up integration test harness (`//go:build integration`; real ES + Redis + SQLite via existing CI integration harness) | WP18 | | [D] |
+| T076 | AS-01: drug supply alert reaches Treaty 1 page (synthetic feed → ES → consumer query) | WP18 | | [D] |
+| T077 | AS-02: corrected alert supersedes earlier version (revision_history append + updated event) | WP18 | | [D] |
+| T078 | AS-03: rescinded alert disappears within one poll cycle (feed-delta detection) | WP18 | | [D] |
+| T079 | AS-04: subscriber recovery after downtime (active-set query from ES alone) | WP18 | | [D] |
+| T080 | AS-05: source unreachable for extended period (consecutive_failures gauge; durable store unaffected) | WP18 | | [D] |
+| T081 | AS-06: scope vocabulary lookup (Treaty 1 page surfaces a manitoba-scoped alert) | WP18 | | [D] |
+| T082 | Wait for indigenous-taxonomy v1.1.0 tag (gates: WP04 merged) | WP19 | | [D] |
+| T083 | Remove `replace` directive from `alert-crawler/go.mod` | WP19 | | [D] |
+| T084 | Pin to `github.com/jonesrussell/indigenous-taxonomy v1.1.0` | WP19 | | [D] |
+| T085 | Run `go mod tidy`; verify build succeeds without `replace` (CI gate) | WP19 | | [D] |
+| T086 | Add `alert-crawler` service entry to `docker-compose.base.yml` (`restart: "no"`, named volume `alert-crawler-data:/app/data`, no health check) | WP20 | | [D] |
+| T087 | Add `alert-crawler-data` named volume declaration | WP20 | | [D] |
+| T088 | Verify service brings up cleanly via `docker compose -f docker-compose.base.yml -f docker-compose.dev.yml up alert-crawler` | WP20 | | [D] |
+| T089 | Run `task ports:check`; regenerate ports SSOT for new compose entry | WP20 | | [D] |
+| T090 | Add `alert-crawler` to oneshot skip list in `scripts/deploy.sh` | WP21 | [D] |
+| T091 | Add `alert-crawler` to `GO_SERVICES` in `scripts/detect-changed-services.sh` | WP21 | | [D] |
+| T092 | Add `vuln:alert-crawler` delegation in root `Taskfile.yml` | WP21 | | [D] |
+| T093 | Verify CI workflow detects and tests alert-crawler on diff (manual: open dummy PR, observe CI) | WP21 | | [D] |
+| T094 | Create `alert-crawler.timer.j2` (`OnCalendar=*-*-* *:30:00 UTC`, `Persistent=true`, `RandomizedDelaySec=120`) | WP22 | [D] |
+| T095 | Create `alert-crawler.service.j2` (`Type=oneshot`, `ExecStartPre` image pull, `ExecStart` `docker compose ... run --rm alert-crawler`) | WP22 | | [D] |
+| T096 | Add `nc_alert_crawler_schedule` default in `roles/north-cloud/defaults/main.yml` | WP22 | | [D] |
+| T097 | Add data-dir creation task with `owner: "1000"` (RR PR-004 mitigation) | WP22 | | [D] |
+| T098 | Add `docs/specs/community-alert-pipeline.md` (or pointer to mission spec) | WP23 | | [D] |
+| T099 | Update `tools/drift-detector.sh` mapping for `alert-crawler/**` | WP23 | | [D] |
+| T100 | Write `alert-crawler/CLAUDE.md` (config gotcha, mapping ownership, replace removal, rescission, RR PR-004) | WP23 | | [D] |
+| T101 | Update repo-root `CLAUDE.md` orchestration table to include `alert-crawler/**` | WP23 | | [D] |
+| T102 | NFR-001 latency harness: synthetic upstream publish; assert 95% ≤60min, 99% ≤120min | WP24 | | [D] |
+| T103 | NFR-006 idempotency harness: 100-cycle replay; assert 0 spurious lifecycle events | WP24 | | [D] |
+| T104 | NFR-009 blast-radius harness: synthetic alert-crawler crash; assert lead pipeline unaffected | WP24 | | [D] |
+| T105 | First-deploy backfill rehearsal (D.3): run backfill against staging or sandbox; verify 20 `created` events | WP24 | | [D] |
+| T106 | Run `task lint:force` clean; address any drift findings | WP25 | | [D] |
+| T107 | Run `task test` and `task test:alert-crawler -- -tags integration` clean | WP25 | | [D] |
+| T108 | Run `task drift:check`, `task ports:check`, `task layers:check` clean | WP25 | | [D] |
+| T109 | Verify lefthook pre-commit and pre-push pass without `--no-verify` | WP25 | | [D] |
+| T110 | Manual smoke test: end-to-end against staging (publish → consume) | WP25 | | [D] |
+| T111 | File GitHub issue: "Migrate classifier and publisher to import indigenous-taxonomy directly" with R-004 context | WP25 | | [D] |
 
 ## Work Packages
 
@@ -171,10 +171,10 @@ Phase A and Phase B execute **in parallel** because alert-crawler's `go.mod` car
 
 **Subtasks**:
 
-- [ ] T001 Create `schema/treaties.yaml` (11 treaty entries with member-region metadata) (WP01)
-- [ ] T002 Extend `scripts/generate.py` to emit `treaties.go` from `treaties.yaml` (WP01)
-- [ ] T003 Generate `taxonomy/treaties.go` (`Treaty` type, 11 constants, `AllTreaties`, `IsValidTreaty`) (WP01)
-- [ ] T004 Add unit tests for Treaty namespace (WP01)
+- [x] T001 Create `schema/treaties.yaml` (11 treaty entries with member-region metadata) (WP01)
+- [x] T002 Extend `scripts/generate.py` to emit `treaties.go` from `treaties.yaml` (WP01)
+- [x] T003 Generate `taxonomy/treaties.go` (`Treaty` type, 11 constants, `AllTreaties`, `IsValidTreaty`) (WP01)
+- [x] T004 Add unit tests for Treaty namespace (WP01)
 
 **Dependencies**: none.
 
@@ -194,10 +194,10 @@ Phase A and Phase B execute **in parallel** because alert-crawler's `go.mod` car
 
 **Subtasks**:
 
-- [ ] T005 Extend `schema/regions.yaml` with city children (winnipeg, toronto, ottawa, vancouver, calgary, saskatoon) (WP02)
-- [ ] T006 Add sample First Nations community per active treaty (e.g., `canada:manitoba:sagkeeng-fn`) (WP02)
-- [ ] T007 Regenerate `taxonomy/regions.go` with new entries (WP02)
-- [ ] T008 Update region tests (count assertions; new constant existence) (WP02)
+- [x] T005 Extend `schema/regions.yaml` with city children (winnipeg, toronto, ottawa, vancouver, calgary, saskatoon) (WP02)
+- [x] T006 Add sample First Nations community per active treaty (e.g., `canada:manitoba:sagkeeng-fn`) (WP02)
+- [x] T007 Regenerate `taxonomy/regions.go` with new entries (WP02)
+- [x] T008 Update region tests (count assertions; new constant existence) (WP02)
 
 **Dependencies**: none.
 
@@ -217,9 +217,9 @@ Phase A and Phase B execute **in parallel** because alert-crawler's `go.mod` car
 
 **Subtasks**:
 
-- [ ] T009 Extend `scripts/generate.py` to emit `ParentRegion` lookup table from YAML `children:` (WP03)
-- [ ] T010 Generate `ParentRegion(Region) (Region, bool)` in `taxonomy/regions.go` (WP03)
-- [ ] T011 Unit tests covering hierarchy walks (leaf → province, province → canada, canada → no parent) (WP03)
+- [x] T009 Extend `scripts/generate.py` to emit `ParentRegion` lookup table from YAML `children:` (WP03)
+- [x] T010 Generate `ParentRegion(Region) (Region, bool)` in `taxonomy/regions.go` (WP03)
+- [x] T011 Unit tests covering hierarchy walks (leaf → province, province → canada, canada → no parent) (WP03)
 
 **Dependencies**: WP01, WP02 (the generator changes operate on the regions and treaties schemas; can race-condition the `regions.go` regeneration).
 
@@ -239,10 +239,10 @@ Phase A and Phase B execute **in parallel** because alert-crawler's `go.mod` car
 
 **Subtasks**:
 
-- [ ] T012 Audit `tests/` for hardcoded counter assertions (RR-004) (WP04)
-- [ ] T013 Update `taxonomy/version.go` and `go.mod` to v1.1.0 (WP04)
-- [ ] T014 Update `CHANGELOG.md` with additive changes (WP04)
-- [ ] T015 Open PR; tag `v1.1.0` after merge (WP04)
+- [x] T012 Audit `tests/` for hardcoded counter assertions (RR-004) (WP04)
+- [x] T013 Update `taxonomy/version.go` and `go.mod` to v1.1.0 (WP04)
+- [x] T014 Update `CHANGELOG.md` with additive changes (WP04)
+- [x] T015 Open PR; tag `v1.1.0` after merge (WP04)
 
 **Dependencies**: WP01, WP02, WP03 (all schema and generator work must merge first).
 
@@ -264,13 +264,13 @@ Phase A and Phase B execute **in parallel** because alert-crawler's `go.mod` car
 
 **Subtasks**:
 
-- [ ] T016 Create `alert-crawler/` directory with `go.mod` (includes `replace` directive) (WP05)
-- [ ] T017 Create `main.go` skeleton with phase-order comments (WP05)
-- [ ] T018 Create `config.yml` (defaults blank where `SetDefaults` applies) (WP05)
-- [ ] T019 Create per-service `Taskfile.yml` (build, run, test, lint, vuln, clean) (WP05)
-- [ ] T020 Create multi-stage `Dockerfile` (Alpine, uid 1000 non-root user, CGO enabled) (WP05)
-- [ ] T021 Create `.layers` (L0 config/domain; L1 adapter/catalogue/elasticsearch/redis/severity/scope/observability; L2 runner) (WP05)
-- [ ] T022 Create `alert-crawler/CLAUDE.md` skeleton with placeholders for gotchas (WP05)
+- [x] T016 Create `alert-crawler/` directory with `go.mod` (includes `replace` directive) (WP05)
+- [x] T017 Create `main.go` skeleton with phase-order comments (WP05)
+- [x] T018 Create `config.yml` (defaults blank where `SetDefaults` applies) (WP05)
+- [x] T019 Create per-service `Taskfile.yml` (build, run, test, lint, vuln, clean) (WP05)
+- [x] T020 Create multi-stage `Dockerfile` (Alpine, uid 1000 non-root user, CGO enabled) (WP05)
+- [x] T021 Create `.layers` (L0 config/domain; L1 adapter/catalogue/elasticsearch/redis/severity/scope/observability; L2 runner) (WP05)
+- [x] T022 Create `alert-crawler/CLAUDE.md` skeleton with placeholders for gotchas (WP05)
 
 **Dependencies**: none.
 
@@ -290,11 +290,11 @@ Phase A and Phase B execute **in parallel** because alert-crawler's `go.mod` car
 
 **Subtasks**:
 
-- [ ] T023 Create `internal/domain/alert.go` (Alert envelope) (WP06)
-- [ ] T024 Create `internal/domain/hazard.go` (HarmReductionHazard, Substance) (WP06)
-- [ ] T025 Create `internal/domain/source.go` (AlertSource, AcquisitionStrategy enum) (WP06)
-- [ ] T026 Create `internal/domain/lifecycle_event.go` (LifecycleEvent, EventType enum) (WP06)
-- [ ] T027 Add unit tests for envelope JSON round-trip and schema conformance (WP06)
+- [x] T023 Create `internal/domain/alert.go` (Alert envelope) (WP06)
+- [x] T024 Create `internal/domain/hazard.go` (HarmReductionHazard, Substance) (WP06)
+- [x] T025 Create `internal/domain/source.go` (AlertSource, AcquisitionStrategy enum) (WP06)
+- [x] T026 Create `internal/domain/lifecycle_event.go` (LifecycleEvent, EventType enum) (WP06)
+- [x] T027 Add unit tests for envelope JSON round-trip and schema conformance (WP06)
 
 **Dependencies**: WP05.
 
@@ -314,10 +314,10 @@ Phase A and Phase B execute **in parallel** because alert-crawler's `go.mod` car
 
 **Subtasks**:
 
-- [ ] T028 Create `internal/config/config.go` (Config struct with env tags) (WP07)
-- [ ] T029 Create `internal/config/defaults.go` (`SetDefaults` function) (WP07)
-- [ ] T030 Wire to `infrastructure/config.LoadWithDefaults[Config]` (WP07)
-- [ ] T031 Add SetDefaults pitfall regression test (RR-007) — fields with SetDefaults must be absent from `config.yml` (WP07)
+- [x] T028 Create `internal/config/config.go` (Config struct with env tags) (WP07)
+- [x] T029 Create `internal/config/defaults.go` (`SetDefaults` function) (WP07)
+- [x] T030 Wire to `infrastructure/config.LoadWithDefaults[Config]` (WP07)
+- [x] T031 Add SetDefaults pitfall regression test (RR-007) — fields with SetDefaults must be absent from `config.yml` (WP07)
 
 **Dependencies**: WP05 (scaffold), WP06 (domain types referenced by config).
 
@@ -337,10 +337,10 @@ Phase A and Phase B execute **in parallel** because alert-crawler's `go.mod` car
 
 **Subtasks**:
 
-- [ ] T032 Create `internal/adapter/rss/client.go` (HTTP fetch with `If-None-Match` and `If-Modified-Since`) (WP08)
-- [ ] T033 Implement `ErrNotModified` on 304 path; ETag and Last-Modified return values (WP08)
-- [ ] T034 Configure User-Agent (`alert-crawler/1.0 (+https://northcloud.one)`) and HTTP timeouts (WP08)
-- [ ] T035 Unit tests: 304 path, 200 path, 5xx with backoff, network timeout (WP08)
+- [x] T032 Create `internal/adapter/rss/client.go` (HTTP fetch with `If-None-Match` and `If-Modified-Since`) (WP08)
+- [x] T033 Implement `ErrNotModified` on 304 path; ETag and Last-Modified return values (WP08)
+- [x] T034 Configure User-Agent (`alert-crawler/1.0 (+https://northcloud.one)`) and HTTP timeouts (WP08)
+- [x] T035 Unit tests: 304 path, 200 path, 5xx with backoff, network timeout (WP08)
 
 **Dependencies**: WP05, WP06.
 
@@ -360,10 +360,10 @@ Phase A and Phase B execute **in parallel** because alert-crawler's `go.mod` car
 
 **Subtasks**:
 
-- [ ] T036 Create `internal/adapter/rss/parser.go` (RSS XML parse via `encoding/xml`) (WP09)
-- [ ] T037 Implement `<description>` HTML extractor (substance composition, lab source, confirmation date) (WP09)
-- [ ] T038 Defensive parsing with `parse_quality` flag (clean/degraded); never auto-rescind on parse failure (TC-010) (WP09)
-- [ ] T039 Unit tests with golden RSS fixture (real safersites.ca sample anonymized to a fixture) (WP09)
+- [x] T036 Create `internal/adapter/rss/parser.go` (RSS XML parse via `encoding/xml`) (WP09)
+- [x] T037 Implement `<description>` HTML extractor (substance composition, lab source, confirmation date) (WP09)
+- [x] T038 Defensive parsing with `parse_quality` flag (clean/degraded); never auto-rescind on parse failure (TC-010) (WP09)
+- [x] T039 Unit tests with golden RSS fixture (real safersites.ca sample anonymized to a fixture) (WP09)
 
 **Dependencies**: WP05, WP06.
 
@@ -383,11 +383,11 @@ Phase A and Phase B execute **in parallel** because alert-crawler's `go.mod` car
 
 **Subtasks**:
 
-- [ ] T040 Create `internal/catalogue/schema.sql` (`poll_checkpoint`, `alert_catalogue` tables) (WP10)
-- [ ] T041 Add `internal/catalogue/migrations/` with unique numeric prefixes (WP10)
-- [ ] T042 Create `internal/catalogue/store.go` (`LoadCheckpoint`, `SaveCheckpoint`, `LookupAlert`, `MarkSeen`, `RescindAbsent`) (WP10)
-- [ ] T043 Implement catalogue rebuild-from-ES path (idempotent recovery on startup) (WP10)
-- [ ] T044 Unit tests with in-memory SQLite (WP10)
+- [x] T040 Create `internal/catalogue/schema.sql` (`poll_checkpoint`, `alert_catalogue` tables) (WP10)
+- [x] T041 Add `internal/catalogue/migrations/` with unique numeric prefixes (WP10)
+- [x] T042 Create `internal/catalogue/store.go` (`LoadCheckpoint`, `SaveCheckpoint`, `LookupAlert`, `MarkSeen`, `RescindAbsent`) (WP10)
+- [x] T043 Implement catalogue rebuild-from-ES path (idempotent recovery on startup) (WP10)
+- [x] T044 Unit tests with in-memory SQLite (WP10)
 
 **Dependencies**: WP05, WP06.
 
@@ -407,10 +407,10 @@ Phase A and Phase B execute **in parallel** because alert-crawler's `go.mod` car
 
 **Subtasks**:
 
-- [ ] T045 Create `internal/elasticsearch/mapping.go` (loads `community_alerts` mapping JSON from contracts/) (WP11)
-- [ ] T046 Create `internal/elasticsearch/indexer.go` (raw HTTP; `Index`, `MarkRescinded`, `EnsureIndex`) (WP11)
-- [ ] T047 Implement idempotent `EnsureIndex` (HEAD → PUT on 404) (WP11)
-- [ ] T048 Unit tests with `httptest.Server` simulating ES responses (WP11)
+- [x] T045 Create `internal/elasticsearch/mapping.go` (loads `community_alerts` mapping JSON from contracts/) (WP11)
+- [x] T046 Create `internal/elasticsearch/indexer.go` (raw HTTP; `Index`, `MarkRescinded`, `EnsureIndex`) (WP11)
+- [x] T047 Implement idempotent `EnsureIndex` (HEAD → PUT on 404) (WP11)
+- [x] T048 Unit tests with `httptest.Server` simulating ES responses (WP11)
 
 **Dependencies**: WP05, WP06.
 
@@ -430,10 +430,10 @@ Phase A and Phase B execute **in parallel** because alert-crawler's `go.mod` car
 
 **Subtasks**:
 
-- [ ] T049 Create `internal/redis/publisher.go` (`LifecycleEvent` JSON serializer + `Publish`) (WP12)
-- [ ] T050 Channel name from config (`community_alerts:lifecycle`); publish failures incremented as metrics, not rolled back (WP12)
-- [ ] T051 Wrap `infrastructure/redis` client; do not write a bespoke client (WP12)
-- [ ] T052 Unit tests with mock Redis client (WP12)
+- [x] T049 Create `internal/redis/publisher.go` (`LifecycleEvent` JSON serializer + `Publish`) (WP12)
+- [x] T050 Channel name from config (`community_alerts:lifecycle`); publish failures incremented as metrics, not rolled back (WP12)
+- [x] T051 Wrap `infrastructure/redis` client; do not write a bespoke client (WP12)
+- [x] T052 Unit tests with mock Redis client (WP12)
 
 **Dependencies**: WP05, WP06.
 
@@ -453,10 +453,10 @@ Phase A and Phase B execute **in parallel** because alert-crawler's `go.mod` car
 
 **Subtasks**:
 
-- [ ] T053 Create `internal/severity/table.go` (substance presence → severity floor table) (WP13)
-- [ ] T054 Create `internal/severity/infer.go` (`Infer(Hazard) Severity` function) (WP13)
-- [ ] T055 Default config table: `carfentanil` → `critical`, `nitazenes` → `high`, `medetomidine`+opioid → `high`, others → `medium` (WP13)
-- [ ] T056 Unit tests: highest-severity substance wins; empty hazard returns `medium` floor (WP13)
+- [x] T053 Create `internal/severity/table.go` (substance presence → severity floor table) (WP13)
+- [x] T054 Create `internal/severity/infer.go` (`Infer(Hazard) Severity` function) (WP13)
+- [x] T055 Default config table: `carfentanil` → `critical`, `nitazenes` → `high`, `medetomidine`+opioid → `high`, others → `medium` (WP13)
+- [x] T056 Unit tests: highest-severity substance wins; empty hazard returns `medium` floor (WP13)
 
 **Dependencies**: WP05, WP06, WP07.
 
@@ -476,10 +476,10 @@ Phase A and Phase B execute **in parallel** because alert-crawler's `go.mod` car
 
 **Subtasks**:
 
-- [ ] T057 Create `internal/scope/resolver.go` (imports `taxonomy.ParentRegion`) (WP14)
-- [ ] T058 Implement default-scope expansion per source (e.g., `mhrn` defaults to `[treaty:1, canada:manitoba]`) (WP14)
-- [ ] T059 Implement location-name → city slug inference (e.g., "Winnipeg" → `canada:manitoba:winnipeg`) (WP14)
-- [ ] T060 Unit tests: hierarchy resolution; missing taxonomy token logs metric and continues (WP14)
+- [x] T057 Create `internal/scope/resolver.go` (imports `taxonomy.ParentRegion`) (WP14)
+- [x] T058 Implement default-scope expansion per source (e.g., `mhrn` defaults to `[treaty:1, canada:manitoba]`) (WP14)
+- [x] T059 Implement location-name → city slug inference (e.g., "Winnipeg" → `canada:manitoba:winnipeg`) (WP14)
+- [x] T060 Unit tests: hierarchy resolution; missing taxonomy token logs metric and continues (WP14)
 
 **Dependencies**: WP05, WP06, WP07. (Functionally also depends on the `taxonomy.ParentRegion` function from Phase A; this dependency is satisfied at runtime via the `replace` directive in `go.mod` and is not a sequencing dependency.)
 
@@ -499,12 +499,12 @@ Phase A and Phase B execute **in parallel** because alert-crawler's `go.mod` car
 
 **Subtasks**:
 
-- [ ] T061 Create `internal/runner/runner.go` (poll cycle orchestration) (WP15)
-- [ ] T062 Implement rescission detection via `RescindAbsent` after fetch loop (WP15)
-- [ ] T063 Implement error classification (transient → backoff; structural → parse_failure metric) (WP15)
-- [ ] T064 Create `internal/observability/metrics.go` (structured-log emitter for the metric set in plan §4.5) (WP15)
-- [ ] T065 Implement consecutive_failures gauge per source; ≥6 emits operator-actionable signal (WP15)
-- [ ] T066 Unit tests with mocked dependencies; assert each per-poll metric is emitted (WP15)
+- [x] T061 Create `internal/runner/runner.go` (poll cycle orchestration) (WP15)
+- [x] T062 Implement rescission detection via `RescindAbsent` after fetch loop (WP15)
+- [x] T063 Implement error classification (transient → backoff; structural → parse_failure metric) (WP15)
+- [x] T064 Create `internal/observability/metrics.go` (structured-log emitter for the metric set in plan §4.5) (WP15)
+- [x] T065 Implement consecutive_failures gauge per source; ≥6 emits operator-actionable signal (WP15)
+- [x] T066 Unit tests with mocked dependencies; assert each per-poll metric is emitted (WP15)
 
 **Dependencies**: WP06, WP07, WP08, WP09, WP10, WP11, WP12, WP13, WP14.
 
@@ -524,10 +524,10 @@ Phase A and Phase B execute **in parallel** because alert-crawler's `go.mod` car
 
 **Subtasks**:
 
-- [ ] T067 Wire all dependencies in `main.go` (config, logger, sqlite, ES, redis, catalogue, runner) (WP16)
-- [ ] T068 Add `signal.NotifyContext(SIGINT, SIGTERM)` and graceful shutdown (WP16)
-- [ ] T069 Implement phase order: flags → setup → buildSources → runner → exit; mirrors signal-crawler (WP16)
-- [ ] T070 Smoke test: `task run` boots, polls once against a httptest fixture, exits cleanly (WP16)
+- [x] T067 Wire all dependencies in `main.go` (config, logger, sqlite, ES, redis, catalogue, runner) (WP16)
+- [x] T068 Add `signal.NotifyContext(SIGINT, SIGTERM)` and graceful shutdown (WP16)
+- [x] T069 Implement phase order: flags → setup → buildSources → runner → exit; mirrors signal-crawler (WP16)
+- [x] T070 Smoke test: `task run` boots, polls once against a httptest fixture, exits cleanly (WP16)
 
 **Dependencies**: WP15 and all preceding Phase B WPs.
 
@@ -547,10 +547,10 @@ Phase A and Phase B execute **in parallel** because alert-crawler's `go.mod` car
 
 **Subtasks**:
 
-- [ ] T071 Create `cmd/backfill/main.go` (one-shot subcommand) (WP17)
-- [ ] T072 Reuse runner with `backfill_mode=true` flag; emit `created` for top-20 items (WP17)
-- [ ] T073 Idempotency: re-running backfill is a no-op (catalogue check) (WP17)
-- [ ] T074 Unit tests for backfill mode (WP17)
+- [x] T071 Create `cmd/backfill/main.go` (one-shot subcommand) (WP17)
+- [x] T072 Reuse runner with `backfill_mode=true` flag; emit `created` for top-20 items (WP17)
+- [x] T073 Idempotency: re-running backfill is a no-op (catalogue check) (WP17)
+- [x] T074 Unit tests for backfill mode (WP17)
 
 **Dependencies**: WP15, WP16.
 
@@ -570,13 +570,13 @@ Phase A and Phase B execute **in parallel** because alert-crawler's `go.mod` car
 
 **Subtasks**:
 
-- [ ] T075 Set up integration test harness (`//go:build integration`; real ES + Redis + SQLite via existing CI integration harness) (WP18)
-- [ ] T076 AS-01: drug supply alert reaches Treaty 1 page (synthetic feed → ES → consumer query) (WP18)
-- [ ] T077 AS-02: corrected alert supersedes earlier version (revision_history append + updated event) (WP18)
-- [ ] T078 AS-03: rescinded alert disappears within one poll cycle (feed-delta detection) (WP18)
-- [ ] T079 AS-04: subscriber recovery after downtime (active-set query from ES alone) (WP18)
-- [ ] T080 AS-05: source unreachable for extended period (consecutive_failures gauge; durable store unaffected) (WP18)
-- [ ] T081 AS-06: scope vocabulary lookup (Treaty 1 page surfaces a manitoba-scoped alert) (WP18)
+- [x] T075 Set up integration test harness (`//go:build integration`; real ES + Redis + SQLite via existing CI integration harness) (WP18)
+- [x] T076 AS-01: drug supply alert reaches Treaty 1 page (synthetic feed → ES → consumer query) (WP18)
+- [x] T077 AS-02: corrected alert supersedes earlier version (revision_history append + updated event) (WP18)
+- [x] T078 AS-03: rescinded alert disappears within one poll cycle (feed-delta detection) (WP18)
+- [x] T079 AS-04: subscriber recovery after downtime (active-set query from ES alone) (WP18)
+- [x] T080 AS-05: source unreachable for extended period (consecutive_failures gauge; durable store unaffected) (WP18)
+- [x] T081 AS-06: scope vocabulary lookup (Treaty 1 page surfaces a manitoba-scoped alert) (WP18)
 
 **Dependencies**: WP15, WP16, WP17.
 
@@ -598,10 +598,10 @@ Phase A and Phase B execute **in parallel** because alert-crawler's `go.mod` car
 
 **Subtasks**:
 
-- [ ] T082 Wait for indigenous-taxonomy v1.1.0 tag (gates: WP04 merged) (WP19)
-- [ ] T083 Remove `replace` directive from `alert-crawler/go.mod` (WP19)
-- [ ] T084 Pin to `github.com/jonesrussell/indigenous-taxonomy v1.1.0` (WP19)
-- [ ] T085 Run `go mod tidy`; verify build succeeds without `replace` (CI gate) (WP19)
+- [x] T082 Wait for indigenous-taxonomy v1.1.0 tag (gates: WP04 merged) (WP19)
+- [x] T083 Remove `replace` directive from `alert-crawler/go.mod` (WP19)
+- [x] T084 Pin to `github.com/jonesrussell/indigenous-taxonomy v1.1.0` (WP19)
+- [x] T085 Run `go mod tidy`; verify build succeeds without `replace` (CI gate) (WP19)
 
 **Dependencies**: WP04, WP18.
 
@@ -621,10 +621,10 @@ Phase A and Phase B execute **in parallel** because alert-crawler's `go.mod` car
 
 **Subtasks**:
 
-- [ ] T086 Add `alert-crawler` service entry to `docker-compose.base.yml` (`restart: "no"`, named volume, no health check) (WP20)
-- [ ] T087 Add `alert-crawler-data` named volume declaration (WP20)
-- [ ] T088 Verify service brings up cleanly via `docker compose -f docker-compose.base.yml -f docker-compose.dev.yml up alert-crawler` (WP20)
-- [ ] T089 Run `task ports:check`; regenerate ports SSOT for new compose entry (WP20)
+- [x] T086 Add `alert-crawler` service entry to `docker-compose.base.yml` (`restart: "no"`, named volume, no health check) (WP20)
+- [x] T087 Add `alert-crawler-data` named volume declaration (WP20)
+- [x] T088 Verify service brings up cleanly via `docker compose -f docker-compose.base.yml -f docker-compose.dev.yml up alert-crawler` (WP20)
+- [x] T089 Run `task ports:check`; regenerate ports SSOT for new compose entry (WP20)
 
 **Dependencies**: WP05.
 
@@ -644,10 +644,10 @@ Phase A and Phase B execute **in parallel** because alert-crawler's `go.mod` car
 
 **Subtasks**:
 
-- [ ] T090 Add `alert-crawler` to oneshot skip list in `scripts/deploy.sh` (WP21)
-- [ ] T091 Add `alert-crawler` to `GO_SERVICES` in `scripts/detect-changed-services.sh` (WP21)
-- [ ] T092 Add `vuln:alert-crawler` delegation in root `Taskfile.yml` (WP21)
-- [ ] T093 Verify CI workflow detects and tests alert-crawler on diff (manual: open dummy PR, observe CI) (WP21)
+- [x] T090 Add `alert-crawler` to oneshot skip list in `scripts/deploy.sh` (WP21)
+- [x] T091 Add `alert-crawler` to `GO_SERVICES` in `scripts/detect-changed-services.sh` (WP21)
+- [x] T092 Add `vuln:alert-crawler` delegation in root `Taskfile.yml` (WP21)
+- [x] T093 Verify CI workflow detects and tests alert-crawler on diff (manual: open dummy PR, observe CI) (WP21)
 
 **Dependencies**: WP05.
 
@@ -667,10 +667,10 @@ Phase A and Phase B execute **in parallel** because alert-crawler's `go.mod` car
 
 **Subtasks**:
 
-- [ ] T094 Create `alert-crawler.timer.j2` (`OnCalendar=*-*-* *:30:00 UTC`, `Persistent=true`, `RandomizedDelaySec=120`) (WP22)
-- [ ] T095 Create `alert-crawler.service.j2` (`Type=oneshot`, `ExecStartPre` image pull, `ExecStart` `docker compose ... run --rm alert-crawler`) (WP22)
-- [ ] T096 Add `nc_alert_crawler_schedule` default in `roles/north-cloud/defaults/main.yml` (WP22)
-- [ ] T097 Add data-dir creation task with `owner: "1000"` (RR PR-004 mitigation) (WP22)
+- [x] T094 Create `alert-crawler.timer.j2` (`OnCalendar=*-*-* *:30:00 UTC`, `Persistent=true`, `RandomizedDelaySec=120`) (WP22)
+- [x] T095 Create `alert-crawler.service.j2` (`Type=oneshot`, `ExecStartPre` image pull, `ExecStart` `docker compose ... run --rm alert-crawler`) (WP22)
+- [x] T096 Add `nc_alert_crawler_schedule` default in `roles/north-cloud/defaults/main.yml` (WP22)
+- [x] T097 Add data-dir creation task with `owner: "1000"` (RR PR-004 mitigation) (WP22)
 
 **Dependencies**: WP05, WP20.
 
@@ -690,10 +690,10 @@ Phase A and Phase B execute **in parallel** because alert-crawler's `go.mod` car
 
 **Subtasks**:
 
-- [ ] T098 Add `docs/specs/community-alert-pipeline.md` (or pointer to mission spec) (WP23)
-- [ ] T099 Update `tools/drift-detector.sh` mapping for `alert-crawler/**` (WP23)
-- [ ] T100 Write `alert-crawler/CLAUDE.md` (config gotcha, mapping ownership, replace removal, rescission, RR PR-004) (WP23)
-- [ ] T101 Update repo-root `CLAUDE.md` orchestration table to include `alert-crawler/**` (WP23)
+- [x] T098 Add `docs/specs/community-alert-pipeline.md` (or pointer to mission spec) (WP23)
+- [x] T099 Update `tools/drift-detector.sh` mapping for `alert-crawler/**` (WP23)
+- [x] T100 Write `alert-crawler/CLAUDE.md` (config gotcha, mapping ownership, replace removal, rescission, RR PR-004) (WP23)
+- [x] T101 Update repo-root `CLAUDE.md` orchestration table to include `alert-crawler/**` (WP23)
 
 **Dependencies**: WP05.
 
@@ -715,10 +715,10 @@ Phase A and Phase B execute **in parallel** because alert-crawler's `go.mod` car
 
 **Subtasks**:
 
-- [ ] T102 NFR-001 latency harness: synthetic upstream publish; assert 95% ≤60min, 99% ≤120min (WP24)
-- [ ] T103 NFR-006 idempotency harness: 100-cycle replay; assert 0 spurious lifecycle events (WP24)
-- [ ] T104 NFR-009 blast-radius harness: synthetic alert-crawler crash; assert lead pipeline unaffected (WP24)
-- [ ] T105 First-deploy backfill rehearsal (D.3): run backfill against staging or sandbox; verify 20 `created` events (WP24)
+- [x] T102 NFR-001 latency harness: synthetic upstream publish; assert 95% ≤60min, 99% ≤120min (WP24)
+- [x] T103 NFR-006 idempotency harness: 100-cycle replay; assert 0 spurious lifecycle events (WP24)
+- [x] T104 NFR-009 blast-radius harness: synthetic alert-crawler crash; assert lead pipeline unaffected (WP24)
+- [x] T105 First-deploy backfill rehearsal (D.3): run backfill against staging or sandbox; verify 20 `created` events (WP24)
 
 **Dependencies**: WP18 (integration test harness reused).
 
@@ -738,12 +738,12 @@ Phase A and Phase B execute **in parallel** because alert-crawler's `go.mod` car
 
 **Subtasks**:
 
-- [ ] T106 Run `task lint:force` clean; address any drift findings (WP25)
-- [ ] T107 Run `task test` and `task test:alert-crawler -- -tags integration` clean (WP25)
-- [ ] T108 Run `task drift:check`, `task ports:check`, `task layers:check` clean (WP25)
-- [ ] T109 Verify lefthook pre-commit and pre-push pass without `--no-verify` (WP25)
-- [ ] T110 Manual smoke test: end-to-end against staging (publish → consume) (WP25)
-- [ ] T111 File GitHub issue: "Migrate classifier and publisher to import indigenous-taxonomy directly" with R-004 context (WP25)
+- [x] T106 Run `task lint:force` clean; address any drift findings (WP25)
+- [x] T107 Run `task test` and `task test:alert-crawler -- -tags integration` clean (WP25)
+- [x] T108 Run `task drift:check`, `task ports:check`, `task layers:check` clean (WP25)
+- [x] T109 Verify lefthook pre-commit and pre-push pass without `--no-verify` (WP25)
+- [x] T110 Manual smoke test: end-to-end against staging (publish → consume) (WP25)
+- [x] T111 File GitHub issue: "Migrate classifier and publisher to import indigenous-taxonomy directly" with R-004 context (WP25)
 
 **Dependencies**: WP19, WP20, WP21, WP22, WP23, WP24.
 
