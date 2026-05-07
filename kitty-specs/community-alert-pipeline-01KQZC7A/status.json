@@ -1,7 +1,7 @@
 {
-  "event_count": 153,
-  "last_event_id": "01KR1ARN5WEEKNCG1V185KYGN7",
-  "materialized_at": "2026-05-07T13:41:48.861029+00:00",
+  "event_count": 154,
+  "last_event_id": "01KR1ARQB3MNX7BQ6ACXE50JJG",
+  "materialized_at": "2026-05-07T13:41:51.075586+00:00",
   "mission_number": "",
   "mission_slug": "community-alert-pipeline-01KQZC7A",
   "mission_type": "software-dev",
@@ -11,9 +11,9 @@
     "canceled": 0,
     "claimed": 0,
     "done": 0,
-    "for_review": 1,
+    "for_review": 0,
     "in_progress": 0,
-    "in_review": 0,
+    "in_review": 1,
     "planned": 1
   },
   "work_packages": {
@@ -179,11 +179,11 @@
       "last_transition_at": "2026-05-07T13:39:39.540041+00:00"
     },
     "WP24": {
-      "actor": "user",
+      "actor": "claude:opus:reviewer:reviewers2",
       "force_count": 1,
-      "lane": "for_review",
-      "last_event_id": "01KR1ARN5WEEKNCG1V185KYGN7",
-      "last_transition_at": "2026-05-07T13:41:48.861029+00:00"
+      "lane": "in_review",
+      "last_event_id": "01KR1ARQB3MNX7BQ6ACXE50JJG",
+      "last_transition_at": "2026-05-07T13:41:51.075586+00:00"
     },
     "WP25": {
       "actor": "finalize-tasks",
