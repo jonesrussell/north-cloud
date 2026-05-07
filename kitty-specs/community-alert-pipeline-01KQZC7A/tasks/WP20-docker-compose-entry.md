@@ -186,3 +186,4 @@ Depends on WP05.
 ## Activity Log
 
 - 2026-05-07T13:30:03Z – claude:sonnet:implementer:implementer – shell_pid=515304 – Started implementation via action command
+- 2026-05-07T13:32:22Z – claude:sonnet:implementer:implementer – shell_pid=515304 – Ready for review: compose service + volume added, ports SSOT regenerated, build verified; one-shot run blocked locally by missing .env in worktree
