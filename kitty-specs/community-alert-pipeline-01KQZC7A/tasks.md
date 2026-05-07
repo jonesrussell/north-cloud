@@ -144,10 +144,10 @@ Phase A and Phase B execute **in parallel** because alert-crawler's `go.mod` car
 | T099 | Update `tools/drift-detector.sh` mapping for `alert-crawler/**` | WP23 | | [D] |
 | T100 | Write `alert-crawler/CLAUDE.md` (config gotcha, mapping ownership, replace removal, rescission, RR PR-004) | WP23 | | [D] |
 | T101 | Update repo-root `CLAUDE.md` orchestration table to include `alert-crawler/**` | WP23 | | [D] |
-| T102 | NFR-001 latency harness: synthetic upstream publish; assert 95% ≤60min, 99% ≤120min | WP24 | |
-| T103 | NFR-006 idempotency harness: 100-cycle replay; assert 0 spurious lifecycle events | WP24 | |
-| T104 | NFR-009 blast-radius harness: synthetic alert-crawler crash; assert lead pipeline unaffected | WP24 | |
-| T105 | First-deploy backfill rehearsal (D.3): run backfill against staging or sandbox; verify 20 `created` events | WP24 | |
+| T102 | NFR-001 latency harness: synthetic upstream publish; assert 95% ≤60min, 99% ≤120min | WP24 | | [D] |
+| T103 | NFR-006 idempotency harness: 100-cycle replay; assert 0 spurious lifecycle events | WP24 | | [D] |
+| T104 | NFR-009 blast-radius harness: synthetic alert-crawler crash; assert lead pipeline unaffected | WP24 | | [D] |
+| T105 | First-deploy backfill rehearsal (D.3): run backfill against staging or sandbox; verify 20 `created` events | WP24 | | [D] |
 | T106 | Run `task lint:force` clean; address any drift findings | WP25 | |
 | T107 | Run `task test` and `task test:alert-crawler -- -tags integration` clean | WP25 | |
 | T108 | Run `task drift:check`, `task ports:check`, `task layers:check` clean | WP25 | |
@@ -715,10 +715,10 @@ Phase A and Phase B execute **in parallel** because alert-crawler's `go.mod` car
 
 **Subtasks**:
 
-- [ ] T102 NFR-001 latency harness: synthetic upstream publish; assert 95% ≤60min, 99% ≤120min (WP24)
-- [ ] T103 NFR-006 idempotency harness: 100-cycle replay; assert 0 spurious lifecycle events (WP24)
-- [ ] T104 NFR-009 blast-radius harness: synthetic alert-crawler crash; assert lead pipeline unaffected (WP24)
-- [ ] T105 First-deploy backfill rehearsal (D.3): run backfill against staging or sandbox; verify 20 `created` events (WP24)
+- [x] T102 NFR-001 latency harness: synthetic upstream publish; assert 95% ≤60min, 99% ≤120min (WP24)
+- [x] T103 NFR-006 idempotency harness: 100-cycle replay; assert 0 spurious lifecycle events (WP24)
+- [x] T104 NFR-009 blast-radius harness: synthetic alert-crawler crash; assert lead pipeline unaffected (WP24)
+- [x] T105 First-deploy backfill rehearsal (D.3): run backfill against staging or sandbox; verify 20 `created` events (WP24)
 
 **Dependencies**: WP18 (integration test harness reused).
 
