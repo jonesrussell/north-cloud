@@ -238,3 +238,4 @@ Depends on WP15.
 ## Activity Log
 
 - 2026-05-06T23:57:24Z – claude:sonnet:implementer:implementer – shell_pid=333028 – Started implementation via action command
+- 2026-05-07T00:02:23Z – claude:sonnet:implementer:implementer – shell_pid=333028 – main.go wired with full dep graph + smoke test
