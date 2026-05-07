@@ -15,6 +15,8 @@ subtasks:
 - T084
 - T085
 phase: C
+agent: "claude:sonnet:implementer:implementer"
+shell_pid: "370985"
 history:
 - at: '2026-05-06T20:51:29Z'
   event: created
@@ -155,3 +157,7 @@ spec-kitty agent action implement WP19 --agent <name>
 ```
 
 Depends on WP04 (taxonomy v1.1.0 tag) AND WP18 (Phase B feature-complete).
+
+## Activity Log
+
+- 2026-05-07T00:28:56Z – claude:sonnet:implementer:implementer – shell_pid=370985 – Started implementation via action command
