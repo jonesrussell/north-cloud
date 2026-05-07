@@ -173,3 +173,4 @@ Depends on WP18.
 ## Activity Log
 
 - 2026-05-07T13:39:42Z – claude:sonnet:implementer:implementer – shell_pid=527594 – Started implementation via action command
+- 2026-05-07T13:41:49Z – claude:sonnet:implementer:implementer – shell_pid=527594 – Ready for review: NFR-001/006/009 harnesses plus backfill rehearsal tests
