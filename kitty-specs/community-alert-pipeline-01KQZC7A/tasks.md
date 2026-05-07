@@ -124,10 +124,10 @@ Phase A and Phase B execute **in parallel** because alert-crawler's `go.mod` car
 | T079 | AS-04: subscriber recovery after downtime (active-set query from ES alone) | WP18 | | [D] |
 | T080 | AS-05: source unreachable for extended period (consecutive_failures gauge; durable store unaffected) | WP18 | | [D] |
 | T081 | AS-06: scope vocabulary lookup (Treaty 1 page surfaces a manitoba-scoped alert) | WP18 | | [D] |
-| T082 | Wait for indigenous-taxonomy v1.1.0 tag (gates: WP04 merged) | WP19 | |
-| T083 | Remove `replace` directive from `alert-crawler/go.mod` | WP19 | |
-| T084 | Pin to `github.com/jonesrussell/indigenous-taxonomy v1.1.0` | WP19 | |
-| T085 | Run `go mod tidy`; verify build succeeds without `replace` (CI gate) | WP19 | |
+| T082 | Wait for indigenous-taxonomy v1.1.0 tag (gates: WP04 merged) | WP19 | | [D] |
+| T083 | Remove `replace` directive from `alert-crawler/go.mod` | WP19 | | [D] |
+| T084 | Pin to `github.com/jonesrussell/indigenous-taxonomy v1.1.0` | WP19 | | [D] |
+| T085 | Run `go mod tidy`; verify build succeeds without `replace` (CI gate) | WP19 | | [D] |
 | T086 | Add `alert-crawler` service entry to `docker-compose.base.yml` (`restart: "no"`, named volume `alert-crawler-data:/app/data`, no health check) | WP20 | |
 | T087 | Add `alert-crawler-data` named volume declaration | WP20 | |
 | T088 | Verify service brings up cleanly via `docker compose -f docker-compose.base.yml -f docker-compose.dev.yml up alert-crawler` | WP20 | |
@@ -598,10 +598,10 @@ Phase A and Phase B execute **in parallel** because alert-crawler's `go.mod` car
 
 **Subtasks**:
 
-- [ ] T082 Wait for indigenous-taxonomy v1.1.0 tag (gates: WP04 merged) (WP19)
-- [ ] T083 Remove `replace` directive from `alert-crawler/go.mod` (WP19)
-- [ ] T084 Pin to `github.com/jonesrussell/indigenous-taxonomy v1.1.0` (WP19)
-- [ ] T085 Run `go mod tidy`; verify build succeeds without `replace` (CI gate) (WP19)
+- [x] T082 Wait for indigenous-taxonomy v1.1.0 tag (gates: WP04 merged) (WP19)
+- [x] T083 Remove `replace` directive from `alert-crawler/go.mod` (WP19)
+- [x] T084 Pin to `github.com/jonesrussell/indigenous-taxonomy v1.1.0` (WP19)
+- [x] T085 Run `go mod tidy`; verify build succeeds without `replace` (CI gate) (WP19)
 
 **Dependencies**: WP04, WP18.
 
