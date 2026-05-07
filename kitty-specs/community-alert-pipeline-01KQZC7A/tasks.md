@@ -140,10 +140,10 @@ Phase A and Phase B execute **in parallel** because alert-crawler's `go.mod` car
 | T095 | Create `alert-crawler.service.j2` (`Type=oneshot`, `ExecStartPre` image pull, `ExecStart` `docker compose ... run --rm alert-crawler`) | WP22 | | [D] |
 | T096 | Add `nc_alert_crawler_schedule` default in `roles/north-cloud/defaults/main.yml` | WP22 | | [D] |
 | T097 | Add data-dir creation task with `owner: "1000"` (RR PR-004 mitigation) | WP22 | | [D] |
-| T098 | Add `docs/specs/community-alert-pipeline.md` (or pointer to mission spec) | WP23 | |
-| T099 | Update `tools/drift-detector.sh` mapping for `alert-crawler/**` | WP23 | |
-| T100 | Write `alert-crawler/CLAUDE.md` (config gotcha, mapping ownership, replace removal, rescission, RR PR-004) | WP23 | |
-| T101 | Update repo-root `CLAUDE.md` orchestration table to include `alert-crawler/**` | WP23 | |
+| T098 | Add `docs/specs/community-alert-pipeline.md` (or pointer to mission spec) | WP23 | | [D] |
+| T099 | Update `tools/drift-detector.sh` mapping for `alert-crawler/**` | WP23 | | [D] |
+| T100 | Write `alert-crawler/CLAUDE.md` (config gotcha, mapping ownership, replace removal, rescission, RR PR-004) | WP23 | | [D] |
+| T101 | Update repo-root `CLAUDE.md` orchestration table to include `alert-crawler/**` | WP23 | | [D] |
 | T102 | NFR-001 latency harness: synthetic upstream publish; assert 95% ≤60min, 99% ≤120min | WP24 | |
 | T103 | NFR-006 idempotency harness: 100-cycle replay; assert 0 spurious lifecycle events | WP24 | |
 | T104 | NFR-009 blast-radius harness: synthetic alert-crawler crash; assert lead pipeline unaffected | WP24 | |
@@ -690,10 +690,10 @@ Phase A and Phase B execute **in parallel** because alert-crawler's `go.mod` car
 
 **Subtasks**:
 
-- [ ] T098 Add `docs/specs/community-alert-pipeline.md` (or pointer to mission spec) (WP23)
-- [ ] T099 Update `tools/drift-detector.sh` mapping for `alert-crawler/**` (WP23)
-- [ ] T100 Write `alert-crawler/CLAUDE.md` (config gotcha, mapping ownership, replace removal, rescission, RR PR-004) (WP23)
-- [ ] T101 Update repo-root `CLAUDE.md` orchestration table to include `alert-crawler/**` (WP23)
+- [x] T098 Add `docs/specs/community-alert-pipeline.md` (or pointer to mission spec) (WP23)
+- [x] T099 Update `tools/drift-detector.sh` mapping for `alert-crawler/**` (WP23)
+- [x] T100 Write `alert-crawler/CLAUDE.md` (config gotcha, mapping ownership, replace removal, rescission, RR PR-004) (WP23)
+- [x] T101 Update repo-root `CLAUDE.md` orchestration table to include `alert-crawler/**` (WP23)
 
 **Dependencies**: WP05.
 
