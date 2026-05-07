@@ -29,6 +29,16 @@
       "service": "ai-observer"
     },
     {
+      "bind_interface": null,
+      "compose_overlay": "dev",
+      "container_port": null,
+      "env_vars": [
+        "DB_PATH"
+      ],
+      "host_port": null,
+      "service": "alert-crawler"
+    },
+    {
       "bind_interface": "",
       "compose_overlay": "dev",
       "container_port": "12345",
@@ -957,6 +967,16 @@
       "service": "ai-observer"
     },
     {
+      "bind_interface": null,
+      "compose_overlay": "prod",
+      "container_port": null,
+      "env_vars": [
+        "DB_PATH"
+      ],
+      "host_port": null,
+      "service": "alert-crawler"
+    },
+    {
       "bind_interface": "",
       "compose_overlay": "prod",
       "container_port": "12345",
@@ -1619,6 +1639,16 @@
       ],
       "host_port": null,
       "service": "ai-observer"
+    },
+    {
+      "bind_interface": null,
+      "compose_overlay": "test",
+      "container_port": null,
+      "env_vars": [
+        "DB_PATH"
+      ],
+      "host_port": null,
+      "service": "alert-crawler"
     },
     {
       "bind_interface": "",

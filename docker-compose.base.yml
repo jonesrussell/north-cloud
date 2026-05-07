@@ -498,6 +498,26 @@ services:
   # Signal Crawler (oneshot — triggered by systemd timer)
   # ------------------------------------------------------------
 
+  alert-crawler:
+    image: ${REGISTRY:-northcloud}/alert-crawler:${TAG:-latest}
+    build:
+      context: .
+      dockerfile: alert-crawler/Dockerfile
+    restart: "no"
+    networks:
+      - north-cloud-network
+    volumes:
+      - alert-crawler-data:/app/data
+    env_file:
+      - .env
+    environment:
+      - DB_PATH=/app/data/state.db
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
   signal-crawler:
     build:
       context: .
@@ -762,6 +782,7 @@ volumes:
   grafana_data:
   northcloud-search-data:
   nc_http_proxy_cache:
+  alert-crawler-data:
   signal-crawler-data:
 
 networks:
