@@ -7,5 +7,5 @@
 - [x] `task ports:check` — clean (`2026-05-07T14:12:39Z`)
 - [x] `task layers:check` — clean with existing warning only (`signal-producer` unmapped `config` package; no violations) (`2026-05-07T14:12:39Z`)
 - [x] `lefthook install` + `lefthook run pre-commit` + `lefthook run pre-push` — clean (`2026-05-07T14:12:39Z`)
-- [ ] Manual staging smoke (`docker compose run --rm alert-crawler`, ES `_count`, Redis lifecycle subscribe) — pending human-run on staging host
+- [ ] Manual staging smoke (`docker compose run --rm alert-crawler`, ES `_count`, Redis lifecycle subscribe) — attempted on `deployer@northcloud.one` at `2026-05-07T14:58Z`; blocked because compose reports `no such service: alert-crawler`
 - [x] Deferred migration issue filed: [#717](https://github.com/jonesrussell/north-cloud/issues/717)
