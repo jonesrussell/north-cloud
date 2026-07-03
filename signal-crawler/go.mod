@@ -6,7 +6,7 @@ require (
 	github.com/jonesrussell/north-cloud/infrastructure v0.0.0
 	github.com/mattn/go-sqlite3 v1.14.38
 	github.com/stretchr/testify v1.10.0
-	golang.org/x/net v0.52.0
+	golang.org/x/net v0.55.0
 )
 
 require (
